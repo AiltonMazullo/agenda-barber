@@ -286,7 +286,7 @@ export default function DashboardPage() {
 function StatCard({ title, value, icon, subtitle, subtitleColor }: any) {
   return (
     <Card className="bg-[#161b22] border-[#30363d] shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 ">
         <CardTitle className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider">
           {title}
         </CardTitle>
@@ -307,7 +307,7 @@ function StatCard({ title, value, icon, subtitle, subtitleColor }: any) {
 function FinanceCard({ title, value, bgColor, textColor }: any) {
   return (
     <Card className={`${bgColor} border-none shadow-none`}>
-      <CardContent className="pt-5 pb-5">
+      <CardContent>
         <p className="text-[10px] font-bold text-[#8b949e] uppercase mb-1">
           {title}
         </p>

@@ -4,12 +4,6 @@ import { Bell, LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Header() {
@@ -18,13 +12,11 @@ export function Header() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="h-4" />
 
-      {/* Breadcrumb / página atual — pode ser dinâmico depois */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span className="text-foreground font-medium">Barbearia do José</span>
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        {/* Notificações */}
 
         <Button
           variant="ghost"
