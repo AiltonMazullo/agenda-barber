@@ -25,30 +25,28 @@ export function Header() {
 
       <div className="ml-auto flex items-center gap-2">
         {/* Notificações */}
-        <Button variant="ghost" size="icon" className="relative size-8">
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="cursor-pointer relative size-8"
+        >
           <Bell className="size-4" />
         </Button>
+        <Button
+          // onClick={handleLogout}
+          variant="ghost"
+          size="icon"
+          className="cursor-pointer relative size-8"
+        >
+          <LogOut className="size-4" />
+        </Button>
 
-        {/* Avatar / menu do usuário */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" className="size-8 rounded-full p-0" />
-            }
-          >
-            <Avatar className="size-8">
-              <AvatarFallback className="bg-amber-500 text-black text-xs font-bold">
-                JS
-              </AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="text-red-400">
-              <LogOut className="size-4 mr-2" />
-              Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Avatar className="size-8">
+          <AvatarFallback className="bg-[#3f340d] text-yellow-500 text-xs font-bold">
+            JS
+          </AvatarFallback>
+        </Avatar>
       </div>
     </header>
   );

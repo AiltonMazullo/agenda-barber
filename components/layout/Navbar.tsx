@@ -58,18 +58,21 @@ export function Navbar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon" className="">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       {/* Logo / nome da barbearia */}
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-3 ">
-        <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-md bg-amber-500 text-black shrink-0">
-            <Scissors className="size-4" />
+      <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
+        {" "}
+        {/* Aumentei levemente o py para 4 */}
+        <div className="flex items-center gap-3">
+          {/* LOGO: Alterado para rounded-lg e tamanho ajustado */}
+          <div className="flex size-9 items-center justify-center rounded-lg bg-[#f5b82e] text-black shrink-0 shadow-sm group-data-[collapsible=icon]:size-7 flex justify-items-center">
+            <Scissors className="size-5" />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold text-white leading-tight">
+            <span className="text-sm font-bold text-white leading-tight">
               Barbearia do José
             </span>
-            <span className="text-[11px] text-sidebar-foreground/50">
+            <span className="text-[11px] text-[#8b949e]">
               barbearia-do-jose
             </span>
           </div>
@@ -77,9 +80,12 @@ export function Navbar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {" "}
         {/* Operacional */}
         <SidebarGroup>
-          <SidebarGroupLabel>Operacional</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-bold text-[#8b949e]">
+            Operacional
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navOperacional.map((item) => (
@@ -88,20 +94,23 @@ export function Navbar() {
                     render={<Link href={item.href} />}
                     isActive={pathname === item.href}
                     tooltip={item.title}
+                    className="h-8"
                   >
-                    <item.icon />
-                    <span>{item.title}</span>
+                    <item.icon className="size-4" />
+                    <span className="font-medium">{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
         {/* Gestão */}
         <SidebarGroup>
-          <SidebarGroupLabel>Gestão</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-bold text-[#8b949e]">
+            Gestão
+          </SidebarGroupLabel>
           <SidebarGroupContent>
+            {/* MENU: Adicionado gap-1 aqui também */}
             <SidebarMenu>
               {navGestao.map((item) => (
                 <SidebarMenuItem key={item.href}>
@@ -109,9 +118,10 @@ export function Navbar() {
                     render={<Link href={item.href} />}
                     isActive={pathname === item.href}
                     tooltip={item.title}
+                    className="h-8"
                   >
-                    <item.icon />
-                    <span>{item.title}</span>
+                    <item.icon className="size-4" />
+                    <span className="font-medium">{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -120,16 +130,18 @@ export function Navbar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer: Plano, Configurações, Sair */}
-      <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarMenu>
+      {/* Footer */}
+      <SidebarFooter className="border-t border-sidebar-border py-4">
+        {/* MENU: Gap-1 no rodapé */}
+        <SidebarMenu className="gap-1">
           <SidebarMenuItem>
             <SidebarMenuButton
               render={<Link href="/billing" />}
               tooltip="Plano"
+              className="h-10 text-emerald-500 hover:text-emerald-400" // Cor de destaque para o plano
             >
-              <CreditCard />
-              <span>Plano</span>
+              <CreditCard className="size-4" />
+              <span className="font-medium">Plano</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           {navBottom.map((item) => (
@@ -138,19 +150,21 @@ export function Navbar() {
                 render={<Link href={item.href} />}
                 isActive={pathname === item.href}
                 tooltip={item.title}
+                className="h-10"
               >
-                <item.icon />
-                <span>{item.title}</span>
+                <item.icon className="size-4" />
+                <span className="font-medium">{item.title}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
           <SidebarMenuItem>
             <SidebarMenuButton
+              // onClick={handleLogout}
               tooltip="Sair"
-              className="text-red-400 hover:text-red-300"
+              className="h-10 text-red-400 hover:text-red-300 hover:bg-red-400/10"
             >
-              <LogOut />
-              <span>Sair</span>
+              <LogOut className="size-4" />
+              <span className="font-medium">Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -44,14 +44,32 @@ export default function LoginPage() {
       <Card className="w-full max-w-[450px] bg-(--brand-card) border-(--border-card) shadow-xl">
         <CardHeader className="text-center pt-2 pb-1">
           <CardTitle className="text-lg font-semibold text-white">
-            Entrar na sua conta
+            Criar sua conta
           </CardTitle>
           <CardDescription className="text-[#8b949e] text-sm text-[12px]">
-            Acesse o painel administrativo
+            Comece a gerenciar seu negócio
           </CardDescription>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-4 px-8 pb-8">
+          {/* Nome */}
+          <div className="flex flex-col gap-1.5">
+            <Label
+              htmlFor="name"
+              className="text-[#8b949e] text-xs font-normal"
+            >
+              Nome Completo
+            </Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]" />
+              <Input
+                id="name"
+                type="text"
+                placeholder="Seu nome"
+                className="bg-black border-none border-[#30363d] shadow-xl text-[#1a1c24] h-11 pl-10 rounded-md focus-visible:ring-1 focus-visible:ring-amber-500 placeholder:text-gray-500"
+              />
+            </div>
+          </div>
           {/* Email */}
           <div className="flex flex-col gap-1.5">
             <Label
@@ -84,13 +102,13 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder="Mínimo 6 caracteres"
                 className="bg-black border-none border-[#30363d] shadow-xl text-[#1a1c24] h-11 pl-10 pr-10 rounded-md focus-visible:ring-1 focus-visible:ring-amber-500 placeholder:text-gray-500"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black transition-colors"
+                className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
               >
                 {showPassword ? (
                   <EyeOff className="size-4" />
@@ -99,32 +117,23 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
-
-            <div className="flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-[12px] text-[#f5b82e] hover:underline font-medium cursor-pointer"
-              >
-                Esqueci minha senha
-              </Link>
-            </div>
           </div>
 
           <Button
             className="w-full bg-[#f5b82e] hover:bg-[#d9a320] text-black font-bold h-11 text-sm rounded-md transition-all mt-2 cursor-pointer"
             onClick={handleClick}
           >
-            Entrar
+            Criar conta
           </Button>
 
           {/* Cadastro */}
           <p className="text-center text-xs text-[#8b949e] mt-2">
-            Ainda não tem conta?{" "}
+            Já tem conta?{" "}
             <Link
-              href="/register"
+              href="/login"
               className="text-[#f5b82e] hover:underline font-bold cursor-pointer"
             >
-              Cadastre sua empresa
+              Entrar
             </Link>
           </p>
         </CardContent>

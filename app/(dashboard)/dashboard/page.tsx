@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
 import {
   Users,
   UserPlus,
@@ -11,41 +13,43 @@ import {
   Wallet,
   ArrowUpRight,
   ChevronDown,
+  LayoutDashboard,
+  Package,
+  TrendingUp,
+  CheckCircle2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8 p-6 rounded-lg">
-      {/* Header com Filtros */}
+    <div className="space-y-6 p-6 bg-[#0d1117] min-h-screen text-white">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-[#8b949e] text-sm mt-1">
             Visão geral do seu negócio
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="bg-[#111113] border-[#1e1e20] text-white hover:bg-[#1e1e20]"
+            className="bg-[#161b22] border-[#30363d] text-white hover:bg-[#21262d] h-9"
           >
-            Todas filiais <ChevronDown className="ml-2 size-4" />
+            Todas filiais <ChevronDown className="ml-2 size-4 text-[#8b949e]" />
           </Button>
           <Button
             variant="outline"
-            className="bg-[#111113] border-[#1e1e20] text-white hover:bg-[#1e1e20]"
+            className="bg-[#161b22] border-[#30363d] text-white hover:bg-[#21262d] h-9"
           >
-            30 dias <ChevronDown className="ml-2 size-4" />
+            30 dias <ChevronDown className="ml-2 size-4 text-[#8b949e]" />
           </Button>
         </div>
       </div>
 
-      {/* Grid de Cards Principais */}
+      {/* Grid de Cards Principais - 5 Colunas */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           title="PROFISSIONAIS"
@@ -110,18 +114,18 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Seção Resumo Financeiro */}
+      {/* Resumo Financeiro */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[#f5b82e]">
-            <span className="text-lg font-bold">$</span>
-            <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+          <div className="flex items-center gap-2">
+            <span className="text-[#f5b82e] text-xl font-bold">$</span>
+            <h2 className="text-xs font-bold uppercase tracking-widest">
               Resumo Financeiro
             </h2>
           </div>
           <Button
             variant="link"
-            className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
+            className="text-[#f5b82e] text-xs gap-1 p-0 h-auto font-medium"
           >
             Ver tudo <ArrowUpRight className="size-3" />
           </Button>
@@ -131,7 +135,7 @@ export default function DashboardPage() {
           <FinanceCard
             title="Faturado"
             value="R$ 0,00"
-            bgColor="bg-[#111113]"
+            bgColor="bg-[#161b22]"
             textColor="text-white"
           />
           <FinanceCard
@@ -155,29 +159,143 @@ export default function DashboardPage() {
           <FinanceCard
             title="Saldo Atual"
             value="R$ 0,00"
-            bgColor="bg-[#1a1606]"
+            bgColor="bg-[#241a06]"
             textColor="text-[#f5b82e]"
           />
         </div>
+      </div>
+
+      {/* Seção Inferior: Assinaturas e Agenda */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Assinaturas */}
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="flex flex-row items-center justify-between py-4">
+            <div className="flex items-center gap-2 text-[#f5b82e]">
+              <ClipboardList className="size-4" />
+              <CardTitle className="text-sm font-bold text-white uppercase">
+                Assinaturas
+              </CardTitle>
+            </div>
+            <Button
+              variant="link"
+              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
+            >
+              Ver tudo <ArrowUpRight className="size-3" />
+            </Button>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <MiniStatCard
+              label="Ativos"
+              value="0"
+              color="text-emerald-500"
+              bgColor="bg-[#062016]"
+            />
+            <MiniStatCard
+              label="Inadimplentes"
+              value="0"
+              color="text-red-500"
+              bgColor="bg-[#20060a]"
+            />
+            <MiniStatCard
+              label="Novos no período"
+              value="0"
+              color="text-[#f5b82e]"
+              bgColor="bg-[#241a06]"
+            />
+            <MiniStatCard
+              label="Cancelados"
+              value="0"
+              color="text-slate-400"
+              bgColor="bg-[#21262d]"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Agenda do Dia */}
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="flex flex-row items-center justify-between py-4">
+            <div className="flex items-center gap-2 text-[#f5b82e]">
+              <Calendar className="size-4" />
+              <CardTitle className="text-sm font-bold text-white uppercase">
+                Agenda do Dia
+              </CardTitle>
+            </div>
+            <Button
+              variant="link"
+              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
+            >
+              Ver agenda <ArrowUpRight className="size-3" />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center h-[140px] text-[#8b949e]">
+            <p className="text-sm">Nenhum agendamento para hoje.</p>
+          </CardContent>
+        </Card>
+
+        {/* Ranking de Profissionais */}
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="flex flex-row items-center justify-between py-4">
+            <div className="flex items-center gap-2 text-[#f5b82e]">
+              <TrendingUp className="size-4" />
+              <CardTitle className="text-sm font-bold text-white uppercase">
+                Ranking de Profissionais
+              </CardTitle>
+            </div>
+            <Button
+              variant="link"
+              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
+            >
+              Ver comissões <ArrowUpRight className="size-3" />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center h-[100px] text-[#8b949e]">
+            <p className="text-sm">Sem dados no período.</p>
+          </CardContent>
+        </Card>
+
+        {/* Estoque Crítico */}
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="flex flex-row items-center justify-between py-4">
+            <div className="flex items-center gap-2 text-[#f5b82e]">
+              <Package className="size-4" />
+              <CardTitle className="text-sm font-bold text-white uppercase">
+                Estoque Crítico
+              </CardTitle>
+            </div>
+            <Button
+              variant="link"
+              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
+            >
+              Ver estoque <ArrowUpRight className="size-3" />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center h-[100px] text-[#8b949e]">
+            <div className="flex items-center gap-2 text-emerald-500/80">
+              <CheckCircle2 className="size-4" />
+              <p className="text-sm">Nenhum alerta de estoque.</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
-// Sub-componente para os cards de estatística superiores
+// --- Sub-componentes ---
+
 function StatCard({ title, value, icon, subtitle, subtitleColor }: any) {
   return (
-    <Card className="bg-(--brand-card) border-(--border-card)  shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="bg-[#161b22] border-[#30363d] shadow-none">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4">
         <CardTitle className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider">
           {title}
         </CardTitle>
         <div className="text-[#f5b82e]">{icon}</div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-4">
         <div className="text-2xl font-bold text-white">{value}</div>
         {subtitle && (
-          <p className={`text-[10px] font-medium mt-1 ${subtitleColor}`}>
+          <p className={`text-[10px] font-medium mt-0.5 ${subtitleColor}`}>
             {subtitle}
           </p>
         )}
@@ -186,16 +304,28 @@ function StatCard({ title, value, icon, subtitle, subtitleColor }: any) {
   );
 }
 
-// Sub-componente para os cards financeiros coloridos
 function FinanceCard({ title, value, bgColor, textColor }: any) {
   return (
-    <Card className={`${bgColor} border-none shadow-sm`}>
-      <CardContent className="pt-6">
+    <Card className={`${bgColor} border-none shadow-none`}>
+      <CardContent className="pt-5 pb-5">
         <p className="text-[10px] font-bold text-[#8b949e] uppercase mb-1">
           {title}
         </p>
         <div className={`text-xl font-bold ${textColor}`}>{value}</div>
       </CardContent>
     </Card>
+  );
+}
+
+function MiniStatCard({ label, value, color, bgColor }: any) {
+  return (
+    <div
+      className={`${bgColor} rounded-md p-4 flex flex-col items-center justify-center text-center`}
+    >
+      <span className={`text-2xl font-bold ${color}`}>{value}</span>
+      <span className="text-[10px] text-[#8b949e] font-medium uppercase mt-1">
+        {label}
+      </span>
+    </div>
   );
 }
