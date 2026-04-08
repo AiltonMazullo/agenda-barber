@@ -13,7 +13,6 @@ import {
   Wallet,
   ArrowUpRight,
   ChevronDown,
-  LayoutDashboard,
   Package,
   TrendingUp,
   CheckCircle2,
