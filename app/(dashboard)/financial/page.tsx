@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import {
   ArrowDownRight,
@@ -10,11 +11,20 @@ import {
   Plus,
   Search,
   RefreshCw,
+  SlidersHorizontal,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  Wallet,
+  Scale,
+  ChevronDown,
+  Calendar,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Table,
   TableBody,
@@ -23,6 +33,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { DatePickerSimple } from "@/components/ui/date-picker";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { ptBR } from "date-fns/locale";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -121,11 +145,134 @@ function StatusBadge({ status }: { status: Conta["status"] }) {
   );
 }
 
+// ─── Componente: DatePickerField ───────────────────────────────────────────────
+// Segue exatamente o padrão do componente DatePickerSimple do projeto
+
+function DatePickerField({
+  id,
+  label,
+  date,
+  onSelect,
+}: {
+  id: string;
+  label: string;
+  date: Date | undefined;
+  onSelect: (d: Date | undefined) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Field className="flex-1 min-w-[180px]">
+      <FieldLabel
+        htmlFor={id}
+        className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]"
+      >
+        {label}
+      </FieldLabel>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger>
+          <Button
+            id={id}
+            variant="outline"
+            className="w-full justify-between font-normal bg-[#0d1117] border-[#30363d] text-white hover:bg-[#0d1117] hover:border-[#f5b82e]/50 hover:text-white h-10 text-sm"
+          >
+            <span className={date ? "text-white" : "text-[#8b949e]"}>
+              {date ? date.toLocaleDateString("pt-BR") : "dd/mm/aaaa"}
+            </span>
+            <Calendar className="size-3.5 text-[#8b949e] shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-auto overflow-hidden p-0 bg-[#161b22] border-[#30363d]"
+          align="start"
+        >
+          <CalendarComponent
+            mode="single"
+            selected={date}
+            defaultMonth={date}
+            captionLayout="dropdown"
+            locale={ptBR}
+            onSelect={(d) => {
+              onSelect(d);
+              setOpen(false);
+            }}
+            classNames={{
+              months: "text-white",
+              caption: "text-white",
+              caption_label: "text-white font-semibold",
+              nav_button:
+                "text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-md",
+              head_cell: "text-[#8b949e] text-xs font-medium",
+              day: "text-white hover:bg-[#21262d] rounded-md transition-colors",
+              day_selected:
+                "bg-[#f5b82e] !text-black font-bold hover:bg-[#d9a326] rounded-md",
+              day_today: "text-[#f5b82e] font-bold",
+              day_outside: "text-[#4d5562]",
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </Field>
+  );
+}
+
+// ─── Componente: FilialField ───────────────────────────────────────────────────
+
+function FilialField({
+  filial,
+  onSelect,
+}: {
+  filial: string;
+  onSelect: (f: string) => void;
+}) {
+  return (
+    <Field className="flex-1 min-w-[180px]">
+      <FieldLabel
+        htmlFor="filial"
+        className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]"
+      >
+        Filial
+      </FieldLabel>
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <Button
+            id="filial"
+            variant="outline"
+            className="w-full justify-between font-normal bg-[#0d1117] border-[#30363d] text-white hover:bg-[#0d1117] hover:border-[#f5b82e]/50 hover:text-white h-10 text-sm"
+          >
+            <span className="truncate">{filial}</span>
+            <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white min-w-[200px]">
+          {[
+            "Todas as filiais",
+            "Filial Centro",
+            "Filial Norte",
+            "Filial Sul",
+          ].map((f) => (
+            <DropdownMenuItem
+              key={f}
+              onClick={() => onSelect(f)}
+              className="text-xs hover:bg-[#21262d] cursor-pointer"
+            >
+              {f}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </Field>
+  );
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function FinanceiroPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("contas_pagar");
   const [search, setSearch] = useState("");
+  const [filial, setFilial] = useState("Todas as filiais");
+  const [dataInicial, setDataInicial] = useState<Date | undefined>();
+  const [dataFinal, setDataFinal] = useState<Date | undefined>();
 
   const contas =
     activeTab === "contas_pagar"
@@ -148,7 +295,7 @@ export default function FinanceiroPage() {
         : "Buscar categoria...";
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
+    <div className="space-y-5 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -182,43 +329,150 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      {/* ── Cards de resumo ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard
-          label="A Pagar"
-          value="R$ 4.700,00"
-          valueColor="text-red-500"
-          icon={<ArrowDownRight className="size-4" />}
-          iconColor="text-red-500"
-        />
-        <SummaryCard
-          label="A Receber"
-          value="R$ 399,80"
-          valueColor="text-emerald-500"
-          icon={<ArrowUpRight className="size-4" />}
-          iconColor="text-emerald-500"
-        />
-        <SummaryCard
-          label="Saldo Atual"
-          value="-R$ 2.422,00"
-          valueColor="text-[#f5b82e]"
-          icon={<DollarSign className="size-4" />}
-          iconColor="text-[#f5b82e]"
-        />
-        <SummaryCard
-          label="Saldo Projetado"
-          value="-R$ 6.722,20"
-          valueColor="text-blue-400"
-          icon={<TrendingUp className="size-4" />}
-          iconColor="text-blue-400"
-        />
-      </div>
+      {/* ── Filtros ── */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-4 items-end">
+            <FilialField filial={filial} onSelect={setFilial} />
 
-      {/* ── Painel principal ── */}
+            <DatePickerSimple />
+
+            <DatePickerSimple />
+
+            {/* Botão Filtrar alinhado com os campos */}
+            <div className="flex flex-col justify-end">
+              {/* Espaço equivalente ao FieldLabel para alinhar verticalmente */}
+              <div className="h-[22px]" />
+              <Button
+                className="
+                  cursor-pointer h-10 px-5 text-xs font-bold uppercase tracking-widest
+                  bg-[#f5b82e] text-black hover:bg-[#d9a326]
+                  hover:shadow-[0_0_16px_rgba(245,184,46,0.35)]
+                  transition-all gap-2
+                "
+              >
+                <SlidersHorizontal className="size-3.5" />
+                Filtrar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Row 1: Contas a Pagar ── */}
+      <SummaryRow
+        title="Contas a Pagar"
+        icon={<ArrowDownRight className="size-4" />}
+        iconColor="text-red-500"
+        accentColor="border-red-500/30"
+        cards={[
+          {
+            label: "Vencidos",
+            value: "R$ 4.700,00",
+            valueColor: "text-red-500",
+            icon: <AlertCircle className="size-3.5" />,
+            iconColor: "text-red-500",
+            bg: "bg-[#20060a]",
+          },
+          {
+            label: "A Vencer",
+            value: "R$ 0,00",
+            valueColor: "text-[#f5b82e]",
+            icon: <Clock className="size-3.5" />,
+            iconColor: "text-[#f5b82e]",
+            bg: "bg-[#241a06]",
+          },
+          {
+            label: "Pagos",
+            value: "R$ 2.530,00",
+            valueColor: "text-emerald-500",
+            icon: <CheckCircle2 className="size-3.5" />,
+            iconColor: "text-emerald-500",
+            bg: "bg-[#062016]",
+          },
+          {
+            label: "Total a Pagar",
+            value: "R$ 7.230,00",
+            valueColor: "text-white",
+            icon: <Wallet className="size-3.5" />,
+            iconColor: "text-[#8b949e]",
+            bg: "bg-[#161b22]",
+          },
+        ]}
+      />
+
+      {/* ── Row 2: Contas a Receber ── */}
+      <SummaryRow
+        title="Contas a Receber"
+        icon={<ArrowUpRight className="size-4" />}
+        iconColor="text-emerald-500"
+        accentColor="border-emerald-500/30"
+        cards={[
+          {
+            label: "Não Recebidos",
+            value: "R$ 0,00",
+            valueColor: "text-red-500",
+            icon: <AlertCircle className="size-3.5" />,
+            iconColor: "text-red-500",
+            bg: "bg-[#20060a]",
+          },
+          {
+            label: "A Receber",
+            value: "R$ 199,90",
+            valueColor: "text-[#f5b82e]",
+            icon: <Clock className="size-3.5" />,
+            iconColor: "text-[#f5b82e]",
+            bg: "bg-[#241a06]",
+          },
+          {
+            label: "Recebido",
+            value: "R$ 199,90",
+            valueColor: "text-emerald-500",
+            icon: <CheckCircle2 className="size-3.5" />,
+            iconColor: "text-emerald-500",
+            bg: "bg-[#062016]",
+          },
+          {
+            label: "Total a Receber",
+            value: "R$ 399,80",
+            valueColor: "text-white",
+            icon: <Wallet className="size-3.5" />,
+            iconColor: "text-[#8b949e]",
+            bg: "bg-[#161b22]",
+          },
+        ]}
+      />
+
+      {/* ── Row 3: Balanço ── */}
+      <SummaryRow
+        title="Balanço"
+        icon={<Scale className="size-4" />}
+        iconColor="text-blue-400"
+        accentColor="border-blue-400/30"
+        cards={[
+          {
+            label: "Balanço",
+            value: "-R$ 2.422,00",
+            valueColor: "text-[#f5b82e]",
+            icon: <DollarSign className="size-3.5" />,
+            iconColor: "text-[#f5b82e]",
+            bg: "bg-[#241a06]",
+          },
+          {
+            label: "Balanço Projetado",
+            value: "-R$ 6.722,20",
+            valueColor: "text-blue-400",
+            icon: <TrendingUp className="size-3.5" />,
+            iconColor: "text-blue-400",
+            bg: "bg-[#060d20]",
+          },
+        ]}
+      />
+
+      {/* ── Tabela ── */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-0">
-          {/* Tabs */}
-          <div className="px-4 pt-4 flex gap-1">
+          <div className="px-4 pt-4 flex gap-1 flex-wrap">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -240,7 +494,6 @@ export default function FinanceiroPage() {
             ))}
           </div>
 
-          {/* Busca */}
           <div className="p-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]" />
@@ -253,38 +506,33 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
-          {/* Conteúdo da tab Categorias */}
           {activeTab === "categorias" && (
             <div className="px-4 pb-6">
               <EmptyState message="Nenhuma categoria cadastrada." />
             </div>
           )}
 
-          {/* Tabela – Desktop */}
           {activeTab !== "categorias" && (
             <>
               <div className="hidden md:block">
                 <Table>
                   <TableHeader className="border-t border-[#30363d]">
                     <TableRow className="border-[#30363d] hover:bg-transparent">
-                      <TableHead className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                        Descrição
-                      </TableHead>
-                      <TableHead className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                        Categoria
-                      </TableHead>
-                      <TableHead className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                        Vencimento
-                      </TableHead>
-                      <TableHead className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                        Forma
-                      </TableHead>
-                      <TableHead className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                        Valor
-                      </TableHead>
-                      <TableHead className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                        Status
-                      </TableHead>
+                      {[
+                        "Descrição",
+                        "Categoria",
+                        "Vencimento",
+                        "Forma",
+                        "Valor",
+                        "Status",
+                      ].map((col) => (
+                        <TableHead
+                          key={col}
+                          className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+                        >
+                          {col}
+                        </TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -325,7 +573,6 @@ export default function FinanceiroPage() {
                 </Table>
               </div>
 
-              {/* Lista – Mobile */}
               <div className="md:hidden px-4 pb-4 space-y-3">
                 {filtered.length === 0 ? (
                   <EmptyState message="Nenhum registro encontrado." />
@@ -372,21 +619,62 @@ export default function FinanceiroPage() {
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-function SummaryCard({ label, value, valueColor, icon, iconColor }: any) {
+type SummaryCardData = {
+  label: string;
+  value: string;
+  valueColor: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  bg: string;
+};
+
+function SummaryRow({
+  title,
+  icon,
+  iconColor,
+  accentColor,
+  cards,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  accentColor: string;
+  cards: SummaryCardData[];
+}) {
   return (
-    <Card className="bg-[#161b22] border-[#30363d] shadow-none">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider">
-            {label}
-          </p>
-          <span className={iconColor}>{icon}</span>
-        </div>
-        <div className={`text-xl md:text-2xl font-bold ${valueColor}`}>
-          {value}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 pl-1">
+        <span className={iconColor}>{icon}</span>
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#8b949e] whitespace-nowrap">
+          {title}
+        </h2>
+        <div className={`flex-1 h-px border-t ${accentColor}`} />
+      </div>
+      <div
+        className={`grid gap-3 ${cards.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 lg:grid-cols-4"}`}
+      >
+        {cards.map((card) => (
+          <Card
+            key={card.label}
+            className={`${card.bg} border-[#30363d] shadow-none`}
+          >
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider leading-none">
+                  {card.label}
+                </p>
+                <span className={card.iconColor}>{card.icon}</span>
+              </div>
+              <div
+                className={`text-lg md:text-xl font-bold ${card.valueColor}`}
+              >
+                {card.value}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }
 
