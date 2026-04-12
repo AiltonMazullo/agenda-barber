@@ -10,6 +10,10 @@ import {
   Eye,
   CalendarIcon,
   DollarSign,
+  X,
+  CreditCard,
+  Banknote,
+  RotateCcw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +33,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -40,15 +50,32 @@ import Link from "next/link";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
+type Movimentacao = {
+  id: string;
+  tipo: "Entrada" | "Saída";
+  descricao: string;
+  valor: number;
+  hora: string;
+};
+
 type CaixaHistorico = {
   data: string;
   filial: string;
   status: "Aberto" | "Fechado";
   abertura: string;
   fechamento: string;
-  vInicial: string;
-  vFechamento: string;
+  vInicial: number;
+  vFechamento: number | null;
+  valorContado: number | null;
+  observacoes: string;
+  movimentacoes: Movimentacao[];
 };
+
+// ─── Formatação ───────────────────────────────────────────────────────────────
+
+function formatBRL(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 // ─── Mock ─────────────────────────────────────────────────────────────────────
 
@@ -59,8 +86,26 @@ const HISTORICO: CaixaHistorico[] = [
     status: "Aberto",
     abertura: "19:26",
     fechamento: "—",
-    vInicial: "R$ 1.000,00",
-    vFechamento: "—",
+    vInicial: 1000,
+    vFechamento: null,
+    valorContado: null,
+    observacoes: "",
+    movimentacoes: [
+      {
+        id: "#001",
+        tipo: "Entrada",
+        descricao: "Serviço de corte",
+        valor: 50,
+        hora: "19:45",
+      },
+      {
+        id: "#002",
+        tipo: "Saída",
+        descricao: "Compra de produto",
+        valor: 30,
+        hora: "20:10",
+      },
+    ],
   },
   {
     data: "08/04/2026",
@@ -68,8 +113,33 @@ const HISTORICO: CaixaHistorico[] = [
     status: "Fechado",
     abertura: "09:00",
     fechamento: "18:30",
-    vInicial: "R$ 500,00",
-    vFechamento: "R$ 2.340,00",
+    vInicial: 500,
+    vFechamento: 2340,
+    valorContado: 2320,
+    observacoes: "Fechamento normal do dia.",
+    movimentacoes: [
+      {
+        id: "#001",
+        tipo: "Entrada",
+        descricao: "Corte + barba",
+        valor: 90,
+        hora: "09:30",
+      },
+      {
+        id: "#002",
+        tipo: "Entrada",
+        descricao: "Corte simples",
+        valor: 50,
+        hora: "11:00",
+      },
+      {
+        id: "#003",
+        tipo: "Saída",
+        descricao: "Compra de material",
+        valor: 80,
+        hora: "14:00",
+      },
+    ],
   },
   {
     data: "07/04/2026",
@@ -77,10 +147,37 @@ const HISTORICO: CaixaHistorico[] = [
     status: "Fechado",
     abertura: "08:45",
     fechamento: "19:00",
-    vInicial: "R$ 300,00",
-    vFechamento: "R$ 1.780,00",
+    vInicial: 300,
+    vFechamento: 1780,
+    valorContado: 1780,
+    observacoes: "",
+    movimentacoes: [
+      {
+        id: "#001",
+        tipo: "Entrada",
+        descricao: "Serviços gerais",
+        valor: 1480,
+        hora: "17:00",
+      },
+    ],
   },
 ];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function TipoBadge({ tipo }: { tipo: "Entrada" | "Saída" }) {
+  if (tipo === "Entrada")
+    return (
+      <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] font-semibold px-2 py-0.5">
+        Entrada
+      </Badge>
+    );
+  return (
+    <Badge className="bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/20 text-[10px] font-semibold px-2 py-0.5">
+      Saída
+    </Badge>
+  );
+}
 
 // ─── DatePickerField ──────────────────────────────────────────────────────────
 
@@ -96,14 +193,7 @@ function DatePickerField({
   onSelect: (d: Date | undefined) => void;
 }) {
   const [open, setOpen] = React.useState(false);
-
-  const formatted = date
-    ? date.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-    : null;
+  const formatted = date ? date.toLocaleDateString("pt-BR") : null;
 
   return (
     <Field className="flex-1 min-w-[150px]">
@@ -118,16 +208,7 @@ function DatePickerField({
           <button
             id={id}
             type="button"
-            className={`
-              group w-full h-10 px-3 rounded-md border text-sm
-              flex items-center justify-between gap-2
-              transition-all duration-200 outline-none bg-[#0d1117]
-              ${
-                open
-                  ? "border-[#f5b82e]/70 shadow-[0_0_0_3px_rgba(245,184,46,0.08)]"
-                  : "border-[#30363d] hover:border-[#f5b82e]/40"
-              }
-            `}
+            className={`group w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all duration-200 outline-none bg-[#0d1117] ${open ? "border-[#f5b82e]/70 shadow-[0_0_0_3px_rgba(245,184,46,0.08)]" : "border-[#30363d] hover:border-[#f5b82e]/40"}`}
           >
             <span
               className={date ? "text-white font-medium" : "text-[#4d5562]"}
@@ -218,19 +299,226 @@ function DatePickerField({
   );
 }
 
+// ─── Dialog: Visualizar Caixa ─────────────────────────────────────────────────
+
+function DialogVisualizarCaixa({
+  open,
+  onOpenChange,
+  caixa,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  caixa: CaixaHistorico | null;
+}) {
+  if (!caixa) return null;
+
+  const entradasManuais = caixa.movimentacoes
+    .filter((m) => m.tipo === "Entrada")
+    .reduce((a, m) => a + m.valor, 0);
+  const saidasManuais = caixa.movimentacoes
+    .filter((m) => m.tipo === "Saída")
+    .reduce((a, m) => a + m.valor, 0);
+  const esperado = caixa.vInicial + entradasManuais - saidasManuais;
+  const diferenca =
+    caixa.valorContado !== null ? caixa.valorContado - esperado : null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-xl p-0 gap-0 max-h-[90vh] overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d] sticky top-0 bg-[#161b22] z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-base font-bold">
+                Caixa {caixa.data}
+              </DialogTitle>
+              <p className="text-xs text-[#8b949e] mt-0.5">{caixa.filial}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {caixa.status === "Aberto" ? (
+                <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold px-2 py-0.5">
+                  Aberto
+                </Badge>
+              ) : (
+                <Badge className="bg-[#30363d]/60 text-[#8b949e] border border-[#30363d] text-[10px] font-semibold px-2 py-0.5">
+                  Fechado
+                </Badge>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Resumo */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1">
+                Valor Inicial
+              </p>
+              <p className="text-base font-bold text-white">
+                {formatBRL(caixa.vInicial)}
+              </p>
+            </div>
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1">
+                {caixa.status === "Fechado"
+                  ? "Valor de Fechamento"
+                  : "Valor Atual"}
+              </p>
+              <p className="text-base font-bold text-[#f5b82e]">
+                {caixa.vFechamento !== null
+                  ? formatBRL(caixa.vFechamento)
+                  : formatBRL(caixa.vInicial + entradasManuais - saidasManuais)}
+              </p>
+            </div>
+          </div>
+          {/* Dinheiro em Caixa */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Banknote className="size-3.5 text-[#8b949e]" />
+              <p className="text-xs font-bold text-white">Dinheiro em Caixa</p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-[#8b949e]">Abertura</span>
+                <span className="text-white">{formatBRL(caixa.vInicial)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-[#8b949e]">Pagamentos em Dinheiro</span>
+                <span className="text-emerald-400">+{formatBRL(0)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-[#8b949e]">Entradas Manuais</span>
+                <span className="text-emerald-400">
+                  +{formatBRL(entradasManuais)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-[#8b949e]">Saídas Manuais</span>
+                <span className="text-red-400">
+                  -{formatBRL(saidasManuais)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs pt-2 border-t border-[#21262d]">
+                <span className="text-white font-bold">Esperado</span>
+                <span className="text-white font-bold">
+                  {formatBRL(esperado)}
+                </span>
+              </div>
+              {caixa.valorContado !== null && (
+                <>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[#8b949e]">Valor Contado</span>
+                    <span className="text-white">
+                      {formatBRL(caixa.valorContado)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[#8b949e]">Diferença</span>
+                    <span
+                      className={
+                        diferenca === 0
+                          ? "text-emerald-400"
+                          : diferenca! < 0
+                            ? "text-red-400"
+                            : "text-emerald-400"
+                      }
+                    >
+                      {diferenca! >= 0 ? "+" : ""}
+                      {formatBRL(diferenca!)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Observações */}
+          {caixa.observacoes && (
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+              <p className="text-xs font-bold text-white mb-2">Observações</p>
+              <p className="text-xs text-[#8b949e]">{caixa.observacoes}</p>
+            </div>
+          )}
+
+          {/* Movimentações */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#21262d]">
+              <p className="text-xs font-bold text-white">
+                Movimentações ({caixa.movimentacoes.length})
+              </p>
+            </div>
+            {caixa.movimentacoes.length === 0 ? (
+              <div className="px-4 py-6 text-center text-xs text-[#4d5562]">
+                Nenhuma movimentação registrada
+              </div>
+            ) : (
+              <div className="divide-y divide-[#21262d]">
+                {caixa.movimentacoes.map((m, i) => (
+                  <div
+                    key={i}
+                    className="px-4 py-3 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TipoBadge tipo={m.tipo} />
+                      <span className="text-sm text-white truncate">
+                        {m.descricao}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span
+                        className={`text-sm font-semibold ${m.tipo === "Entrada" ? "text-emerald-400" : "text-red-400"}`}
+                      >
+                        {m.tipo === "Saída"
+                          ? `- ${formatBRL(m.valor)}`
+                          : `+ ${formatBRL(m.valor)}`}
+                      </span>
+                      <span className="text-xs text-[#8b949e]">{m.hora}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-6 pb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function CaixaHistoricoPage() {
   const [dataInicial, setDataInicial] = useState<Date | undefined>();
   const [dataFinal, setDataFinal] = useState<Date | undefined>();
   const [filial, setFilial] = useState("Todas as filiais");
+  const [caixaSelecionado, setCaixaSelecionado] =
+    useState<CaixaHistorico | null>(null);
+  const [dialogVisualizar, setDialogVisualizar] = useState(false);
 
   const handleVisualizar = (caixa: CaixaHistorico) => {
-    if (caixa.status === "Aberto") {
-      toast.success("Caixa reaberto!");
-    } else {
-      toast.success(`Visualizando caixa de ${caixa.data}`);
-    }
+    setCaixaSelecionado(caixa);
+    setDialogVisualizar(true);
+  };
+
+  const handleReabrir = (caixa: CaixaHistorico) => {
+    toast.success(`Caixa de ${caixa.data} reaberto!`);
   };
 
   return (
@@ -245,16 +533,10 @@ export default function CaixaHistoricoPage() {
             Consulte caixas anteriores
           </p>
         </div>
-
         <Link href="/cashier">
           <button
             type="button"
-            className="
-              h-9 px-4 rounded-md border border-[#30363d]
-              bg-[#161b22] text-sm text-white
-              flex items-center gap-2
-              hover:border-[#f5b82e]/40 hover:text-white transition-colors
-            "
+            className="h-9 px-4 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors"
           >
             <ArrowLeft className="size-3.5 text-[#8b949e]" />
             Voltar
@@ -272,7 +554,6 @@ export default function CaixaHistoricoPage() {
               date={dataInicial}
               onSelect={setDataInicial}
             />
-
             <DatePickerField
               id="hist-data-final"
               label="Data Final"
@@ -280,7 +561,6 @@ export default function CaixaHistoricoPage() {
               onSelect={setDataFinal}
             />
 
-            {/* Filial */}
             <Field className="flex-1 min-w-[160px]">
               <FieldLabel
                 htmlFor="hist-filial"
@@ -293,12 +573,7 @@ export default function CaixaHistoricoPage() {
                   <button
                     id="hist-filial"
                     type="button"
-                    className="
-                      w-full h-10 px-3 rounded-md border border-[#30363d]
-                      bg-[#0d1117] text-sm text-white
-                      flex items-center justify-between gap-2
-                      hover:border-[#f5b82e]/40 transition-colors outline-none
-                    "
+                    className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors outline-none"
                   >
                     <span className="truncate">{filial}</span>
                     <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
@@ -323,17 +598,11 @@ export default function CaixaHistoricoPage() {
               </DropdownMenu>
             </Field>
 
-            {/* CSV */}
             <div className="flex flex-col justify-end">
               <div className="h-[22px]" />
               <button
                 type="button"
-                className="
-                  h-10 px-4 rounded-md border border-[#30363d]
-                  bg-[#0d1117] text-sm text-[#8b949e]
-                  flex items-center gap-2 shrink-0
-                  hover:border-[#f5b82e]/40 hover:text-white transition-colors
-                "
+                className="h-10 px-4 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-[#8b949e] flex items-center gap-2 hover:border-[#f5b82e]/40 hover:text-white transition-colors"
               >
                 <Download className="size-3.5" />
                 CSV
@@ -346,7 +615,6 @@ export default function CaixaHistoricoPage() {
       {/* ── Tabela ── */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-0">
-          {/* Desktop */}
           <div className="hidden md:block">
             <Table>
               <TableHeader>
@@ -410,27 +678,38 @@ export default function CaixaHistoricoPage() {
                         {c.fechamento}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-white font-semibold text-sm">
-                        {c.vInicial}
+                        {formatBRL(c.vInicial)}
                       </TableCell>
                       <TableCell
-                        className={`px-4 py-4 font-semibold text-sm ${c.vFechamento !== "—" ? "text-emerald-400" : "text-[#8b949e]"}`}
+                        className={`px-4 py-4 font-semibold text-sm ${c.vFechamento !== null ? "text-emerald-400" : "text-[#8b949e]"}`}
                       >
-                        {c.vFechamento}
+                        {c.vFechamento !== null
+                          ? formatBRL(c.vFechamento)
+                          : "—"}
                       </TableCell>
                       <TableCell className="px-4 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleVisualizar(c)}
-                          className="
-                            size-8 rounded-md border border-[#30363d]
-                            bg-[#0d1117] text-[#8b949e]
-                            flex items-center justify-center
-                            hover:border-[#f5b82e]/40 hover:text-[#f5b82e]
-                            transition-colors
-                          "
-                        >
-                          <Eye className="size-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {/* Visualizar */}
+                          <button
+                            type="button"
+                            onClick={() => handleVisualizar(c)}
+                            className="size-8 rounded-md border border-[#30363d] bg-[#0d1117] text-[#8b949e] flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-[#f5b82e] transition-colors"
+                            title="Visualizar"
+                          >
+                            <Eye className="size-3.5" />
+                          </button>
+                          {/* Reabrir (só fechados) */}
+                          {c.status === "Fechado" && (
+                            <button
+                              type="button"
+                              onClick={() => handleReabrir(c)}
+                              className="size-8 rounded-md border border-[#30363d] bg-[#0d1117] text-[#8b949e] flex items-center justify-center hover:border-emerald-500/40 hover:text-emerald-400 transition-colors"
+                              title="Reabrir caixa"
+                            >
+                              <RotateCcw className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -472,6 +751,15 @@ export default function CaixaHistoricoPage() {
                     >
                       <Eye className="size-3" />
                     </button>
+                    {c.status === "Fechado" && (
+                      <button
+                        type="button"
+                        onClick={() => handleReabrir(c)}
+                        className="size-7 rounded-md border border-[#30363d] bg-[#161b22] text-[#8b949e] flex items-center justify-center hover:border-emerald-500/40 hover:text-emerald-400 transition-colors"
+                      >
+                        <RotateCcw className="size-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[#8b949e]">
@@ -485,15 +773,15 @@ export default function CaixaHistoricoPage() {
                   </span>
                   <span>
                     <span className="text-[#4d5562]">V. Inicial: </span>
-                    {c.vInicial}
+                    {formatBRL(c.vInicial)}
                   </span>
                   <span
                     className={
-                      c.vFechamento !== "—" ? "text-emerald-400 font-bold" : ""
+                      c.vFechamento !== null ? "text-emerald-400 font-bold" : ""
                     }
                   >
                     <span className="text-[#4d5562]">V. Final: </span>
-                    {c.vFechamento}
+                    {c.vFechamento !== null ? formatBRL(c.vFechamento) : "—"}
                   </span>
                 </div>
               </div>
@@ -501,6 +789,13 @@ export default function CaixaHistoricoPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Dialog Visualizar ── */}
+      <DialogVisualizarCaixa
+        open={dialogVisualizar}
+        onOpenChange={setDialogVisualizar}
+        caixa={caixaSelecionado}
+      />
     </div>
   );
 }
