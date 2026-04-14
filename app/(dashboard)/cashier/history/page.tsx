@@ -312,197 +312,220 @@ function DialogVisualizarCaixa({
 }) {
   if (!caixa) return null;
 
-  const entradasManuais = caixa.movimentacoes
+  const entradas = caixa.movimentacoes
     .filter((m) => m.tipo === "Entrada")
     .reduce((a, m) => a + m.valor, 0);
-  const saidasManuais = caixa.movimentacoes
+  const saidas = caixa.movimentacoes
     .filter((m) => m.tipo === "Saída")
     .reduce((a, m) => a + m.valor, 0);
-  const esperado = caixa.vInicial + entradasManuais - saidasManuais;
+
+  const esperado = caixa.vInicial + entradas - saidas;
   const diferenca =
     caixa.valorContado !== null ? caixa.valorContado - esperado : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-xl p-0 gap-0 max-h-[90vh] overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d] sticky top-0 bg-[#161b22] z-10">
+      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-xl p-0 gap-0 max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+        {/* Header Fixo */}
+        <DialogHeader className="px-6 py-4 border-b border-[#21262d] shrink-0 bg-[#161b22] z-10">
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="text-base font-bold">
-                Caixa {caixa.data}
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                Resumo do Caixa
+                <span className="text-[#8b949e] font-normal text-sm">
+                  — {caixa.data}
+                </span>
               </DialogTitle>
               <p className="text-xs text-[#8b949e] mt-0.5">{caixa.filial}</p>
             </div>
-            <div className="flex items-center gap-2">
-              {caixa.status === "Aberto" ? (
-                <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold px-2 py-0.5">
-                  Aberto
-                </Badge>
-              ) : (
-                <Badge className="bg-[#30363d]/60 text-[#8b949e] border border-[#30363d] text-[10px] font-semibold px-2 py-0.5">
-                  Fechado
-                </Badge>
-              )}
+            <div className="flex items-center gap-3">
+              <Badge
+                className={
+                  caixa.status === "Aberto"
+                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-bold px-2.5 py-0.5"
+                    : "bg-[#30363d]/60 text-[#8b949e] border-[#30363d] font-bold px-2.5 py-0.5"
+                }
+              >
+                {caixa.status}
+              </Badge>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                className="size-8 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
               >
-                <X className="size-4" />
+                <X className="size-5" />
               </button>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="px-6 py-5 space-y-4">
-          {/* Resumo */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1">
-                Valor Inicial
+        {/* Área de Scroll Estilizada */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar bg-[#0d1117]/30">
+          {/* Grid de Valores Principais */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-xl p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8b949e] mb-1">
+                Fundo Inicial
               </p>
-              <p className="text-base font-bold text-white">
+              <p className="text-lg font-bold text-white tracking-tight">
                 {formatBRL(caixa.vInicial)}
               </p>
             </div>
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1">
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-xl p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8b949e] mb-1">
                 {caixa.status === "Fechado"
-                  ? "Valor de Fechamento"
-                  : "Valor Atual"}
+                  ? "Total em Caixa (Físico)"
+                  : "Saldo Estimado"}
               </p>
-              <p className="text-base font-bold text-[#f5b82e]">
-                {caixa.vFechamento !== null
-                  ? formatBRL(caixa.vFechamento)
-                  : formatBRL(caixa.vInicial + entradasManuais - saidasManuais)}
+              <p className="text-lg font-bold text-[#f5b82e] tracking-tight">
+                {caixa.valorContado !== null
+                  ? formatBRL(caixa.valorContado)
+                  : formatBRL(esperado)}
               </p>
             </div>
           </div>
-          
-          {/* Dinheiro em Caixa */}
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Banknote className="size-3.5 text-[#8b949e]" />
-              <p className="text-xs font-bold text-white">Dinheiro em Caixa</p>
+
+          {/* Card de Conciliação */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 bg-[#161b22] border-b border-[#30363d] flex items-center gap-2">
+              <Banknote className="size-4 text-[#f5b82e]" />
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                Detalhamento
+              </h3>
             </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Abertura</span>
-                <span className="text-white">{formatBRL(caixa.vInicial)}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Pagamentos em Dinheiro</span>
-                <span className="text-emerald-400">+{formatBRL(0)}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Entradas Manuais</span>
-                <span className="text-emerald-400">
-                  +{formatBRL(entradasManuais)}
+            <div className="p-4 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#8b949e]">Abertura de Caixa</span>
+                <span className="text-white font-medium">
+                  {formatBRL(caixa.vInicial)}
                 </span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Saídas Manuais</span>
-                <span className="text-red-400">
-                  -{formatBRL(saidasManuais)}
+              <div className="flex justify-between text-sm">
+                <span className="text-[#8b949e]">Total de Entradas</span>
+                <span className="text-emerald-400 font-medium">
+                  +{formatBRL(entradas)}
                 </span>
               </div>
-              <div className="flex justify-between text-xs pt-2 border-t border-[#21262d]">
-                <span className="text-white font-bold">Esperado</span>
-                <span className="text-white font-bold">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#8b949e]">Total de Saídas</span>
+                <span className="text-red-400 font-medium">
+                  -{formatBRL(saidas)}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-[#21262d] flex justify-between items-center">
+                <span className="text-xs font-bold text-white uppercase">
+                  Saldo Esperado
+                </span>
+                <span className="text-base font-bold text-white">
                   {formatBRL(esperado)}
                 </span>
               </div>
+
               {caixa.valorContado !== null && (
-                <>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#8b949e]">Valor Contado</span>
-                    <span className="text-white">
-                      {formatBRL(caixa.valorContado)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#8b949e]">Diferença</span>
-                    <span
-                      className={
-                        diferenca === 0
-                          ? "text-emerald-400"
-                          : diferenca! < 0
-                            ? "text-red-400"
-                            : "text-emerald-400"
-                      }
-                    >
-                      {diferenca! >= 0 ? "+" : ""}
-                      {formatBRL(diferenca!)}
-                    </span>
-                  </div>
-                </>
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="text-xs font-bold text-[#8b949e] uppercase">
+                    Diferença
+                  </span>
+                  <span
+                    className={`text-sm font-bold ${diferenca! >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                  >
+                    {diferenca! > 0 ? "+" : ""}
+                    {formatBRL(diferenca!)}
+                  </span>
+                </div>
               )}
             </div>
           </div>
 
           {/* Observações */}
           {caixa.observacoes && (
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-              <p className="text-xs font-bold text-white mb-2">Observações</p>
-              <p className="text-xs text-[#8b949e]">{caixa.observacoes}</p>
+            <div className="bg-[#f5b82e]/5 border border-[#f5b82e]/20 rounded-xl p-4">
+              <p className="text-[10px] font-bold text-[#f5b82e] uppercase tracking-widest mb-1.5">
+                Notas do Operador
+              </p>
+              <p className="text-xs text-[#8b949e] leading-relaxed italic">
+                {caixa.observacoes}
+              </p>
             </div>
           )}
 
-          {/* Movimentações */}
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#21262d]">
-              <p className="text-xs font-bold text-white">
-                Movimentações ({caixa.movimentacoes.length})
+          {/* Tabela de Movimentações interna */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 bg-[#161b22] border-b border-[#30363d]">
+              <p className="text-xs font-bold text-white uppercase tracking-wider">
+                Fluxo de Caixa ({caixa.movimentacoes.length})
               </p>
             </div>
-            {caixa.movimentacoes.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs text-[#4d5562]">
-                Nenhuma movimentação registrada
-              </div>
-            ) : (
-              <div className="divide-y divide-[#21262d]">
-                {caixa.movimentacoes.map((m, i) => (
+            <div className="divide-y divide-[#21262d]">
+              {caixa.movimentacoes.length === 0 ? (
+                <div className="px-4 py-8 text-center text-xs text-[#4d5562]">
+                  Nenhuma movimentação
+                </div>
+              ) : (
+                caixa.movimentacoes.map((m, i) => (
                   <div
                     key={i}
-                    className="px-4 py-3 flex items-center justify-between gap-4"
+                    className="px-4 py-3 flex items-center justify-between hover:bg-[#161b22]/50 transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <TipoBadge tipo={m.tipo} />
-                      <span className="text-sm text-white truncate">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <span className="text-sm font-medium text-white truncate">
                         {m.descricao}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span
-                        className={`text-sm font-semibold ${m.tipo === "Entrada" ? "text-emerald-400" : "text-red-400"}`}
+                      <Badge
+                        variant={
+                          m.tipo === "Entrada" ? "default" : "destructive"
+                        }
                       >
-                        {m.tipo === "Saída"
-                          ? `- ${formatBRL(m.valor)}`
-                          : `+ ${formatBRL(m.valor)}`}
-                      </span>
-                      <span className="text-xs text-[#8b949e]">{m.hora}</span>
+                        {m.tipo}
+                      </Badge>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p
+                        className={`text-sm font-bold ${m.tipo === "Entrada" ? "text-emerald-400" : "text-red-400"}`}
+                      >
+                        {m.tipo === "Saída" ? "-" : "+"} {formatBRL(m.valor)}
+                      </p>
+                      <p className="text-[10px] text-[#4d5562] mt-0.5">
+                        {m.hora}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="px-6 pb-6 flex justify-end">
+        {/* Footer Fixo */}
+        <div className="px-6 py-4 border-t border-[#21262d] flex justify-end bg-[#161b22] shrink-0">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-6 rounded-md bg-[#21262d] text-sm font-bold text-white hover:bg-[#30363d] transition-all border border-[#30363d]"
           >
-            Fechar
+            Fechar Relatório
           </button>
         </div>
       </DialogContent>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #0d1117;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #30363d;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #4d5562;
+        }
+      `}</style>
     </Dialog>
   );
 }
-
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function CaixaHistoricoPage() {
