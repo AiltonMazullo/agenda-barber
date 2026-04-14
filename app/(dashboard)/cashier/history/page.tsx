@@ -378,6 +378,7 @@ function DialogVisualizarCaixa({
               </p>
             </div>
           </div>
+          
           {/* Dinheiro em Caixa */}
           <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
