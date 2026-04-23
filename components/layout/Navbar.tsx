@@ -51,7 +51,7 @@ const navGestao = [
 
 const navBottom = [
   { title: "Configurações", href: "/settings", icon: Settings },
-  { title: "Controle de Acesso", href: "/access", icon: Shield },
+  { title: "Controle de Acesso", href: "/access-control", icon: Shield },
 ];
 
 export function Navbar() {
