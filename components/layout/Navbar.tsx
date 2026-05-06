@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   Calendar,
@@ -18,6 +19,7 @@ import {
   Scissors,
   TrendingUp,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   Sidebar,
@@ -56,6 +58,17 @@ const navBottom = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  async function handleLogout() {
+    try {
+      await logout();
+      router.push("/login");
+    } catch {
+      toast.error("Não foi possível sair. Tente novamente.");
+    }
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -159,9 +172,9 @@ export function Navbar() {
           ))}
           <SidebarMenuItem>
             <SidebarMenuButton
-              // onClick={handleLogout}
+              onClick={handleLogout}
               tooltip="Sair"
-              className="h-10 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+              className="h-10 text-danger-foreground hover:text-danger-foreground hover:bg-danger/10 cursor-pointer"
             >
               <LogOut className="size-4" />
               <span className="font-medium">Sair</span>

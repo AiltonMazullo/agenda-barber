@@ -1,139 +1,102 @@
 "use client";
 
 import { useState } from "react";
-import { Scissors, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { redirect } from "next/navigation";
+import { Mail, Lock } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { AuthInput } from "@/components/auth/AuthInput";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login } = useAuth();
 
-  const handleClick = () => {
-    redirect("/dashboard");
-  };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    try {
+      await login({ email, password });
+      const from = searchParams.get("from");
+      router.push(from && from.startsWith("/") ? from : "/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao entrar");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    // Background mais escuro e sólido
-    <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center px-4 font-sans">
-      {/* Logo - Ajustado para ser mais compacto */}
-      <div className="flex flex-col items-center gap-3 mb-6">
-        <div className="flex size-14 items-center justify-center rounded-xl bg-[#f5b82e]">
-          <Scissors className="size-7 text-black" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Smart Man OS
-          </h1>
-          <p className="text-[#8b949e] text-xs font-medium">
-            Sistema de Gestão para Barbearias
-          </p>
-        </div>
-      </div>
+    <AuthCard
+      title="Entrar na sua conta"
+      description="Acesse o painel administrativo"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+        className="flex flex-col gap-4"
+      >
+        <AuthInput
+          id="email"
+          label="E-mail"
+          type="email"
+          icon={<Mail className="size-4" />}
+          placeholder="seu@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
 
-      {/* Card */}
-      <Card className="w-full max-w-[450px] bg-(--brand-card) border-(--border-card) shadow-xl">
-        <CardHeader className="text-center pt-2 pb-1">
-          <CardTitle className="text-lg font-semibold text-white">
-            Entrar na sua conta
-          </CardTitle>
-          <CardDescription className="text-[#8b949e] text-sm text-[12px]">
-            Acesse o painel administrativo
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="flex flex-col gap-4 px-8 pb-8">
-          {/* Email */}
-          <div className="flex flex-col gap-1.5">
-            <Label
-              htmlFor="email"
-              className="text-[#8b949e] text-xs font-normal"
-            >
-              E-mail
-            </Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                className="bg-black border-none border-[#30363d] shadow-xl text-[#1a1c24] h-11 pl-10 rounded-md focus-visible:ring-1 focus-visible:ring-amber-500 placeholder:text-gray-500"
-              />
-            </div>
-          </div>
-
-          {/* Senha */}
-          <div className="flex flex-col gap-1.5">
-            <Label
-              htmlFor="password"
-              className="text-[#8b949e] text-xs font-normal"
-            >
-              Senha
-            </Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]" />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                className="bg-black border-none border-[#30363d] shadow-xl text-[#1a1c24] h-11 pl-10 pr-10 rounded-md focus-visible:ring-1 focus-visible:ring-amber-500 placeholder:text-gray-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black transition-colors"
-              >
-                {showPassword ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </button>
-            </div>
-
-            <div className="flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-[12px] text-[#f5b82e] hover:underline font-medium cursor-pointer"
-              >
-                Esqueci minha senha
-              </Link>
-            </div>
-          </div>
-
-          <Button
-            className="w-full bg-[#f5b82e] hover:bg-[#d9a320] text-black font-bold h-11 text-sm rounded-md transition-all mt-2 cursor-pointer"
-            onClick={handleClick}
-          >
-            Entrar
-          </Button>
-
-          {/* Cadastro */}
-          <p className="text-center text-xs text-[#8b949e] mt-2">
-            Ainda não tem conta?{" "}
+        <div className="flex flex-col gap-1">
+          <AuthInput
+            id="password"
+            label="Senha"
+            type="password"
+            icon={<Lock className="size-4" />}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            autoComplete="current-password"
+          />
+          <div className="flex justify-end mt-1">
             <Link
-              href="/register"
-              className="text-[#f5b82e] hover:underline font-bold cursor-pointer"
+              href="/forgot-password"
+              className="text-[12px] text-brand hover:underline font-medium"
             >
-              Cadastre sua empresa
+              Esqueci minha senha
             </Link>
-          </p>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
 
-      {/* Footer */}
-      <p className="mt-8 text-[10px] text-[#484f58] uppercase tracking-widest">
-        Smart Man OS © 2026
-      </p>
-    </div>
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="w-full bg-brand hover:bg-brand-hover text-brand-foreground font-bold h-11 text-sm rounded-md transition-all mt-2 cursor-pointer disabled:opacity-60"
+        >
+          {submitting ? "Entrando..." : "Entrar"}
+        </Button>
+
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          Ainda não tem conta?{" "}
+          <Link
+            href="/register"
+            className="text-brand hover:underline font-bold"
+          >
+            Cadastre sua empresa
+          </Link>
+        </p>
+      </form>
+    </AuthCard>
   );
 }
