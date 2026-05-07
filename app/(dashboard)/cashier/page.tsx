@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -14,8 +13,9 @@ import {
   CreditCard,
   Banknote,
 } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -38,85 +38,64 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader, StatusBadge } from "@/components/shared";
+import { formatBRL } from "@/utils/format";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Tipos locais ─────────────────────────────────────────────────────────────
 
 type CaixaStatus = "fechado" | "aberto";
+type MovimentoTipo = "Entrada" | "Saída";
 
-type Movimentacao = {
+interface Movimentacao {
   id: string;
-  tipo: "Entrada" | "Saída";
+  tipo: MovimentoTipo;
   descricao: string;
   valor: number;
   hora: string;
-};
+}
 
-type CaixaData = {
+interface CaixaData {
   abertura: string;
   filial: string;
   valorInicial: number;
   movimentacoes: Movimentacao[];
-};
-
-// ─── Formatação ───────────────────────────────────────────────────────────────
-
-function formatBRL(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function calcValorAtual(caixa: CaixaData) {
-  return caixa.movimentacoes.reduce((acc, m) => {
-    return m.tipo === "Entrada" ? acc + m.valor : acc - m.valor;
-  }, caixa.valorInicial);
-}
+// ─── Cálculos ─────────────────────────────────────────────────────────────────
 
-function calcTotalFaturado(caixa: CaixaData) {
-  return caixa.movimentacoes
-    .filter((m) => m.tipo === "Entrada")
-    .reduce((acc, m) => acc + m.valor, 0);
-}
-
-function calcEntradasManuais(caixa: CaixaData) {
-  return caixa.movimentacoes
-    .filter((m) => m.tipo === "Entrada")
-    .reduce((acc, m) => acc + m.valor, 0);
-}
-
-function calcSaidasManuais(caixa: CaixaData) {
-  return caixa.movimentacoes
-    .filter((m) => m.tipo === "Saída")
-    .reduce((acc, m) => acc + m.valor, 0);
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function TipoBadge({ tipo }: { tipo: "Entrada" | "Saída" }) {
-  if (tipo === "Entrada")
-    return (
-      <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] font-semibold px-2 py-0.5">
-        Entrada
-      </Badge>
-    );
-  return (
-    <Badge className="bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/20 text-[10px] font-semibold px-2 py-0.5">
-      Saída
-    </Badge>
+function calcValorAtual(caixa: CaixaData): number {
+  return caixa.movimentacoes.reduce(
+    (acc, m) => (m.tipo === "Entrada" ? acc + m.valor : acc - m.valor),
+    caixa.valorInicial,
   );
 }
 
+function calcTotalFaturado(caixa: CaixaData): number {
+  return caixa.movimentacoes
+    .filter((m) => m.tipo === "Entrada")
+    .reduce((acc, m) => acc + m.valor, 0);
+}
+
+function somaPorTipo(caixa: CaixaData, tipo: MovimentoTipo): number {
+  return caixa.movimentacoes
+    .filter((m) => m.tipo === tipo)
+    .reduce((acc, m) => acc + m.valor, 0);
+}
+
 // ─── Dialog: Abrir Caixa ──────────────────────────────────────────────────────
+
+interface DialogAbrirCaixaProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onConfirm: (valorInicial: number) => void;
+}
 
 function DialogAbrirCaixa({
   open,
   onOpenChange,
   onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onConfirm: (valorInicial: number) => void;
-}) {
+}: DialogAbrirCaixaProps) {
   const [valor, setValor] = useState("0,00");
   const [obs, setObs] = useState("");
 
@@ -130,8 +109,8 @@ function DialogAbrirCaixa({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
               Abrir Caixa
@@ -139,7 +118,7 @@ function DialogAbrirCaixa({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -147,30 +126,28 @@ function DialogAbrirCaixa({
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-5">
-          {/* Valor inicial */}
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-[#f5b82e]">
+            <label className="text-xs font-bold uppercase tracking-widest text-brand">
               Valor Inicial (R$)
             </label>
             <Input
               type="number"
               value={valor}
               onChange={(e) => setValor(e.target.value)}
-              className="bg-[#0d1117] border-[#f5b82e]/60 text-white focus-visible:ring-[#f5b82e]/30 h-11"
+              className="bg-surface-base border-brand/60 text-foreground focus-visible:ring-brand/30 h-11"
               placeholder="0,00"
             />
           </div>
 
-          {/* Observações */}
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-[#8b949e]">
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Observações
             </label>
             <Textarea
               value={obs}
               onChange={(e) => setObs(e.target.value)}
               placeholder="Opcional"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-[80px]"
+              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 resize-none min-h-20"
             />
           </div>
         </div>
@@ -179,14 +156,14 @@ function DialogAbrirCaixa({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] transition-colors"
+            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors"
           >
             Abrir Caixa
           </button>
@@ -198,23 +175,25 @@ function DialogAbrirCaixa({
 
 // ─── Dialog: Fechar Caixa ─────────────────────────────────────────────────────
 
+interface DialogFecharCaixaProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  caixa: CaixaData;
+  onConfirm: (valorContado: number, obs: string) => void;
+}
+
 function DialogFecharCaixa({
   open,
   onOpenChange,
   caixa,
   onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  caixa: CaixaData;
-  onConfirm: (valorContado: number, obs: string) => void;
-}) {
+}: DialogFecharCaixaProps) {
   const [valorContado, setValorContado] = useState("0,00");
   const [obs, setObs] = useState("");
 
   const totalFaturado = calcTotalFaturado(caixa);
-  const entradasManuais = calcEntradasManuais(caixa);
-  const saidasManuais = calcSaidasManuais(caixa);
+  const entradasManuais = somaPorTipo(caixa, "Entrada");
+  const saidasManuais = somaPorTipo(caixa, "Saída");
   const esperado = caixa.valorInicial + entradasManuais - saidasManuais;
   const comandas = caixa.movimentacoes.length;
 
@@ -228,8 +207,8 @@ function DialogFecharCaixa({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-lg p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-lg p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
               Fechar Caixa
@@ -237,7 +216,7 @@ function DialogFecharCaixa({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -245,105 +224,97 @@ function DialogFecharCaixa({
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Resumo topo */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1">
+            <div className="bg-surface-base border border-border rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                 Valor Inicial
               </p>
-              <p className="text-base font-bold text-white">
+              <p className="text-base font-bold text-foreground">
                 {formatBRL(caixa.valorInicial)}
               </p>
             </div>
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b949e] mb-1">
+            <div className="bg-surface-base border border-border rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                 Total Faturado
               </p>
-              <p className="text-base font-bold text-[#f5b82e]">
+              <p className="text-base font-bold text-brand">
                 {formatBRL(totalFaturado)}
               </p>
             </div>
           </div>
 
-          {/* Formas de pagamento */}
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 space-y-2">
+          <div className="bg-surface-base border border-border rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2 mb-3">
-              <CreditCard className="size-3.5 text-[#8b949e]" />
-              <p className="text-xs font-bold text-white">
+              <CreditCard className="size-3.5 text-muted-foreground" />
+              <p className="text-xs font-bold text-foreground">
                 Formas de Pagamento
               </p>
             </div>
-            <p className="text-xs text-[#4d5562]">
+            <p className="text-xs text-text-faint">
               Nenhum pagamento registrado
             </p>
           </div>
 
-          {/* Dinheiro em Caixa */}
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 space-y-2">
+          <div className="bg-surface-base border border-border rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2 mb-3">
-              <Banknote className="size-3.5 text-[#8b949e]" />
-              <p className="text-xs font-bold text-white">Dinheiro em Caixa</p>
+              <Banknote className="size-3.5 text-muted-foreground" />
+              <p className="text-xs font-bold text-foreground">
+                Dinheiro em Caixa
+              </p>
             </div>
             <div className="space-y-1.5">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Abertura</span>
-                <span className="text-white">
-                  {formatBRL(caixa.valorInicial)}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Pagamentos em Dinheiro</span>
-                <span className="text-emerald-400">+{formatBRL(0)}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Entradas Manuais</span>
-                <span className="text-emerald-400">
-                  +{formatBRL(entradasManuais)}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8b949e]">Saídas Manuais</span>
-                <span className="text-red-400">
-                  -{formatBRL(saidasManuais)}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs pt-2 border-t border-[#21262d]">
-                <span className="text-white font-bold">Esperado</span>
-                <span className="text-white font-bold">
+              <RowKV label="Abertura" value={formatBRL(caixa.valorInicial)} />
+              <RowKV
+                label="Pagamentos em Dinheiro"
+                value={`+${formatBRL(0)}`}
+                tone="success"
+              />
+              <RowKV
+                label="Entradas Manuais"
+                value={`+${formatBRL(entradasManuais)}`}
+                tone="success"
+              />
+              <RowKV
+                label="Saídas Manuais"
+                value={`-${formatBRL(saidasManuais)}`}
+                tone="danger"
+              />
+              <div className="flex justify-between text-xs pt-2 border-t border-border-subtle">
+                <span className="text-foreground font-bold">Esperado</span>
+                <span className="text-foreground font-bold">
                   {formatBRL(esperado)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Valor contado e observações */}
-          <div className="bg-[#0d1117] border border-[#f5b82e]/40 rounded-lg p-4 space-y-4">
+          <div className="bg-surface-base border border-brand/40 rounded-lg p-4 space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white">
+              <label className="text-xs font-bold text-foreground">
                 Valor Contado em Caixa (R$)
               </label>
               <Input
                 type="number"
                 value={valorContado}
                 onChange={(e) => setValorContado(e.target.value)}
-                className="bg-[#161b22] border-[#f5b82e]/60 text-white focus-visible:ring-[#f5b82e]/30 h-11"
+                className="bg-surface-raised border-brand/60 text-foreground focus-visible:ring-brand/30 h-11"
                 placeholder="0,00"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white">
+              <label className="text-xs font-bold text-foreground">
                 Observações
               </label>
               <Textarea
                 value={obs}
                 onChange={(e) => setObs(e.target.value)}
                 placeholder="Opcional"
-                className="bg-[#161b22] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-[80px]"
+                className="bg-surface-raised border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 resize-none min-h-20"
               />
             </div>
           </div>
 
-          <p className="text-xs text-[#8b949e]">
+          <p className="text-xs text-muted-foreground">
             {comandas} comanda(s) no período
           </p>
         </div>
@@ -352,7 +323,7 @@ function DialogFecharCaixa({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -369,22 +340,44 @@ function DialogFecharCaixa({
   );
 }
 
-// ─── Dialog: Entrada / Saída ──────────────────────────────────────────────────
+interface RowKVProps {
+  label: string;
+  value: string;
+  tone?: "success" | "danger" | "neutral";
+}
+
+function RowKV({ label, value, tone = "neutral" }: RowKVProps) {
+  const valueClass =
+    tone === "success"
+      ? "text-success-foreground"
+      : tone === "danger"
+        ? "text-danger-foreground"
+        : "text-foreground";
+  return (
+    <div className="flex justify-between text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={valueClass}>{value}</span>
+    </div>
+  );
+}
+
+// ─── Dialog: Movimentação ─────────────────────────────────────────────────────
+
+interface DialogMovimentacaoProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tipo: MovimentoTipo;
+  onConfirm: (valor: number, descricao: string) => void;
+}
 
 function DialogMovimentacao({
   open,
   onOpenChange,
   tipo,
   onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  tipo: "Entrada" | "Saída";
-  onConfirm: (valor: number, descricao: string) => void;
-}) {
+}: DialogMovimentacaoProps) {
   const [valor, setValor] = useState("0,00");
   const [descricao, setDescricao] = useState("");
-
   const isEntrada = tipo === "Entrada";
 
   const handleConfirm = () => {
@@ -401,8 +394,8 @@ function DialogMovimentacao({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
               Nova {tipo}
@@ -410,35 +403,35 @@ function DialogMovimentacao({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
           </div>
         </DialogHeader>
 
-        <div className="px-6 py-5 space-y-4 ">
+        <div className="px-6 py-5 space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-[#f5b82e]">
+            <label className="text-xs font-bold uppercase tracking-widest text-brand">
               Valor (R$)
             </label>
             <Input
               type="number"
               value={valor}
               onChange={(e) => setValor(e.target.value)}
-              className="bg-[#0d1117] border-[#f5b82e]/60 text-white focus-visible:ring-[#f5b82e]/30 h-11"
+              className="bg-surface-base border-brand/60 text-foreground focus-visible:ring-brand/30 h-11"
               placeholder="0,00"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-[#8b949e]">
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Descrição
             </label>
             <Textarea
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder="Descreva a operação"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-[100px]"
+              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 resize-none min-h-25"
             />
           </div>
         </div>
@@ -447,7 +440,7 @@ function DialogMovimentacao({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -456,7 +449,7 @@ function DialogMovimentacao({
             onClick={handleConfirm}
             className={`h-9 px-5 rounded-md text-sm font-bold transition-colors ${
               isEntrada
-                ? "bg-[#f5b82e] text-black hover:bg-[#d9a326]"
+                ? "bg-brand text-brand-foreground hover:bg-brand-hover"
                 : "bg-red-600 text-white hover:bg-red-700"
             }`}
           >
@@ -475,13 +468,10 @@ export default function CaixaPage() {
   const [filial, setFilial] = useState("Todas as filiais");
   const [caixa, setCaixa] = useState<CaixaData | null>(null);
 
-  // Dialogs
   const [dialogAbrir, setDialogAbrir] = useState(false);
   const [dialogFechar, setDialogFechar] = useState(false);
   const [dialogMovimento, setDialogMovimento] = useState(false);
-  const [tipoMovimento, setTipoMovimento] = useState<"Entrada" | "Saída">(
-    "Entrada",
-  );
+  const [tipoMovimento, setTipoMovimento] = useState<MovimentoTipo>("Entrada");
 
   const handleAbrirCaixa = (valorInicial: number) => {
     const now = new Date();
@@ -495,7 +485,7 @@ export default function CaixaPage() {
     toast.success("Caixa aberto com sucesso!");
   };
 
-  const handleFecharCaixa = (valorContado: number, obs: string) => {
+  const handleFecharCaixa = () => {
     setStatus("fechado");
     setCaixa(null);
     toast.success("Caixa fechado com sucesso!");
@@ -518,7 +508,7 @@ export default function CaixaPage() {
     toast.success(`${tipoMovimento} registrada!`);
   };
 
-  const abrirDialogMovimento = (tipo: "Entrada" | "Saída") => {
+  const abrirDialogMovimento = (tipo: MovimentoTipo) => {
     setTipoMovimento(tipo);
     setDialogMovimento(true);
   };
@@ -526,67 +516,63 @@ export default function CaixaPage() {
   const valorAtual = caixa ? calcValorAtual(caixa) : 0;
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Caixa
-          </h1>
-          <p className="text-[#8b949e] text-sm mt-1">
-            Controle de caixa diário
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <button
-                type="button"
-                className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors min-w-[160px] justify-between"
-              >
-                <span>{filial}</span>
-                <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
-              {["Todas as filiais", "Matriz", "Filial Norte", "Filial Sul"].map(
-                (f) => (
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
+      <PageHeader
+        title="Caixa"
+        subtitle="Controle de caixa diário"
+        actions={
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <button
+                  type="button"
+                  className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors min-w-40 justify-between"
+                >
+                  <span>{filial}</span>
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
+                {[
+                  "Todas as filiais",
+                  "Matriz",
+                  "Filial Norte",
+                  "Filial Sul",
+                ].map((f) => (
                   <DropdownMenuItem
                     key={f}
                     onClick={() => setFilial(f)}
-                    className="text-xs hover:bg-[#21262d] cursor-pointer"
+                    className="text-xs hover:bg-surface-elevated cursor-pointer"
                   >
                     {f}
                   </DropdownMenuItem>
-                ),
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Link href="/cashier/history">
-            <button
-              type="button"
-              className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors"
-            >
-              <History className="size-3.5 text-[#8b949e]" />
-              Histórico
-            </button>
-          </Link>
-        </div>
-      </div>
+            <Link href="/cashier/history">
+              <button
+                type="button"
+                className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors"
+              >
+                <History className="size-3.5 text-muted-foreground" />
+                Histórico
+              </button>
+            </Link>
+          </>
+        }
+      />
 
-      {/* ── Fechado ── */}
       {status === "fechado" && (
         <div className="flex flex-col items-center justify-center py-24 gap-5">
-          <div className="size-20 rounded-full bg-[#161b22] border border-[#30363d] flex items-center justify-center">
-            <FolderOpen className="size-9 text-[#4d5562]" />
+          <div className="size-20 rounded-full bg-surface-raised border border-border flex items-center justify-center">
+            <FolderOpen className="size-9 text-text-subtle" />
           </div>
-          <p className="text-[#8b949e] text-sm">Nenhum caixa aberto</p>
+          <p className="text-muted-foreground text-sm">Nenhum caixa aberto</p>
           <button
             type="button"
             onClick={() => setDialogAbrir(true)}
-            className="h-10 px-6 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] hover:shadow-[0_0_16px_rgba(245,184,46,0.35)] transition-all flex items-center gap-2"
+            className="h-10 px-6 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.35)] transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus className="size-4" />
             Abrir Caixa
@@ -594,62 +580,58 @@ export default function CaixaPage() {
         </div>
       )}
 
-      {/* ── Aberto ── */}
       {status === "aberto" && caixa && (
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Status */}
-            <Card className="bg-[#161b22] border-[#30363d] shadow-none">
+            <Card className="bg-surface-raised border-border shadow-none">
               <CardContent className="p-4">
-                <p className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider mb-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">
                   Status
                 </p>
-                <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-2.5 py-1 mb-3">
+                <Badge className="bg-success/15 text-success-foreground border border-success/30 text-xs font-semibold px-2.5 py-1 mb-3">
                   Aberto
                 </Badge>
                 <div className="space-y-0.5 mt-2">
-                  <p className="text-[11px] text-[#8b949e]">
+                  <p className="text-[11px] text-muted-foreground">
                     Abertura: {caixa.abertura}
                   </p>
-                  <p className="text-[11px] text-[#8b949e]">
+                  <p className="text-[11px] text-muted-foreground">
                     Filial: {caixa.filial}
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Valor Inicial */}
-            <Card className="bg-[#161b22] border-[#30363d] shadow-none">
+            <Card className="bg-surface-raised border-border shadow-none">
               <CardContent className="p-4">
-                <p className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider mb-2">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
                   Valor Inicial
                 </p>
-                <div className="text-xl md:text-2xl font-bold text-white">
+                <div className="text-xl md:text-2xl font-bold text-foreground">
                   {formatBRL(caixa.valorInicial)}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Valor Atual */}
-            <Card className="bg-[#241a06] border-[#30363d] shadow-none">
+            <Card className="bg-warning-bg border-border shadow-none">
               <CardContent className="p-4">
-                <p className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider mb-2">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
                   Valor Atual
                 </p>
-                <div className="text-xl md:text-2xl font-bold text-[#f5b82e]">
+                <div className="text-xl md:text-2xl font-bold text-brand">
                   {formatBRL(valorAtual)}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Ações */}
-            <Card className="bg-[#161b22] border-[#30363d] shadow-none">
+            <Card className="bg-surface-raised border-border shadow-none">
               <CardContent className="p-4 flex flex-col gap-2.5">
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => abrirDialogMovimento("Entrada")}
-                    className="h-9 rounded-md text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors flex items-center justify-center gap-1.5"
+                    className="h-9 rounded-md text-xs font-bold bg-success/15 text-success-foreground border border-success/30 hover:bg-success/25 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Plus className="size-3.5" />
                     Entrada
@@ -657,7 +639,7 @@ export default function CaixaPage() {
                   <button
                     type="button"
                     onClick={() => abrirDialogMovimento("Saída")}
-                    className="h-9 rounded-md text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors flex items-center justify-center gap-1.5"
+                    className="h-9 rounded-md text-xs font-bold bg-danger/15 text-danger-foreground border border-danger/30 hover:bg-danger/25 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Minus className="size-3.5" />
                     Saída
@@ -676,16 +658,16 @@ export default function CaixaPage() {
           </div>
 
           {/* Movimentações */}
-          <Card className="bg-[#161b22] border-[#30363d]">
+          <Card className="bg-surface-raised border-border">
             <CardContent className="p-0">
-              <div className="px-4 py-4 border-b border-[#21262d]">
-                <h2 className="text-sm font-bold text-white">
+              <div className="px-4 py-4 border-b border-border-subtle">
+                <h2 className="text-sm font-bold text-foreground">
                   Movimentações ({caixa.movimentacoes.length})
                 </h2>
               </div>
 
               {caixa.movimentacoes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 text-[#8b949e]">
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
                   <DollarSign className="size-10 opacity-30" />
                   <p className="text-sm">Nenhuma movimentação registrada</p>
                 </div>
@@ -694,12 +676,12 @@ export default function CaixaPage() {
                   <div className="hidden md:block">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-[#30363d] hover:bg-transparent">
+                        <TableRow className="border-border hover:bg-transparent">
                           {["ID", "Tipo", "Descrição", "Valor", "Hora"].map(
                             (col) => (
                               <TableHead
                                 key={col}
-                                className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+                                className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
                               >
                                 {col}
                               </TableHead>
@@ -708,28 +690,36 @@ export default function CaixaPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {caixa.movimentacoes.map((m, i) => (
+                        {caixa.movimentacoes.map((m) => (
                           <TableRow
-                            key={i}
-                            className="border-[#30363d] hover:bg-[#21262d]/50 transition-colors"
+                            key={m.id}
+                            className="border-border hover:bg-surface-elevated/50 transition-colors"
                           >
-                            <TableCell className="px-4 py-4 text-[#8b949e] text-sm font-mono">
+                            <TableCell className="px-4 py-4 text-muted-foreground text-sm font-mono">
                               {m.id}
                             </TableCell>
                             <TableCell className="px-4 py-4">
-                              <TipoBadge tipo={m.tipo} />
+                              <StatusBadge
+                                tone={m.tipo === "Entrada" ? "success" : "danger"}
+                              >
+                                {m.tipo}
+                              </StatusBadge>
                             </TableCell>
-                            <TableCell className="px-4 py-4 text-white font-medium text-sm">
+                            <TableCell className="px-4 py-4 text-foreground font-medium text-sm">
                               {m.descricao}
                             </TableCell>
                             <TableCell
-                              className={`px-4 py-4 font-semibold text-sm ${m.tipo === "Entrada" ? "text-emerald-400" : "text-red-400"}`}
+                              className={`px-4 py-4 font-semibold text-sm ${
+                                m.tipo === "Entrada"
+                                  ? "text-success-foreground"
+                                  : "text-danger-foreground"
+                              }`}
                             >
                               {m.tipo === "Saída"
                                 ? `- ${formatBRL(m.valor)}`
                                 : `+ ${formatBRL(m.valor)}`}
                             </TableCell>
-                            <TableCell className="px-4 py-4 text-[#8b949e] text-sm">
+                            <TableCell className="px-4 py-4 text-muted-foreground text-sm">
                               {m.hora}
                             </TableCell>
                           </TableRow>
@@ -739,28 +729,36 @@ export default function CaixaPage() {
                   </div>
 
                   <div className="md:hidden px-4 pb-4 space-y-3 pt-3">
-                    {caixa.movimentacoes.map((m, i) => (
+                    {caixa.movimentacoes.map((m) => (
                       <div
-                        key={i}
-                        className="bg-[#0d1117] rounded-lg p-4 border border-[#30363d] space-y-2"
+                        key={m.id}
+                        className="bg-surface-base rounded-lg p-4 border border-border space-y-2"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="font-semibold text-white text-sm">
+                          <span className="font-semibold text-foreground text-sm">
                             {m.descricao}
                           </span>
-                          <TipoBadge tipo={m.tipo} />
+                          <StatusBadge
+                            tone={m.tipo === "Entrada" ? "success" : "danger"}
+                          >
+                            {m.tipo}
+                          </StatusBadge>
                         </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[#8b949e]">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <span>
-                            <span className="text-[#4d5562]">ID: </span>
+                            <span className="text-text-subtle">ID: </span>
                             {m.id}
                           </span>
                           <span>
-                            <span className="text-[#4d5562]">Hora: </span>
+                            <span className="text-text-subtle">Hora: </span>
                             {m.hora}
                           </span>
                           <span
-                            className={`font-bold ${m.tipo === "Entrada" ? "text-emerald-400" : "text-red-400"}`}
+                            className={`font-bold ${
+                              m.tipo === "Entrada"
+                                ? "text-success-foreground"
+                                : "text-danger-foreground"
+                            }`}
                           >
                             {m.tipo === "Saída"
                               ? `- ${formatBRL(m.valor)}`
@@ -777,7 +775,6 @@ export default function CaixaPage() {
         </div>
       )}
 
-      {/* ── Dialogs ── */}
       <DialogAbrirCaixa
         open={dialogAbrir}
         onOpenChange={setDialogAbrir}

@@ -1,13 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useRef } from "react";
 import {
   Plus,
   Pencil,
-  Trash2,
   X,
-  Upload,
   Building2,
   Users,
   Scissors,
@@ -15,7 +12,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -31,12 +27,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -160,7 +150,7 @@ function StatusBadge({
         "text-[10px] font-semibold px-2 py-0.5 border",
         isActive
           ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-          : "bg-[#30363d]/60 text-[#8b949e] border-[#30363d]",
+          : "bg-[#30363d]/60 text-muted-foreground border-border",
       )}
     >
       {isActive
@@ -182,28 +172,10 @@ function FormLabel({
   required?: boolean;
 }) {
   return (
-    <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e] flex items-center gap-1">
+    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
       {children}
-      {required && <span className="text-[#f5b82e]">*</span>}
+      {required && <span className="text-brand">*</span>}
     </label>
-  );
-}
-
-function ChevronDown({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
   );
 }
 
@@ -231,7 +203,7 @@ function TabEmpresa() {
 
   return (
     <div className="max-w-lg space-y-5">
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-raised border-border">
         <CardContent className="p-5 space-y-5">
           {/* Logo + nome */}
           <div className="flex items-center gap-4">
@@ -247,13 +219,13 @@ function TabEmpresa() {
                   className="size-16 object-cover rounded-xl"
                 />
               ) : (
-                <Building2 className="size-7 text-[#f5b82e]/60" />
+                <Building2 className="size-7 text-brand/60" />
               )}
             </button>
             <div>
               <p className="text-base font-bold text-white">{nome}</p>
               <p
-                className="text-xs text-[#8b949e] mt-0.5 cursor-pointer hover:text-[#f5b82e] transition-colors"
+                className="text-xs text-muted-foreground mt-0.5 cursor-pointer hover:text-brand transition-colors"
                 onClick={() => fileRef.current?.click()}
               >
                 Clique no logo para alterar
@@ -275,7 +247,7 @@ function TabEmpresa() {
               <Input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
 
@@ -284,7 +256,7 @@ function TabEmpresa() {
               <Input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
               <p className="text-[10px] text-[#4d5562]">
                 smartmanos.com/c/{slug}
@@ -297,7 +269,7 @@ function TabEmpresa() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
 
@@ -306,7 +278,7 @@ function TabEmpresa() {
               <Input
                 value={telefone}
                 onChange={(e) => setTelefone(e.target.value)}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
 
@@ -315,14 +287,14 @@ function TabEmpresa() {
               <Input
                 value={endereco}
                 onChange={(e) => setEndereco(e.target.value)}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
 
             <div className="space-y-1.5">
               <FormLabel>Cor Primária</FormLabel>
               <div className="flex items-center gap-3">
-                <div className="relative size-10 rounded-md overflow-hidden border border-[#30363d] shrink-0 cursor-pointer">
+                <div className="relative size-10 rounded-md overflow-hidden border border-border shrink-0 cursor-pointer">
                   <input
                     type="color"
                     value={cor}
@@ -337,7 +309,7 @@ function TabEmpresa() {
                 <Input
                   value={cor}
                   onChange={(e) => setCor(e.target.value)}
-                  className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10 uppercase"
+                  className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 uppercase"
                 />
               </div>
             </div>
@@ -396,7 +368,7 @@ function DialogFilial({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -405,7 +377,7 @@ function DialogFilial({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -418,7 +390,7 @@ function DialogFilial({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex: Matriz"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -427,7 +399,7 @@ function DialogFilial({
               value={detalhes}
               onChange={(e) => setDetalhes(e.target.value)}
               placeholder="Rua, número..."
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -443,8 +415,8 @@ function DialogFilial({
                     status === s
                       ? s === "ativa"
                         ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
-                        : "bg-[#30363d]/50 border-[#30363d] text-[#8b949e]"
-                      : "border-[#30363d] bg-[#0d1117] text-[#4d5562] hover:border-[#f5b82e]/30",
+                        : "bg-[#30363d]/50 border-border text-muted-foreground"
+                      : "border-border bg-surface-base text-[#4d5562] hover:border-[#f5b82e]/30",
                   )}
                 >
                   {s === "ativa" ? "Ativa" : "Inativa"}
@@ -457,7 +429,7 @@ function DialogFilial({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
           >
             Cancelar
           </button>
@@ -494,7 +466,7 @@ function TabFiliais() {
   };
 
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-raised border-border">
       <CardContent className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#21262d]">
           <h2 className="text-sm font-bold text-white">Filiais</h2>
@@ -531,7 +503,7 @@ function TabFiliais() {
                     setEditando(f);
                     setDialog(true);
                   }}
-                  className="size-7 rounded-md border border-[#30363d] bg-[#0d1117] text-[#8b949e] flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-[#f5b82e] transition-colors"
+                  className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
                 >
                   <Pencil className="size-3" />
                 </button>
@@ -588,7 +560,7 @@ function DialogProfissional({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -597,7 +569,7 @@ function DialogProfissional({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -610,7 +582,7 @@ function DialogProfissional({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome completo"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -619,7 +591,7 @@ function DialogProfissional({
               value={especialidade}
               onChange={(e) => setEspecialidade(e.target.value)}
               placeholder="Ex: Corte e Barba"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -630,7 +602,7 @@ function DialogProfissional({
               onChange={(e) => setComissao(Number(e.target.value))}
               min={0}
               max={100}
-              className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -646,8 +618,8 @@ function DialogProfissional({
                     status === s
                       ? s === "ativo"
                         ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
-                        : "bg-[#30363d]/50 border-[#30363d] text-[#8b949e]"
-                      : "border-[#30363d] bg-[#0d1117] text-[#4d5562] hover:border-[#f5b82e]/30",
+                        : "bg-[#30363d]/50 border-border text-muted-foreground"
+                      : "border-border bg-surface-base text-[#4d5562] hover:border-[#f5b82e]/30",
                   )}
                 >
                   {s === "ativo" ? "Ativo" : "Inativo"}
@@ -660,7 +632,7 @@ function DialogProfissional({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
           >
             Cancelar
           </button>
@@ -698,7 +670,7 @@ function TabProfissionais() {
   };
 
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-raised border-border">
       <CardContent className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#21262d]">
           <h2 className="text-sm font-bold text-white">Profissionais</h2>
@@ -718,12 +690,12 @@ function TabProfissionais() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-[#30363d] hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 {["Nome", "Especialidade", "Comissão", "Status", ""].map(
                   (h) => (
                     <TableHead
                       key={h}
-                      className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
+                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
                     >
                       {h}
                     </TableHead>
@@ -745,15 +717,15 @@ function TabProfissionais() {
                 profissionais.map((p) => (
                   <TableRow
                     key={p.id}
-                    className="border-[#30363d] hover:bg-[#21262d]/40 transition-colors"
+                    className="border-border hover:bg-[#21262d]/40 transition-colors"
                   >
                     <TableCell className="px-5 py-4 font-semibold text-white text-sm">
                       {p.nome}
                     </TableCell>
-                    <TableCell className="px-5 py-4 text-[#8b949e] text-sm">
+                    <TableCell className="px-5 py-4 text-muted-foreground text-sm">
                       {p.especialidade || "—"}
                     </TableCell>
-                    <TableCell className="px-5 py-4 text-[#f5b82e] font-semibold text-sm">
+                    <TableCell className="px-5 py-4 text-brand font-semibold text-sm">
                       {p.comissao}%
                     </TableCell>
                     <TableCell className="px-5 py-4">
@@ -766,7 +738,7 @@ function TabProfissionais() {
                           setEditando(p);
                           setDialog(true);
                         }}
-                        className="size-7 rounded-md border border-[#30363d] bg-[#0d1117] text-[#8b949e] flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-[#f5b82e] transition-colors"
+                        className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
                       >
                         <Pencil className="size-3" />
                       </button>
@@ -820,7 +792,7 @@ function DialogServico({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -829,7 +801,7 @@ function DialogServico({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -842,7 +814,7 @@ function DialogServico({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex: Corte Masculino"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -851,7 +823,7 @@ function DialogServico({
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
               placeholder="Ex: Cabelo"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -862,7 +834,7 @@ function DialogServico({
                 value={duracao}
                 onChange={(e) => setDuracao(Number(e.target.value))}
                 min={5}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -873,7 +845,7 @@ function DialogServico({
                 onChange={(e) => setPreco(Number(e.target.value))}
                 min={0}
                 step={0.01}
-                className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
           </div>
@@ -890,8 +862,8 @@ function DialogServico({
                     status === s
                       ? s === "ativo"
                         ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
-                        : "bg-[#30363d]/50 border-[#30363d] text-[#8b949e]"
-                      : "border-[#30363d] bg-[#0d1117] text-[#4d5562] hover:border-[#f5b82e]/30",
+                        : "bg-[#30363d]/50 border-border text-muted-foreground"
+                      : "border-border bg-surface-base text-[#4d5562] hover:border-[#f5b82e]/30",
                   )}
                 >
                   {s === "ativo" ? "Ativo" : "Inativo"}
@@ -904,7 +876,7 @@ function DialogServico({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
           >
             Cancelar
           </button>
@@ -941,7 +913,7 @@ function TabServicos() {
   };
 
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-raised border-border">
       <CardContent className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#21262d]">
           <h2 className="text-sm font-bold text-white">Serviços</h2>
@@ -961,12 +933,12 @@ function TabServicos() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-[#30363d] hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 {["Serviço", "Categoria", "Duração", "Preço", "Status", ""].map(
                   (h) => (
                     <TableHead
                       key={h}
-                      className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
+                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
                     >
                       {h}
                     </TableHead>
@@ -988,18 +960,18 @@ function TabServicos() {
                 servicos.map((s) => (
                   <TableRow
                     key={s.id}
-                    className="border-[#30363d] hover:bg-[#21262d]/40 transition-colors"
+                    className="border-border hover:bg-[#21262d]/40 transition-colors"
                   >
                     <TableCell className="px-5 py-4 font-semibold text-white text-sm">
                       {s.nome}
                     </TableCell>
-                    <TableCell className="px-5 py-4 text-[#8b949e] text-sm">
+                    <TableCell className="px-5 py-4 text-muted-foreground text-sm">
                       {s.categoria || "—"}
                     </TableCell>
-                    <TableCell className="px-5 py-4 text-[#8b949e] text-sm">
+                    <TableCell className="px-5 py-4 text-muted-foreground text-sm">
                       {s.duracao} min
                     </TableCell>
-                    <TableCell className="px-5 py-4 text-[#f5b82e] font-semibold text-sm">
+                    <TableCell className="px-5 py-4 text-brand font-semibold text-sm">
                       R$ {s.preco.toFixed(2).replace(".", ",")}
                     </TableCell>
                     <TableCell className="px-5 py-4">
@@ -1012,7 +984,7 @@ function TabServicos() {
                           setEditando(s);
                           setDialog(true);
                         }}
-                        className="size-7 rounded-md border border-[#30363d] bg-[#0d1117] text-[#8b949e] flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-[#f5b82e] transition-colors"
+                        className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
                       >
                         <Pencil className="size-3" />
                       </button>
@@ -1040,12 +1012,12 @@ export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("empresa");
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
+    <div className="space-y-6 p-4 md:p-6 bg-surface-base min-h-screen text-white">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
           Configurações
         </h1>
-        <p className="text-[#8b949e] text-sm mt-1">
+        <p className="text-muted-foreground text-sm mt-1">
           Configurações gerais do sistema
         </p>
       </div>
@@ -1061,7 +1033,7 @@ export default function ConfiguracoesPage() {
               "px-4 py-2 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5",
               activeTab === tab.key
                 ? "bg-[#f5b82e] text-black"
-                : "text-[#8b949e] hover:text-white hover:bg-[#21262d]",
+                : "text-muted-foreground hover:text-white hover:bg-[#21262d]",
             )}
           >
             {tab.icon}

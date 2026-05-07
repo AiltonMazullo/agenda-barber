@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, {
@@ -11,8 +10,8 @@ import React, {
 } from "react";
 import {
   DndContext,
-  DragEndEvent,
-  DragStartEvent,
+  type DragEndEvent,
+  type DragStartEvent,
   DragOverlay,
   PointerSensor,
   useSensor,
@@ -28,7 +27,6 @@ import {
   ChevronRight,
   Clock,
   Settings2,
-  Calendar,
   Scissors,
   X,
   Phone,
@@ -50,7 +48,6 @@ import {
   Ban,
   Receipt,
   GripVertical,
-  ChevronUp,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -79,99 +76,32 @@ import {
   type Agendamento,
   type Profissional,
 } from "@/mock/schedule";
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
-
-const SLOT_OPTIONS = [10, 20, 30] as const;
-const START_HOUR = 8;
-const END_HOUR = 20;
-type SlotSize = 10 | 20 | 30;
-type ViewMode = "kanban" | "lista";
+import {
+  SLOT_OPTIONS,
+  START_HOUR,
+  END_HOUR,
+  type SlotSize,
+  type ScheduleViewMode,
+  type BloqueioHorario,
+  type ScheduleFilial,
+} from "@/types/schedule.types";
+import {
+  getDuracao,
+  minToTime,
+  snapToSlot,
+  gerarAgendamentoId,
+  findConflicts,
+  calcNowTopPx,
+  type AgendamentoComCustom,
+} from "@/utils/schedule.utils";
 
 // ─── Filiais mock ─────────────────────────────────────────────────────────────
 
-const FILIAIS = [
+const FILIAIS: ScheduleFilial[] = [
   { id: "fil_1", nome: "Filial Centro", cidade: "Recife" },
   { id: "fil_2", nome: "Filial Boa Viagem", cidade: "Recife" },
   { id: "fil_3", nome: "Filial Olinda", cidade: "Olinda" },
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getDuracao(ag: Agendamento, profId?: string): number {
-  const targetProfId = profId ?? ag.profissionalId;
-  const prof = PROFISSIONAIS.find((p) => p.id === targetProfId);
-  const servico = SERVICOS.find((s) => s.id === ag.servicoId);
-  return prof?.tempos[ag.servicoId] ?? servico?.tempoPadrao ?? 30;
-}
-
-function minToTime(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function snapToSlot(min: number, slotSize: SlotSize): number {
-  return Math.round(min / slotSize) * slotSize;
-}
-
-function gerarId(): string {
-  return `ag_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
-
-/** Retorna true se dois intervalos se sobrepõem */
-function checkOverlap(
-  aInicio: number,
-  aDuracao: number,
-  bInicio: number,
-  bDuracao: number,
-): boolean {
-  const aFim = aInicio + aDuracao;
-  const bFim = bInicio + bDuracao;
-  return aInicio < bFim && aFim > bInicio;
-}
-
-/** Encontra agendamentos conflitantes (excluindo o próprio) */
-function findConflicts(
-  agendamentos: Agendamento[],
-  profissionalId: string,
-  inicioMin: number,
-  duracao: number,
-  excludeId?: string,
-  bloqueios?: BloqueioHorario[],
-): Array<Agendamento | BloqueioHorario> {
-  const conflicts: Array<Agendamento | BloqueioHorario> = [];
-
-  agendamentos.forEach((ag) => {
-    if (excludeId && ag.id === excludeId) return;
-    if (ag.profissionalId !== profissionalId) return;
-    const d = getDuracao(ag);
-    if (checkOverlap(inicioMin, duracao, ag.inicioMin, d)) {
-      conflicts.push(ag);
-    }
-  });
-
-  bloqueios?.forEach((bl) => {
-    if (bl.profissionalId !== profissionalId && bl.profissionalId !== "todos")
-      return;
-    if (checkOverlap(inicioMin, duracao, bl.inicioMin, bl.duracaoMin)) {
-      conflicts.push(bl);
-    }
-  });
-
-  return conflicts;
-}
-
-// ─── Tipos extras ─────────────────────────────────────────────────────────────
-
-interface BloqueioHorario {
-  id: string;
-  profissionalId: string; // "todos" para todos
-  inicioMin: number;
-  duracaoMin: number;
-  motivo?: string;
-  tipo: "bloqueio";
-}
 
 // ─── DropdownButton ───────────────────────────────────────────────────────────
 
@@ -249,8 +179,8 @@ function DialogNovoAgendamento({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
               Novo Agendamento
@@ -258,7 +188,7 @@ function DialogNovoAgendamento({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -267,37 +197,37 @@ function DialogNovoAgendamento({
 
         <div className="px-6 py-5 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
               Cliente
             </label>
             <Input
               value={cliente}
               onChange={(e) => setCliente(e.target.value)}
               placeholder="Nome do cliente"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Telefone
             </label>
             <Input
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
               placeholder="(81) 99999-0000"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
                 Serviço
               </label>
               <DropdownMenu>
                 <DropdownMenuTrigger className="w-full">
-                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
                     <div className="flex items-center gap-2 truncate">
                       <span
                         className={cn(
@@ -307,15 +237,15 @@ function DialogNovoAgendamento({
                       />
                       <span className="truncate text-sm">{servico.nome}</span>
                     </div>
-                    <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
                   </DropdownButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white w-48">
+                <DropdownMenuContent className="bg-surface-raised border-border text-white w-48">
                   {SERVICOS.map((s) => (
                     <DropdownMenuItem
                       key={s.id}
                       onClick={() => setServicoId(s.id)}
-                      className="text-xs hover:bg-[#21262d] cursor-pointer"
+                      className="text-xs hover:bg-surface-elevated cursor-pointer"
                     >
                       <span
                         className={cn(
@@ -331,22 +261,22 @@ function DialogNovoAgendamento({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
                 Profissional
               </label>
               <DropdownMenu>
                 <DropdownMenuTrigger className="w-full">
-                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
                     <span className="truncate text-sm">{prof.nome}</span>
-                    <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
                   </DropdownButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+                <DropdownMenuContent className="bg-surface-raised border-border text-white">
                   {PROFISSIONAIS.filter((p) => p.ativo).map((p) => (
                     <DropdownMenuItem
                       key={p.id}
                       onClick={() => setProfissionalId(p.id)}
-                      className="text-xs hover:bg-[#21262d] cursor-pointer"
+                      className="text-xs hover:bg-surface-elevated cursor-pointer"
                     >
                       {p.nome}
                     </DropdownMenuItem>
@@ -357,19 +287,19 @@ function DialogNovoAgendamento({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
               Horário
             </label>
             <Input
               type="time"
               value={hora}
               onChange={(e) => setHora(e.target.value)}
-              className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+              className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Origem
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -381,8 +311,8 @@ function DialogNovoAgendamento({
                   className={cn(
                     "h-9 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
                     origem === o
-                      ? "bg-[#f5b82e]/15 border-[#f5b82e]/60 text-[#f5b82e]"
-                      : "border-[#30363d] bg-[#0d1117] text-[#8b949e] hover:border-[#f5b82e]/30",
+                      ? "bg-[#f5b82e]/15 border-[#f5b82e]/60 text-brand"
+                      : "border-border bg-surface-base text-muted-foreground hover:border-[#f5b82e]/30",
                   )}
                 >
                   {o === "recepcao" ? (
@@ -396,24 +326,24 @@ function DialogNovoAgendamento({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-[#0d1117] border border-[#21262d]">
-            <Timer className="size-3.5 text-[#f5b82e]" />
-            <span className="text-xs text-[#8b949e]">Duração estimada:</span>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-surface-base border border-border-subtle">
+            <Timer className="size-3.5 text-brand" />
+            <span className="text-xs text-muted-foreground">Duração estimada:</span>
             <span className="text-xs font-bold text-white">{duracao} min</span>
-            <span className="text-xs text-[#4d5562] ml-auto">
+            <span className="text-xs text-text-subtle ml-auto">
               R$ {servico.preco.toFixed(2).replace(".", ",")}
             </span>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Observação
             </label>
             <Textarea
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
               placeholder="Opcional"
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-[70px]"
+              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 resize-none min-h-[70px]"
             />
           </div>
         </div>
@@ -422,7 +352,7 @@ function DialogNovoAgendamento({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -459,9 +389,9 @@ function DialogDetalhe({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-sm p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-sm p-0 gap-0">
         <div className={cn("h-1 w-full rounded-t-lg", servico.cor)} />
-        <DialogHeader className="px-6 pt-4 pb-4 border-b border-[#21262d]">
+        <DialogHeader className="px-6 pt-4 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className={cn("size-2 rounded-full", servico.cor)} />
@@ -472,7 +402,7 @@ function DialogDetalhe({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -518,7 +448,7 @@ function DialogDetalhe({
             />
           )}
           <div className="pt-1 flex items-center justify-between">
-            <span className="text-xs text-[#8b949e]">Valor do serviço</span>
+            <span className="text-xs text-muted-foreground">Valor do serviço</span>
             <span className="text-sm font-bold text-emerald-400">
               R$ {servico.preco.toFixed(2).replace(".", ",")}
             </span>
@@ -540,7 +470,7 @@ function DialogDetalhe({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
           >
             Fechar
           </button>
@@ -561,9 +491,9 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <span className="text-[#4d5562] mt-0.5 shrink-0">{icon}</span>
+      <span className="text-text-subtle mt-0.5 shrink-0">{icon}</span>
       <div className="flex flex-col min-w-0">
-        <span className="text-[9px] font-bold uppercase tracking-widest text-[#4d5562]">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">
           {label}
         </span>
         <span className="text-sm text-white leading-tight">{value}</span>
@@ -597,14 +527,14 @@ function DialogMudancaDuracao({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-sm p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-sm p-0 gap-0">
         <div
           className={cn(
             "h-1 w-full rounded-t-lg",
             aumentou ? "bg-amber-500" : "bg-emerald-500",
           )}
         />
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#21262d]">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle
@@ -620,14 +550,14 @@ function DialogMudancaDuracao({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
           </div>
         </DialogHeader>
         <div className="px-6 py-5 space-y-4">
-          <p className="text-sm text-[#8b949e] leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Ao transferir{" "}
             <span className="text-white font-semibold">{dados.servico}</span>{" "}
             para{" "}
@@ -650,13 +580,13 @@ function DialogMudancaDuracao({
             .
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#4d5562] mb-1">
+            <div className="bg-surface-base border border-border rounded-lg p-3 text-center">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-text-subtle mb-1">
                 {dados.profAnterior}
               </p>
               <p className="text-xl font-bold text-white">
                 {dados.duracaoAntes}
-                <span className="text-xs text-[#4d5562] ml-0.5">min</span>
+                <span className="text-xs text-text-subtle ml-0.5">min</span>
               </p>
             </div>
             <div
@@ -667,7 +597,7 @@ function DialogMudancaDuracao({
                   : "bg-emerald-500/10 border-emerald-500/30",
               )}
             >
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#4d5562] mb-1">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-text-subtle mb-1">
                 {dados.profNovo}
               </p>
               <p
@@ -681,7 +611,7 @@ function DialogMudancaDuracao({
               </p>
             </div>
           </div>
-          <p className="text-[11px] text-[#4d5562]">
+          <p className="text-[11px] text-text-subtle">
             O card será redimensionado automaticamente.
           </p>
         </div>
@@ -689,7 +619,7 @@ function DialogMudancaDuracao({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -733,9 +663,9 @@ function DialogConflito({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
         <div className="h-1 w-full rounded-t-lg bg-red-500" />
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#21262d]">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-red-400" />
@@ -746,7 +676,7 @@ function DialogConflito({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -754,7 +684,7 @@ function DialogConflito({
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4">
-          <p className="text-sm text-[#8b949e]">
+          <p className="text-sm text-muted-foreground">
             O agendamento abaixo conflita com{" "}
             <span className="text-white font-semibold">
               {dados.conflitantes.length} agendamento
@@ -766,7 +696,7 @@ function DialogConflito({
 
           {/* Card movendo */}
           <div className="rounded-lg border border-[#f5b82e]/40 bg-[#f5b82e]/5 p-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[#f5b82e] mb-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-brand mb-2">
               Movendo
             </p>
             <div className="flex items-center gap-2">
@@ -776,12 +706,12 @@ function DialogConflito({
               <span className="text-sm font-semibold text-white">
                 {dados.agMovendo.cliente}
               </span>
-              <span className="text-xs text-[#8b949e] ml-auto">
+              <span className="text-xs text-muted-foreground ml-auto">
                 {minToTime(dados.novoInicio)} –{" "}
                 {minToTime(dados.novoInicio + durMovendo)}
               </span>
             </div>
-            <p className="text-xs text-[#4d5562] mt-1">
+            <p className="text-xs text-text-subtle mt-1">
               {servMovendo.nome} · {durMovendo}min
             </p>
           </div>
@@ -806,11 +736,11 @@ function DialogConflito({
                     <span className="text-sm font-semibold text-white">
                       {c.cliente}
                     </span>
-                    <span className="text-xs text-[#8b949e] ml-auto">
+                    <span className="text-xs text-muted-foreground ml-auto">
                       {minToTime(c.inicioMin)} – {minToTime(c.inicioMin + d)}
                     </span>
                   </div>
-                  <p className="text-xs text-[#4d5562] mt-1">
+                  <p className="text-xs text-text-subtle mt-1">
                     {s.nome} · {d}min
                   </p>
                 </div>
@@ -830,7 +760,7 @@ function DialogConflito({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -879,11 +809,11 @@ function DialogNovaComanda({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Receipt className="size-4 text-[#f5b82e]" />
+              <Receipt className="size-4 text-brand" />
               <DialogTitle className="text-base font-bold">
                 Nova Comanda
               </DialogTitle>
@@ -891,18 +821,18 @@ function DialogNovaComanda({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
           </div>
         </DialogHeader>
         <div className="px-6 py-5 space-y-3 max-h-80 overflow-y-auto">
-          <p className="text-xs text-[#8b949e]">
+          <p className="text-xs text-muted-foreground">
             Selecione o agendamento para criar uma comanda:
           </p>
           {agendamentos.length === 0 && (
-            <p className="text-sm text-[#4d5562] text-center py-4">
+            <p className="text-sm text-text-subtle text-center py-4">
               Nenhum agendamento disponível.
             </p>
           )}
@@ -919,7 +849,7 @@ function DialogNovaComanda({
                   "w-full text-left rounded-lg border p-3 transition-colors",
                   agSelecionadoId === ag.id
                     ? "border-[#f5b82e]/60 bg-[#f5b82e]/10"
-                    : "border-[#30363d] bg-[#0d1117] hover:border-[#f5b82e]/30",
+                    : "border-border bg-surface-base hover:border-[#f5b82e]/30",
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -932,11 +862,11 @@ function DialogNovaComanda({
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-[#8b949e]">{s.nome}</span>
-                  <span className="text-[10px] text-[#4d5562]">·</span>
-                  <span className="text-xs text-[#8b949e]">{p.nome}</span>
-                  <span className="text-[10px] text-[#4d5562]">·</span>
-                  <span className="text-xs text-[#8b949e]">
+                  <span className="text-xs text-muted-foreground">{s.nome}</span>
+                  <span className="text-[10px] text-text-subtle">·</span>
+                  <span className="text-xs text-muted-foreground">{p.nome}</span>
+                  <span className="text-[10px] text-text-subtle">·</span>
+                  <span className="text-xs text-muted-foreground">
                     {minToTime(ag.inicioMin)} ({d}min)
                   </span>
                 </div>
@@ -944,11 +874,11 @@ function DialogNovaComanda({
             );
           })}
         </div>
-        <div className="px-6 pb-6 flex justify-end gap-3 border-t border-[#21262d] pt-4">
+        <div className="px-6 pb-6 flex justify-end gap-3 border-t border-border-subtle pt-4">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -991,27 +921,27 @@ function ResumoDia({ agendamentos }: { agendamentos: Agendamento[] }) {
     : "—";
 
   return (
-    <div className="flex items-center gap-3 px-4 md:px-6 py-2.5 border-b border-[#1c2128] shrink-0 overflow-x-auto">
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-[#161b22] border border-[#21262d]">
-        <Users className="size-3.5 text-[#f5b82e]" />
-        <span className="text-[10px] text-[#8b949e]">Atendimentos</span>
+    <div className="flex items-center gap-3 px-4 md:px-6 py-2.5 border-b border-border-subtle shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
+        <Users className="size-3.5 text-brand" />
+        <span className="text-[10px] text-muted-foreground">Atendimentos</span>
         <span className="text-sm font-bold text-white">{total}</span>
       </div>
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-[#161b22] border border-[#21262d]">
+      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
         <DollarSign className="size-3.5 text-emerald-400" />
-        <span className="text-[10px] text-[#8b949e]">Faturamento</span>
+        <span className="text-[10px] text-muted-foreground">Faturamento</span>
         <span className="text-sm font-bold text-emerald-400">
           R$ {faturamento.toFixed(2).replace(".", ",")}
         </span>
       </div>
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-[#161b22] border border-[#21262d]">
+      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
         <TrendingUp className="size-3.5 text-blue-400" />
-        <span className="text-[10px] text-[#8b949e]">Mais realizado</span>
+        <span className="text-[10px] text-muted-foreground">Mais realizado</span>
         <span className="text-sm font-bold text-white truncate max-w-[120px]">
           {topServicoNome}
         </span>
         {topServico && (
-          <span className="text-[10px] text-[#4d5562]">({topServico[1]}x)</span>
+          <span className="text-[10px] text-text-subtle">({topServico[1]}x)</span>
         )}
       </div>
     </div>
@@ -1051,31 +981,31 @@ function ModoLista({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Filtros */}
-      <div className="flex items-center gap-2 px-4 md:px-6 py-3 border-b border-[#21262d] shrink-0 flex-wrap">
+      <div className="flex items-center gap-2 px-4 md:px-6 py-3 border-b border-border-subtle shrink-0 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-[160px]">
-          <Search className="size-3.5 text-[#4d5562] shrink-0" />
+          <Search className="size-3.5 text-text-subtle shrink-0" />
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar cliente..."
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-[#4d5562] outline-none min-w-0"
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-text-subtle outline-none min-w-0"
           />
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <DropdownButton className="h-8 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-xs text-white flex items-center gap-1.5 cursor-pointer">
-              <Scissors className="size-3 text-[#8b949e]" />
+            <DropdownButton className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs text-white flex items-center gap-1.5 cursor-pointer">
+              <Scissors className="size-3 text-muted-foreground" />
               {filtroServico === "todos"
                 ? "Todos serviços"
                 : SERVICOS.find((s) => s.id === filtroServico)?.nome}
-              <ChevronDown className="size-3 text-[#8b949e]" />
+              <ChevronDown className="size-3 text-muted-foreground" />
             </DropdownButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+          <DropdownMenuContent className="bg-surface-raised border-border text-white">
             <DropdownMenuItem
               onClick={() => setFiltroServico("todos")}
-              className="text-xs hover:bg-[#21262d]"
+              className="text-xs hover:bg-surface-elevated"
             >
               Todos
             </DropdownMenuItem>
@@ -1083,7 +1013,7 @@ function ModoLista({
               <DropdownMenuItem
                 key={s.id}
                 onClick={() => setFiltroServico(s.id)}
-                className="text-xs hover:bg-[#21262d]"
+                className="text-xs hover:bg-surface-elevated"
               >
                 <span className={cn("size-2 rounded-full mr-2", s.cor)} />
                 {s.nome}
@@ -1094,18 +1024,18 @@ function ModoLista({
 
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <DropdownButton className="h-8 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-xs text-white flex items-center gap-1.5 cursor-pointer">
-              <User className="size-3 text-[#8b949e]" />
+            <DropdownButton className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs text-white flex items-center gap-1.5 cursor-pointer">
+              <User className="size-3 text-muted-foreground" />
               {filtroProf === "todos"
                 ? "Todos prof."
                 : PROFISSIONAIS.find((p) => p.id === filtroProf)?.nome}
-              <ChevronDown className="size-3 text-[#8b949e]" />
+              <ChevronDown className="size-3 text-muted-foreground" />
             </DropdownButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+          <DropdownMenuContent className="bg-surface-raised border-border text-white">
             <DropdownMenuItem
               onClick={() => setFiltroProf("todos")}
-              className="text-xs hover:bg-[#21262d]"
+              className="text-xs hover:bg-surface-elevated"
             >
               Todos
             </DropdownMenuItem>
@@ -1113,7 +1043,7 @@ function ModoLista({
               <DropdownMenuItem
                 key={p.id}
                 onClick={() => setFiltroProf(p.id)}
-                className="text-xs hover:bg-[#21262d]"
+                className="text-xs hover:bg-surface-elevated"
               >
                 {p.nome}
               </DropdownMenuItem>
@@ -1123,38 +1053,38 @@ function ModoLista({
 
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <DropdownButton className="h-8 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-xs text-white flex items-center gap-1.5 cursor-pointer">
+            <DropdownButton className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs text-white flex items-center gap-1.5 cursor-pointer">
               {filtroOrigem === "todos"
                 ? "Todas origens"
                 : filtroOrigem === "online"
                   ? "Online"
                   : "Recepção"}
-              <ChevronDown className="size-3 text-[#8b949e]" />
+              <ChevronDown className="size-3 text-muted-foreground" />
             </DropdownButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+          <DropdownMenuContent className="bg-surface-raised border-border text-white">
             <DropdownMenuItem
               onClick={() => setFiltroOrigem("todos")}
-              className="text-xs hover:bg-[#21262d]"
+              className="text-xs hover:bg-surface-elevated"
             >
               Todas
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setFiltroOrigem("recepcao")}
-              className="text-xs hover:bg-[#21262d]"
+              className="text-xs hover:bg-surface-elevated"
             >
               Recepção
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setFiltroOrigem("online")}
-              className="text-xs hover:bg-[#21262d]"
+              className="text-xs hover:bg-surface-elevated"
             >
               Online
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <span className="text-[11px] text-[#4d5562] ml-auto shrink-0">
+        <span className="text-[11px] text-text-subtle ml-auto shrink-0">
           {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -1162,7 +1092,7 @@ function ModoLista({
       {/* Tabela */}
       <div className="flex-1 overflow-auto schedule-scroll px-4 md:px-6 py-4">
         {filtrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#4d5562]">
+          <div className="flex flex-col items-center justify-center py-20 text-text-subtle">
             <Filter className="size-8 mb-3 opacity-40" />
             <p className="text-sm">Nenhum agendamento encontrado.</p>
           </div>
@@ -1179,7 +1109,7 @@ function ModoLista({
                   key={ag.id}
                   type="button"
                   onClick={() => onCardClick(ag)}
-                  className="w-full text-left rounded-lg border border-[#21262d] bg-[#161b22] hover:border-[#30363d] hover:bg-[#1c2128] transition-colors p-3 flex items-center gap-3"
+                  className="w-full text-left rounded-lg border border-border-subtle bg-surface-raised hover:border-border hover:bg-surface-elevated transition-colors p-3 flex items-center gap-3"
                 >
                   <div
                     className={cn(
@@ -1193,7 +1123,7 @@ function ModoLista({
                         {ag.cliente}
                       </p>
                       {ag.telefone && (
-                        <p className="text-xs text-[#4d5562] truncate">
+                        <p className="text-xs text-text-subtle truncate">
                           {ag.telefone}
                         </p>
                       )}
@@ -1206,13 +1136,13 @@ function ModoLista({
                             s.cor,
                           )}
                         />
-                        <p className="text-xs text-[#8b949e] truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {s.nome}
                         </p>
                       </div>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs text-[#8b949e] truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {p.nome}
                       </p>
                     </div>
@@ -1220,11 +1150,11 @@ function ModoLista({
                       <span className="text-xs text-white font-mono">
                         {minToTime(ag.inicioMin)}
                       </span>
-                      <span className="text-[10px] text-[#4d5562]">{d}min</span>
+                      <span className="text-[10px] text-text-subtle">{d}min</span>
                       {ag.origem === "online" ? (
-                        <Wifi className="size-3 text-[#4d5562]" />
+                        <Wifi className="size-3 text-text-subtle" />
                       ) : (
-                        <UserCheck className="size-3 text-[#4d5562]" />
+                        <UserCheck className="size-3 text-text-subtle" />
                       )}
                     </div>
                   </div>
@@ -1286,11 +1216,11 @@ function AgendamentoCard({
             <span
               className={cn("size-1.5 rounded-full shrink-0", servico.cor)}
             />
-            <span className="text-[9px] font-bold text-[#8b949e] uppercase tracking-wide truncate">
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide truncate">
               {servico.nome}
             </span>
             {agendamento.origem === "online" && (
-              <Wifi className="size-2.5 text-[#4d5562] ml-auto shrink-0" />
+              <Wifi className="size-2.5 text-text-subtle ml-auto shrink-0" />
             )}
           </div>
           {heightPx >= 38 && (
@@ -1301,8 +1231,8 @@ function AgendamentoCard({
         </div>
         {heightPx >= 54 && (
           <div className="flex items-center gap-1">
-            <Clock className="size-2.5 text-[#4d5562] shrink-0" />
-            <span className="text-[9px] text-[#4d5562]">
+            <Clock className="size-2.5 text-text-subtle shrink-0" />
+            <span className="text-[9px] text-text-subtle">
               {minToTime(agendamento.inicioMin)} · {duracao}min
             </span>
           </div>
@@ -1317,7 +1247,7 @@ function AgendamentoCard({
           }}
           className="absolute bottom-0 left-0 right-0 h-3 flex items-center justify-center cursor-s-resize group"
         >
-          <GripVertical className="size-2.5 text-[#4d5562] group-hover:text-[#8b949e] rotate-90 transition-colors" />
+          <GripVertical className="size-2.5 text-text-subtle group-hover:text-muted-foreground rotate-90 transition-colors" />
         </div>
       )}
     </div>
@@ -1333,8 +1263,6 @@ function DraggableAgendamento({
   activeId,
   onCardClick,
   onResizeEnd,
-  allAgendamentos,
-  bloqueios,
 }: {
   agendamento: Agendamento;
   slotSize: SlotSize;
@@ -1342,8 +1270,6 @@ function DraggableAgendamento({
   activeId: string | null;
   onCardClick: (ag: Agendamento) => void;
   onResizeEnd: (id: string, novaDuracao: number) => void;
-  allAgendamentos: Agendamento[];
-  bloqueios: BloqueioHorario[];
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: agendamento.id,
@@ -1504,9 +1430,9 @@ function ProfissionalColuna({
   activeId,
   onCardClick,
   onResizeEnd,
-  allAgendamentos,
   bloqueios,
   onDeleteBloqueio,
+  onCriarBloqueio,
   modoBloquear,
   onSlotClick,
 }: {
@@ -1518,9 +1444,9 @@ function ProfissionalColuna({
   activeId: string | null;
   onCardClick: (ag: Agendamento) => void;
   onResizeEnd: (id: string, novaDuracao: number) => void;
-  allAgendamentos: Agendamento[];
   bloqueios: BloqueioHorario[];
   onDeleteBloqueio: (id: string) => void;
+  onCriarBloqueio: (profId: string, inicio: number, dur: number) => void;
   modoBloquear: boolean;
   onSlotClick: (profId: string, inicioMin: number) => void;
 }) {
@@ -1566,10 +1492,7 @@ function ProfissionalColuna({
   );
 
   const handleGridPointerUp = useCallback(
-    (
-      e: React.PointerEvent<HTMLDivElement>,
-      onCreated: (inicio: number, dur: number) => void,
-    ) => {
+    (onCreated: (inicio: number, dur: number) => void) => {
       if (!modoBloquear || bloqueioStart.current === null || !bloqueioPreview)
         return;
       const dur = bloqueioPreview.fim - bloqueioPreview.inicio;
@@ -1586,16 +1509,16 @@ function ProfissionalColuna({
 
   return (
     <div className="flex flex-col min-w-[180px] flex-1">
-      <div className="sticky top-0 z-20 bg-[#0d1117] border-b border-[#21262d] px-3 py-3 flex flex-col items-center gap-1.5">
+      <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle px-3 py-3 flex flex-col items-center gap-1.5">
         <div className="size-9 rounded-full bg-[#f5b82e]/15 border border-[#f5b82e]/30 flex items-center justify-center">
-          <span className="text-xs font-bold text-[#f5b82e]">
+          <span className="text-xs font-bold text-brand">
             {profissional.avatar}
           </span>
         </div>
         <span className="text-[11px] font-bold text-white">
           {profissional.nome}
         </span>
-        <Badge className="bg-[#21262d] text-[#8b949e] border-none text-[9px] px-1.5 py-0">
+        <Badge className="bg-surface-elevated text-muted-foreground border-none text-[9px] px-1.5 py-0">
           {agendamentos.length} agend.
         </Badge>
       </div>
@@ -1609,9 +1532,9 @@ function ProfissionalColuna({
         style={{ height: totalSlots * slotHeightPx }}
         onPointerDown={handleGridPointerDown}
         onPointerMove={handleGridPointerMove}
-        onPointerUp={(e) =>
-          handleGridPointerUp(e, (inicio, dur) => {
-            onCreated(profissional.id, inicio, dur);
+        onPointerUp={() =>
+          handleGridPointerUp((inicio, dur) => {
+            onCriarBloqueio(profissional.id, inicio, dur);
           })
         }
         onClick={(e) => {
@@ -1636,7 +1559,7 @@ function ProfissionalColuna({
               key={i}
               className={cn(
                 "slot-row absolute left-0 right-0 border-t hover:bg-[#f5b82e]/3 transition-colors",
-                min % 60 === 0 ? "border-[#30363d]" : "border-[#1c2128]",
+                min % 60 === 0 ? "border-border" : "border-border-subtle",
               )}
               style={{ top: i * slotHeightPx, height: slotHeightPx }}
             />
@@ -1682,17 +1605,12 @@ function ProfissionalColuna({
             activeId={activeId}
             onCardClick={onCardClick}
             onResizeEnd={onResizeEnd}
-            allAgendamentos={allAgendamentos}
-            bloqueios={bloqueios}
           />
         ))}
       </div>
     </div>
   );
 }
-
-// Placeholder para a função onCreated usada no handler acima
-function onCreated(_profId: string, _inicio: number, _dur: number) {}
 
 // ─── TimeLine ─────────────────────────────────────────────────────────────────
 
@@ -1707,7 +1625,7 @@ function TimeLine({
 }) {
   return (
     <div className="flex flex-col w-14 shrink-0">
-      <div className="sticky top-0 z-20 bg-[#0d1117] border-b border-[#21262d] h-[92px]" />
+      <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle h-[92px]" />
       <div className="relative" style={{ height: totalSlots * slotHeightPx }}>
         {Array.from({ length: totalSlots }).map((_, i) => {
           const min = START_HOUR * 60 + i * slotSize;
@@ -1718,7 +1636,7 @@ function TimeLine({
               style={{ top: i * slotHeightPx - 7 }}
             >
               {min % 60 === 0 && (
-                <span className="text-[9px] text-[#4d5562] font-mono">
+                <span className="text-[9px] text-text-subtle font-mono">
                   {minToTime(min)}
                 </span>
               )}
@@ -1738,7 +1656,7 @@ export default function SchedulePage() {
   const [bloqueios, setBloqueios] = useState<BloqueioHorario[]>([]);
   const [slotSize, setSlotSize] = useState<SlotSize>(10);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>("kanban");
   const [filtroProf, setFiltroProf] = useState<string>("todos");
   const [filialId, setFilialId] = useState<string>(FILIAIS[0].id);
   const [modoBloquear, setModoBloquear] = useState(false);
@@ -1748,14 +1666,25 @@ export default function SchedulePage() {
   const [dialogDetalhe, setDialogDetalhe] = useState(false);
   const [agSelecionado, setAgSelecionado] = useState<Agendamento | null>(null);
   const [dialogDuracao, setDialogDuracao] = useState(false);
-  const [dadosDuracao, setDadosDuracao] = useState<any>(null);
+  const [dadosDuracao, setDadosDuracao] = useState<{
+    profAnterior: string;
+    profNovo: string;
+    duracaoAntes: number;
+    duracaoDepois: number;
+    servico: string;
+  } | null>(null);
   const [transferenciaPendente, setTransferenciaPendente] = useState<{
     agId: string;
     novoProfId: string;
     novoInicio: number;
   } | null>(null);
   const [dialogConflito, setDialogConflito] = useState(false);
-  const [dadosConflito, setDadosConflito] = useState<any>(null);
+  const [dadosConflito, setDadosConflito] = useState<{
+    agMovendo: Agendamento;
+    conflitantes: Agendamento[];
+    novoInicio: number;
+    novoProfId: string;
+  } | null>(null);
   const [conflitoPendente, setConflitoPendente] = useState<{
     agId: string;
     novoProfId: string;
@@ -1773,15 +1702,10 @@ export default function SchedulePage() {
   const [nowTopPx, setNowTopPx] = useState<number | null>(null);
 
   useEffect(() => {
-    const calcNow = () => {
-      const now = new Date();
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      if (nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60) {
-        setNowTopPx(((nowMin - START_HOUR * 60) / slotSize) * SLOT_HEIGHT_PX);
-      } else setNowTopPx(null);
-    };
-    calcNow();
-    const iv = setInterval(calcNow, 60_000);
+    const update = () =>
+      setNowTopPx(calcNowTopPx(slotSize, SLOT_HEIGHT_PX, END_HOUR));
+    update();
+    const iv = setInterval(update, 60_000);
     return () => clearInterval(iv);
   }, [slotSize, SLOT_HEIGHT_PX]);
 
@@ -1852,11 +1776,11 @@ export default function SchedulePage() {
         bloqueios,
       );
       const agConflitos = conflicts.filter(
-        (c) => (c as any).tipo !== "bloqueio",
-      ) as Agendamento[];
+        (c): c is Agendamento => !("tipo" in c) || c.tipo !== "bloqueio",
+      );
       const bloqueioConflitos = conflicts.filter(
-        (c) => (c as any).tipo === "bloqueio",
-      ) as BloqueioHorario[];
+        (c): c is BloqueioHorario => "tipo" in c && c.tipo === "bloqueio",
+      );
 
       if (bloqueioConflitos.length > 0) {
         toast.error("Horário bloqueado! Não é possível agendar neste período.");
@@ -1950,7 +1874,10 @@ export default function SchedulePage() {
 
   const handleNovoAgendamento = useCallback(
     (dados: Omit<Agendamento, "id">) => {
-      setAgendamentos((prev) => [...prev, { ...dados, id: gerarId() }]);
+      setAgendamentos((prev) => [
+        ...prev,
+        { ...dados, id: gerarAgendamentoId() },
+      ]);
       toast.success(`Agendado: ${dados.cliente}`);
     },
     [],
@@ -1978,8 +1905,8 @@ export default function SchedulePage() {
         bloqueios,
       );
       const agConflitos = conflicts.filter(
-        (c) => (c as any).tipo !== "bloqueio",
-      ) as Agendamento[];
+        (c): c is Agendamento => !("tipo" in c) || c.tipo !== "bloqueio",
+      );
       if (agConflitos.length > 0) {
         toast.error(
           "Não foi possível redimensionar: conflito com outro agendamento.",
@@ -1989,10 +1916,13 @@ export default function SchedulePage() {
       setAgendamentos((prev) =>
         prev.map((a) => {
           if (a.id !== id) return a;
-          const prof = PROFISSIONAIS.find((p) => p.id === a.profissionalId)!;
-          // Sobrescreve o tempo do profissional para esse serviço (mutação local)
-          // Em produção, teria campo customDuracao no Agendamento
-          return { ...a, _customDuracao: novaDuracao } as any;
+          // Sobrescreve a duração calculada localmente (em produção, ficaria
+          // num campo customDuracao do agendamento persistido).
+          const updated: AgendamentoComCustom = {
+            ...a,
+            _customDuracao: novaDuracao,
+          };
+          return updated;
         }),
       );
       toast.success("Duração ajustada.");
@@ -2047,51 +1977,51 @@ export default function SchedulePage() {
         .schedule-scroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
       `}</style>
 
-      <div className="flex flex-col h-screen bg-[#111418] text-white overflow-hidden">
+      <div className="flex flex-col h-screen bg-surface-base text-white overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[#21262d] shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               Agendamentos
             </h1>
-            <p className="text-[#8b949e] text-sm mt-0.5">{dataCapitalizada}</p>
+            <p className="text-muted-foreground text-sm mt-0.5">{dataCapitalizada}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filial */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <DropdownButton className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                  <Building2 className="size-3.5 text-[#8b949e]" />
+                <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                  <Building2 className="size-3.5 text-muted-foreground" />
                   <span className="max-w-[120px] truncate text-sm">
                     {filialAtual.nome}
                   </span>
-                  <ChevronDown className="size-3.5 text-[#8b949e]" />
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+              <DropdownMenuContent className="bg-surface-raised border-border text-white">
                 {FILIAIS.map((f) => (
                   <DropdownMenuItem
                     key={f.id}
                     onClick={() => setFilialId(f.id)}
                     className={cn(
-                      "text-xs hover:bg-[#21262d] cursor-pointer",
-                      filialId === f.id && "text-[#f5b82e]",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      filialId === f.id && "text-brand",
                     )}
                   >
                     <Building2 className="size-3 mr-2" />
                     {f.nome}
-                    <span className="text-[#4d5562] ml-1">· {f.cidade}</span>
+                    <span className="text-text-subtle ml-1">· {f.cidade}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
 
             {/* Navegação de data */}
-            <div className="flex items-center bg-[#161b22] border border-[#30363d] rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
+            <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
               <button
                 type="button"
-                className="h-9 px-2.5 text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                className="h-9 px-2.5 text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
               >
                 <ChevronLeft className="size-4" />
               </button>
@@ -2100,22 +2030,22 @@ export default function SchedulePage() {
               </span>
               <button
                 type="button"
-                className="h-9 px-2.5 text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                className="h-9 px-2.5 text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
               >
                 <ChevronRight className="size-4" />
               </button>
             </div>
 
             {/* View toggle */}
-            <div className="flex items-center bg-[#161b22] border border-[#30363d] rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
+            <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
               <button
                 type="button"
                 onClick={() => setViewMode("kanban")}
                 className={cn(
                   "h-9 px-3 flex items-center gap-1.5 text-xs transition-colors",
                   viewMode === "kanban"
-                    ? "bg-[#21262d] text-white"
-                    : "text-[#8b949e] hover:text-white hover:bg-[#1c2128]",
+                    ? "bg-surface-elevated text-white"
+                    : "text-muted-foreground hover:text-white hover:bg-surface-elevated",
                 )}
               >
                 <LayoutGrid className="size-3.5" />
@@ -2127,8 +2057,8 @@ export default function SchedulePage() {
                 className={cn(
                   "h-9 px-3 flex items-center gap-1.5 text-xs transition-colors",
                   viewMode === "lista"
-                    ? "bg-[#21262d] text-white"
-                    : "text-[#8b949e] hover:text-white hover:bg-[#1c2128]",
+                    ? "bg-surface-elevated text-white"
+                    : "text-muted-foreground hover:text-white hover:bg-surface-elevated",
                 )}
               >
                 <LayoutList className="size-3.5" />
@@ -2139,22 +2069,22 @@ export default function SchedulePage() {
             {/* Filtro profissional */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <DropdownButton className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                  <User className="size-3.5 text-[#8b949e]" />
+                <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                  <User className="size-3.5 text-muted-foreground" />
                   <span className="max-w-[90px] truncate text-xs">
                     {filtroProf === "todos"
                       ? "Todos"
                       : PROFISSIONAIS.find((p) => p.id === filtroProf)?.nome}
                   </span>
-                  <ChevronDown className="size-3.5 text-[#8b949e]" />
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+              <DropdownMenuContent className="bg-surface-raised border-border text-white">
                 <DropdownMenuItem
                   onClick={() => setFiltroProf("todos")}
                   className={cn(
-                    "text-xs hover:bg-[#21262d] cursor-pointer",
-                    filtroProf === "todos" && "text-[#f5b82e]",
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroProf === "todos" && "text-brand",
                   )}
                 >
                   Todos os profissionais
@@ -2164,8 +2094,8 @@ export default function SchedulePage() {
                     key={p.id}
                     onClick={() => setFiltroProf(p.id)}
                     className={cn(
-                      "text-xs hover:bg-[#21262d] cursor-pointer",
-                      filtroProf === p.id && "text-[#f5b82e]",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      filtroProf === p.id && "text-brand",
                     )}
                   >
                     {p.avatar} {p.nome}
@@ -2177,20 +2107,20 @@ export default function SchedulePage() {
             {/* Slot size */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <DropdownButton className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                  <Settings2 className="size-3.5 text-[#8b949e]" />
+                <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                  <Settings2 className="size-3.5 text-muted-foreground" />
                   {slotSize}min
-                  <ChevronDown className="size-3.5 text-[#8b949e]" />
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+              <DropdownMenuContent className="bg-surface-raised border-border text-white">
                 {SLOT_OPTIONS.map((s) => (
                   <DropdownMenuItem
                     key={s}
                     onClick={() => setSlotSize(s)}
                     className={cn(
-                      "text-xs hover:bg-[#21262d] cursor-pointer",
-                      slotSize === s && "text-[#f5b82e]",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      slotSize === s && "text-brand",
                     )}
                   >
                     {s} minutos {slotSize === s && "✓"}
@@ -2211,7 +2141,7 @@ export default function SchedulePage() {
                 "h-9 px-3 rounded-md border text-sm font-semibold flex items-center gap-1.5 transition-colors",
                 modoBloquear
                   ? "border-red-500/60 bg-red-500/15 text-red-400"
-                  : "border-[#30363d] bg-[#161b22] text-[#8b949e] hover:text-white hover:border-red-500/40",
+                  : "border-border bg-surface-raised text-muted-foreground hover:text-white hover:border-red-500/40",
               )}
             >
               <Ban className="size-3.5" />
@@ -2222,9 +2152,9 @@ export default function SchedulePage() {
             <button
               type="button"
               onClick={() => setDialogComanda(true)}
-              className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white hover:border-[#f5b82e]/40 transition-colors flex items-center gap-1.5"
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white hover:border-[#f5b82e]/40 transition-colors flex items-center gap-1.5"
             >
-              <Receipt className="size-3.5 text-[#8b949e]" />
+              <Receipt className="size-3.5 text-muted-foreground" />
               Comanda
             </button>
 
@@ -2249,15 +2179,15 @@ export default function SchedulePage() {
 
         {/* ── Legenda ── */}
         {viewMode === "kanban" && (
-          <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-[#1c2128] shrink-0 overflow-x-auto schedule-scroll">
+          <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-border-subtle shrink-0 overflow-x-auto schedule-scroll">
             {SERVICOS.map((s) => (
               <div key={s.id} className="flex items-center gap-1.5 shrink-0">
                 <span className={cn("size-2 rounded-full", s.cor)} />
-                <span className="text-[10px] text-[#8b949e]">{s.nome}</span>
-                <span className="text-[9px] text-[#4d5562]">R$ {s.preco}</span>
+                <span className="text-[10px] text-muted-foreground">{s.nome}</span>
+                <span className="text-[9px] text-text-subtle">R$ {s.preco}</span>
               </div>
             ))}
-            <div className="ml-auto text-[9px] text-[#4d5562] flex items-center gap-1 shrink-0">
+            <div className="ml-auto text-[9px] text-text-subtle flex items-center gap-1 shrink-0">
               {modoBloquear ? (
                 <span className="text-red-400 font-semibold animate-pulse">
                   🔴 Modo bloqueio ativo — clique e arraste para bloquear
@@ -2288,7 +2218,7 @@ export default function SchedulePage() {
                   slotHeightPx={SLOT_HEIGHT_PX}
                   totalSlots={totalSlots}
                 />
-                <div className="w-px bg-[#21262d] shrink-0" />
+                <div className="w-px bg-surface-elevated shrink-0" />
                 <div className="flex flex-1 divide-x divide-[#1c2128]">
                   {profissionaisAtivos.map((prof) => (
                     <div
@@ -2313,9 +2243,9 @@ export default function SchedulePage() {
                         activeId={activeId}
                         onCardClick={handleCardClick}
                         onResizeEnd={handleResizeEnd}
-                        allAgendamentos={agendamentos}
                         bloqueios={bloqueios}
                         onDeleteBloqueio={handleDeleteBloqueio}
+                        onCriarBloqueio={handleCriarBloqueio}
                         modoBloquear={modoBloquear}
                         onSlotClick={handleSlotClick}
                       />

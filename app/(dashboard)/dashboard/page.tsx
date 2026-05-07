@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -19,97 +18,105 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader, SummaryCard } from "@/components/shared";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6 p-6 bg-[#0d1117] min-h-screen text-white">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-[#8b949e] text-sm mt-1">
-            Visão geral do seu negócio
-          </p>
-        </div>
+    <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Visão geral do seu negócio"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9"
+            >
+              Todas filiais{" "}
+              <ChevronDown className="ml-2 size-4 text-muted-foreground" />
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9"
+            >
+              30 dias{" "}
+              <ChevronDown className="ml-2 size-4 text-muted-foreground" />
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="bg-[#161b22] border-[#30363d] text-white hover:bg-[#21262d] h-9"
-          >
-            Todas filiais <ChevronDown className="ml-2 size-4 text-[#8b949e]" />
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-[#161b22] border-[#30363d] text-white hover:bg-[#21262d] h-9"
-          >
-            30 dias <ChevronDown className="ml-2 size-4 text-[#8b949e]" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Grid de Cards Principais - 5 Colunas */}
+      {/* Grid de Cards Principais — 5 colunas */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard
-          title="PROFISSIONAIS"
+        <SummaryCard
+          label="Profissionais"
           value="1"
           icon={<Users className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="CLIENTES TOTAIS"
+        <SummaryCard
+          label="Clientes Totais"
           value="0"
           icon={<UserPlus className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="COMANDAS ABERTAS"
+        <SummaryCard
+          label="Comandas Abertas"
           value="0"
           icon={<ClipboardList className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="AGENDA HOJE"
+        <SummaryCard
+          label="Agenda Hoje"
           value="0"
           icon={<Calendar className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="TAXA OCUPAÇÃO"
+        <SummaryCard
+          label="Taxa Ocupação"
           value="0%"
           icon={<Target className="size-4" />}
+          tone="brand"
         />
-
-        <StatCard
-          title="AGENDAMENTOS"
+        <SummaryCard
+          label="Agendamentos"
           value="0"
           subtitle="0 online"
-          subtitleColor="text-emerald-500"
+          subtitleTone="success"
           icon={<Calendar className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="VIA RECEPÇÃO"
+        <SummaryCard
+          label="Via Recepção"
           value="0"
           icon={<Users className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="VIA ONLINE"
+        <SummaryCard
+          label="Via Online"
           value="0"
           icon={<Monitor className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="ANIVERSARIANTES"
+        <SummaryCard
+          label="Aniversariantes"
           value="0"
           icon={<Cake className="size-4" />}
+          tone="brand"
         />
-        <StatCard
-          title="ESTOQUE BAIXO"
+        <SummaryCard
+          label="Estoque Baixo"
           value="0"
           icon={<AlertTriangle className="size-4" />}
+          tone="brand"
         />
-
-        <StatCard
-          title="VENDAS (MÊS)"
+        <SummaryCard
+          label="Vendas (Mês)"
           value="0"
           subtitle="R$ 0,00"
-          subtitleColor="text-red-500"
+          subtitleTone="danger"
           icon={<Wallet className="size-4" />}
+          tone="brand"
         />
       </div>
 
@@ -117,212 +124,172 @@ export default function DashboardPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[#f5b82e] text-xl font-bold">$</span>
+            <span className="text-brand text-xl font-bold">$</span>
             <h2 className="text-xs font-bold uppercase tracking-widest">
               Resumo Financeiro
             </h2>
           </div>
           <Button
             variant="link"
-            className="text-[#f5b82e] text-xs gap-1 p-0 h-auto font-medium"
+            className="text-brand text-xs gap-1 p-0 h-auto font-medium"
           >
             Ver tudo <ArrowUpRight className="size-3" />
           </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <FinanceCard
-            title="Faturado"
+          <SummaryCard label="Faturado" value="R$ 0,00" />
+          <SummaryCard
+            label="Recebido"
             value="R$ 0,00"
-            bgColor="bg-[#161b22]"
-            textColor="text-white"
+            tone="success"
+            emphasized
           />
-          <FinanceCard
-            title="Recebido"
+          <SummaryCard
+            label="A Receber"
             value="R$ 0,00"
-            bgColor="bg-[#062016]"
-            textColor="text-emerald-500"
+            tone="warning"
+            emphasized
           />
-          <FinanceCard
-            title="A Receber"
+          <SummaryCard
+            label="Contas a Pagar"
             value="R$ 0,00"
-            bgColor="bg-[#241a06]"
-            textColor="text-[#f5b82e]"
+            tone="danger"
+            emphasized
           />
-          <FinanceCard
-            title="Contas a Pagar"
+          <SummaryCard
+            label="Saldo Atual"
             value="R$ 0,00"
-            bgColor="bg-[#20060a]"
-            textColor="text-red-500"
-          />
-          <FinanceCard
-            title="Saldo Atual"
-            value="R$ 0,00"
-            bgColor="bg-[#241a06]"
-            textColor="text-[#f5b82e]"
+            tone="warning"
+            emphasized
           />
         </div>
       </div>
 
-      {/* Seção Inferior: Assinaturas e Agenda */}
+      {/* Seção Inferior: Assinaturas, Agenda, Ranking, Estoque */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Assinaturas */}
-        <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader className="flex flex-row items-center justify-between py-4">
-            <div className="flex items-center gap-2 text-[#f5b82e]">
-              <ClipboardList className="size-4" />
-              <CardTitle className="text-sm font-bold text-white uppercase">
-                Assinaturas
-              </CardTitle>
-            </div>
-            <Button
-              variant="link"
-              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
-            >
-              Ver tudo <ArrowUpRight className="size-3" />
-            </Button>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <MiniStatCard
+        <SectionCard
+          icon={<ClipboardList className="size-4" />}
+          title="Assinaturas"
+          actionLabel="Ver tudo"
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <MiniStat
               label="Ativos"
               value="0"
-              color="text-emerald-500"
-              bgColor="bg-[#062016]"
+              tone="success"
             />
-            <MiniStatCard
+            <MiniStat
               label="Inadimplentes"
               value="0"
-              color="text-red-500"
-              bgColor="bg-[#20060a]"
+              tone="danger"
             />
-            <MiniStatCard
+            <MiniStat
               label="Novos no período"
               value="0"
-              color="text-[#f5b82e]"
-              bgColor="bg-[#241a06]"
+              tone="warning"
             />
-            <MiniStatCard
-              label="Cancelados"
-              value="0"
-              color="text-slate-400"
-              bgColor="bg-[#21262d]"
-            />
-          </CardContent>
-        </Card>
+            <MiniStat label="Cancelados" value="0" tone="neutral" />
+          </div>
+        </SectionCard>
 
-        {/* Agenda do Dia */}
-        <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader className="flex flex-row items-center justify-between py-4">
-            <div className="flex items-center gap-2 text-[#f5b82e]">
-              <Calendar className="size-4" />
-              <CardTitle className="text-sm font-bold text-white uppercase">
-                Agenda do Dia
-              </CardTitle>
-            </div>
-            <Button
-              variant="link"
-              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
-            >
-              Ver agenda <ArrowUpRight className="size-3" />
-            </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center h-[140px] text-[#8b949e]">
+        <SectionCard
+          icon={<Calendar className="size-4" />}
+          title="Agenda do Dia"
+          actionLabel="Ver agenda"
+        >
+          <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
             <p className="text-sm">Nenhum agendamento para hoje.</p>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
-        {/* Ranking de Profissionais */}
-        <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader className="flex flex-row items-center justify-between py-4">
-            <div className="flex items-center gap-2 text-[#f5b82e]">
-              <TrendingUp className="size-4" />
-              <CardTitle className="text-sm font-bold text-white uppercase">
-                Ranking de Profissionais
-              </CardTitle>
-            </div>
-            <Button
-              variant="link"
-              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
-            >
-              Ver comissões <ArrowUpRight className="size-3" />
-            </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center h-[100px] text-[#8b949e]">
+        <SectionCard
+          icon={<TrendingUp className="size-4" />}
+          title="Ranking de Profissionais"
+          actionLabel="Ver comissões"
+        >
+          <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
             <p className="text-sm">Sem dados no período.</p>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
-        {/* Estoque Crítico */}
-        <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader className="flex flex-row items-center justify-between py-4">
-            <div className="flex items-center gap-2 text-[#f5b82e]">
-              <Package className="size-4" />
-              <CardTitle className="text-sm font-bold text-white uppercase">
-                Estoque Crítico
-              </CardTitle>
-            </div>
-            <Button
-              variant="link"
-              className="text-[#f5b82e] text-xs gap-1 p-0 h-auto"
-            >
-              Ver estoque <ArrowUpRight className="size-3" />
-            </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center h-[100px] text-[#8b949e]">
-            <div className="flex items-center gap-2 text-emerald-500/80">
+        <SectionCard
+          icon={<Package className="size-4" />}
+          title="Estoque Crítico"
+          actionLabel="Ver estoque"
+        >
+          <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
+            <div className="flex items-center gap-2 text-success-foreground/80">
               <CheckCircle2 className="size-4" />
               <p className="text-sm">Nenhum alerta de estoque.</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
     </div>
   );
 }
 
-// --- Sub-componentes ---
+// ─── Sub-componentes locais ──────────────────────────────────────────────────
 
-function StatCard({ title, value, icon, subtitle, subtitleColor }: any) {
+interface SectionCardProps {
+  icon: React.ReactNode;
+  title: string;
+  actionLabel: string;
+  children: React.ReactNode;
+}
+
+function SectionCard({ icon, title, actionLabel, children }: SectionCardProps) {
   return (
-    <Card className="bg-[#161b22] border-[#30363d] shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 ">
-        <CardTitle className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider">
-          {title}
-        </CardTitle>
-        <div className="text-[#f5b82e]">{icon}</div>
+    <Card className="bg-surface-raised border-border">
+      <CardHeader className="flex flex-row items-center justify-between py-4">
+        <div className="flex items-center gap-2 text-brand">
+          {icon}
+          <CardTitle className="text-sm font-bold text-foreground uppercase">
+            {title}
+          </CardTitle>
+        </div>
+        <Button
+          variant="link"
+          className="text-brand text-xs gap-1 p-0 h-auto"
+        >
+          {actionLabel} <ArrowUpRight className="size-3" />
+        </Button>
       </CardHeader>
-      <CardContent className="pb-4">
-        <div className="text-2xl font-bold text-white">{value}</div>
-        {subtitle && (
-          <p className={`text-[10px] font-medium mt-0.5 ${subtitleColor}`}>
-            {subtitle}
-          </p>
-        )}
-      </CardContent>
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }
 
-function FinanceCard({ title, value, bgColor, textColor }: any) {
-  return (
-    <Card className={`${bgColor} border-none shadow-none`}>
-      <CardContent>
-        <p className="text-[10px] font-bold text-[#8b949e] uppercase mb-1">
-          {title}
-        </p>
-        <div className={`text-xl font-bold ${textColor}`}>{value}</div>
-      </CardContent>
-    </Card>
-  );
+interface MiniStatProps {
+  label: string;
+  value: string;
+  tone: "success" | "danger" | "warning" | "neutral";
 }
 
-function MiniStatCard({ label, value, color, bgColor }: any) {
+const MINI_STAT_BG: Record<MiniStatProps["tone"], string> = {
+  success: "bg-success-bg",
+  danger: "bg-danger-bg",
+  warning: "bg-warning-bg",
+  neutral: "bg-surface-elevated",
+};
+
+const MINI_STAT_TEXT: Record<MiniStatProps["tone"], string> = {
+  success: "text-success-foreground",
+  danger: "text-danger-foreground",
+  warning: "text-warning-foreground",
+  neutral: "text-muted-foreground",
+};
+
+function MiniStat({ label, value, tone }: MiniStatProps) {
   return (
     <div
-      className={`${bgColor} rounded-md p-4 flex flex-col items-center justify-center text-center`}
+      className={`${MINI_STAT_BG[tone]} rounded-md p-4 flex flex-col items-center justify-center text-center`}
     >
-      <span className={`text-2xl font-bold ${color}`}>{value}</span>
-      <span className="text-[10px] text-[#8b949e] font-medium uppercase mt-1">
+      <span className={`text-2xl font-bold ${MINI_STAT_TEXT[tone]}`}>
+        {value}
+      </span>
+      <span className="text-[10px] text-muted-foreground font-medium uppercase mt-1">
         {label}
       </span>
     </div>

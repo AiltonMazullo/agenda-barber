@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -15,27 +14,28 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/shared";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type Permissao = {
+interface Permissao {
   key: string;
   label: string;
-};
+}
 
-type ModuloPermissao = {
+interface ModuloPermissao {
   key: string;
   label: string;
   permissoes: Permissao[];
-};
+}
 
-type Grupo = {
+interface Grupo {
   id: string;
   nome: string;
   permissoes: Set<string>;
-};
+}
 
-// ─── Módulos e permissões ─────────────────────────────────────────────────────
+// ─── Módulos ──────────────────────────────────────────────────────────────────
 
 const MODULOS: ModuloPermissao[] = [
   {
@@ -144,15 +144,13 @@ const GRUPOS_MOCK: Grupo[] = [
 
 // ─── ModuloRow ────────────────────────────────────────────────────────────────
 
-function ModuloRow({
-  modulo,
-  permissoes,
-  onChange,
-}: {
+interface ModuloRowProps {
   modulo: ModuloPermissao;
   permissoes: Set<string>;
   onChange: (key: string, val: boolean) => void;
-}) {
+}
+
+function ModuloRow({ modulo, permissoes, onChange }: ModuloRowProps) {
   const [expanded, setExpanded] = useState(true);
   const total = modulo.permissoes.length;
   const marcados = modulo.permissoes.filter((p) =>
@@ -167,9 +165,9 @@ function ModuloRow({
   };
 
   return (
-    <div className="border border-[#21262d] rounded-lg overflow-hidden">
+    <div className="border border-border-subtle rounded-lg overflow-hidden">
       <div
-        className="flex items-center justify-between px-4 py-3 bg-[#0d1117] cursor-pointer hover:bg-[#21262d]/40 transition-colors"
+        className="flex items-center justify-between px-4 py-3 bg-surface-base cursor-pointer hover:bg-surface-elevated/40 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-3">
@@ -182,44 +180,46 @@ function ModuloRow({
             className={cn(
               "size-5 rounded border flex items-center justify-center transition-colors shrink-0",
               allChecked
-                ? "bg-[#f5b82e] border-[#f5b82e]"
+                ? "bg-brand border-brand"
                 : someChecked
-                  ? "bg-[#f5b82e]/30 border-[#f5b82e]/50"
-                  : "border-[#30363d] bg-transparent hover:border-[#f5b82e]/40",
+                  ? "bg-brand/30 border-brand/50"
+                  : "border-border bg-transparent hover:border-brand/40",
             )}
           >
-            {allChecked && <Check className="size-3 text-black" />}
+            {allChecked && (
+              <Check className="size-3 text-brand-foreground" />
+            )}
             {someChecked && !allChecked && (
-              <div className="size-2 rounded-sm bg-[#f5b82e]" />
+              <div className="size-2 rounded-sm bg-brand" />
             )}
           </button>
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-foreground">
             {modulo.label}
           </span>
-          <span className="text-[10px] text-[#4d5562]">
+          <span className="text-[10px] text-text-subtle">
             {marcados}/{total}
           </span>
         </div>
         {expanded ? (
-          <ChevronDown className="size-3.5 text-[#4d5562]" />
+          <ChevronDown className="size-3.5 text-text-subtle" />
         ) : (
-          <ChevronRight className="size-3.5 text-[#4d5562]" />
+          <ChevronRight className="size-3.5 text-text-subtle" />
         )}
       </div>
 
       {expanded && (
-        <div className="px-4 py-3 space-y-2.5 bg-[#161b22]">
+        <div className="px-4 py-3 space-y-2.5 bg-surface-raised">
           {modulo.permissoes.map((perm) => (
             <div key={perm.key} className="flex items-center gap-3">
               <Checkbox
                 id={perm.key}
                 checked={permissoes.has(perm.key)}
                 onCheckedChange={(v) => onChange(perm.key, !!v)}
-                className="border-[#30363d] data-[state=checked]:bg-[#f5b82e] data-[state=checked]:border-[#f5b82e] data-[state=checked]:text-black"
+                className="border-border data-[state=checked]:bg-brand data-[state=checked]:border-brand data-[state=checked]:text-brand-foreground"
               />
               <label
                 htmlFor={perm.key}
-                className="text-xs text-[#8b949e] cursor-pointer select-none hover:text-white transition-colors"
+                className="text-xs text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
               >
                 {perm.label}
               </label>
@@ -265,7 +265,8 @@ export default function ControleAcessoPage() {
       prev.map((g) => {
         if (g.id !== grupoAtivo) return g;
         const novas = new Set(g.permissoes);
-        val ? novas.add(key) : novas.delete(key);
+        if (val) novas.add(key);
+        else novas.delete(key);
         return { ...g, permissoes: novas };
       }),
     );
@@ -276,44 +277,38 @@ export default function ControleAcessoPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          Controle de Acesso
-        </h1>
-        <p className="text-[#8b949e] text-sm mt-1">
-          Gerencie grupos e permissões por área do sistema
-        </p>
-      </div>
+    <div className="space-y-6 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
+      <PageHeader
+        title="Controle de Acesso"
+        subtitle="Gerencie grupos e permissões por área do sistema"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* ── Painel de grupos ── */}
-        <Card className="bg-[#161b22] border-[#30363d] lg:col-span-1">
+        {/* Painel de grupos */}
+        <Card className="bg-surface-raised border-border lg:col-span-1">
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="size-4 text-[#f5b82e]" />
-              <h2 className="text-sm font-bold text-white">Grupos</h2>
+              <Shield className="size-4 text-brand" />
+              <h2 className="text-sm font-bold text-foreground">Grupos</h2>
             </div>
 
-            {/* Input novo grupo */}
             <div className="flex gap-2">
               <Input
                 value={novoNome}
                 onChange={(e) => setNovoNome(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCriarGrupo()}
                 placeholder="Nome do grupo"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-9 text-sm"
+                className="bg-surface-base border-border text-foreground placeholder:text-text-subtle focus-visible:ring-brand/30 h-9 text-sm"
               />
               <button
                 type="button"
                 onClick={handleCriarGrupo}
-                className="size-9 rounded-md bg-[#f5b82e] text-black flex items-center justify-center hover:bg-[#d9a326] transition-colors shrink-0"
+                className="size-9 rounded-md bg-brand text-brand-foreground flex items-center justify-center hover:bg-brand-hover transition-colors shrink-0"
               >
                 <Plus className="size-4" />
               </button>
             </div>
 
-            {/* Lista de grupos */}
             <div className="space-y-1">
               {grupos.map((g) => (
                 <div
@@ -321,15 +316,15 @@ export default function ControleAcessoPage() {
                   className={cn(
                     "flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition-colors group",
                     grupoAtivo === g.id
-                      ? "bg-[#f5b82e]/10 border border-[#f5b82e]/30"
-                      : "hover:bg-[#21262d] border border-transparent",
+                      ? "bg-brand/10 border border-brand/30"
+                      : "hover:bg-surface-elevated border border-transparent",
                   )}
                   onClick={() => setGrupoAtivo(g.id)}
                 >
                   <span
                     className={cn(
                       "text-sm font-medium transition-colors",
-                      grupoAtivo === g.id ? "text-[#f5b82e]" : "text-white",
+                      grupoAtivo === g.id ? "text-brand" : "text-foreground",
                     )}
                   >
                     {g.nome}
@@ -340,14 +335,14 @@ export default function ControleAcessoPage() {
                       e.stopPropagation();
                       handleDeletarGrupo(g.id);
                     }}
-                    className="size-6 rounded flex items-center justify-center text-[#4d5562] hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                    className="size-6 rounded flex items-center justify-center text-text-subtle hover:text-danger-foreground hover:bg-danger/10 transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 className="size-3" />
                   </button>
                 </div>
               ))}
               {grupos.length === 0 && (
-                <p className="text-xs text-[#4d5562] text-center py-4">
+                <p className="text-xs text-text-subtle text-center py-4">
                   Nenhum grupo criado.
                 </p>
               )}
@@ -355,11 +350,11 @@ export default function ControleAcessoPage() {
           </CardContent>
         </Card>
 
-        {/* ── Painel de permissões ── */}
-        <Card className="bg-[#161b22] border-[#30363d] lg:col-span-2">
+        {/* Painel de permissões */}
+        <Card className="bg-surface-raised border-border lg:col-span-2">
           <CardContent className="p-4">
             {!grupoSelecionado ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 text-[#4d5562]">
+              <div className="flex flex-col items-center justify-center h-64 gap-3 text-text-subtle">
                 <Shield className="size-10 opacity-30" />
                 <p className="text-sm">
                   Selecione um grupo à esquerda para configurar permissões
@@ -369,28 +364,25 @@ export default function ControleAcessoPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-sm font-bold text-white">
+                    <h2 className="text-sm font-bold text-foreground">
                       {grupoSelecionado.nome}
                     </h2>
-                    <p className="text-[11px] text-[#4d5562] mt-0.5">
-                      {grupoSelecionado.permissoes.size} permissão(ões) ativa(s)
+                    <p className="text-[11px] text-text-subtle mt-0.5">
+                      {grupoSelecionado.permissoes.size} permissão(ões)
+                      ativa(s)
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleSalvar}
-                    className="h-9 px-4 rounded-md text-xs font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all"
+                    className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all"
                   >
                     Salvar permissões
                   </button>
                 </div>
 
                 <div
-                  className="space-y-3 max-h-[60vh] overflow-y-auto pr-1"
-                  style={{
-                    scrollbarWidth: "thin",
-                    scrollbarColor: "#30363d transparent",
-                  }}
+                  className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin"
                 >
                   {MODULOS.map((modulo) => (
                     <ModuloRow

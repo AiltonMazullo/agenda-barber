@@ -6,6 +6,8 @@ import type { Tone } from "@/types/common.types";
 interface SummaryCardProps {
   label: string;
   value: ReactNode;
+  subtitle?: ReactNode;
+  subtitleTone?: Tone;
   icon?: ReactNode;
   tone?: Tone;
   className?: string;
@@ -43,6 +45,8 @@ const EMPHASIZED_BG: Record<Tone, string> = {
 export function SummaryCard({
   label,
   value,
+  subtitle,
+  subtitleTone = "neutral",
   icon,
   tone = "neutral",
   className,
@@ -62,6 +66,16 @@ export function SummaryCard({
         <div className={cn("text-xl md:text-2xl font-bold", VALUE_TONES[tone])}>
           {value}
         </div>
+        {subtitle && (
+          <p
+            className={cn(
+              "text-[10px] font-medium mt-0.5",
+              VALUE_TONES[subtitleTone],
+            )}
+          >
+            {subtitle}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

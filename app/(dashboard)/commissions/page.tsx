@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -16,7 +15,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -44,10 +42,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Field, FieldLabel } from "@/components/ui/field";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { formatBRL } from "@/utils/format";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -89,12 +87,6 @@ const COMISSOES_MOCK: ComissaoOperacional[] = [
   },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatBRL(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
 // ─── DatePickerNativo ─────────────────────────────────────────────────────────
 
 function DatePickerNativo({
@@ -115,7 +107,7 @@ function DatePickerNativo({
     <div className="flex flex-col gap-1">
       <label
         htmlFor={id}
-        className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]"
+        className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
       >
         {label}
       </label>
@@ -125,10 +117,10 @@ function DatePickerNativo({
             id={id}
             type="button"
             className={cn(
-              "h-9 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all outline-none bg-[#0d1117] min-w-[150px]",
+              "h-9 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all outline-none bg-surface-base min-w-[150px]",
               open
                 ? "border-[#f5b82e]/60"
-                : "border-[#30363d] hover:border-[#f5b82e]/40",
+                : "border-border hover:border-[#f5b82e]/40",
             )}
           >
             <span className={date ? "text-white" : "text-[#4d5562]"}>
@@ -137,7 +129,7 @@ function DatePickerNativo({
             <CalendarIcon
               className={cn(
                 "size-3.5 shrink-0",
-                open ? "text-[#f5b82e]" : "text-[#4d5562]",
+                open ? "text-brand" : "text-[#4d5562]",
               )}
             />
           </button>
@@ -145,10 +137,10 @@ function DatePickerNativo({
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-auto p-0 overflow-hidden bg-[#161b22] border border-[#30363d] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
+          className="w-auto p-0 overflow-hidden bg-surface-raised border border-border rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
         >
           <div className="px-4 pt-4 pb-3 border-b border-[#21262d]">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-brand">
               {label}
             </p>
             <p className="text-base font-bold text-white mt-0.5">
@@ -179,12 +171,12 @@ function DatePickerNativo({
                 caption_label: "hidden",
                 dropdowns: "flex items-center gap-2 flex-1",
                 dropdown:
-                  "bg-[#0d1117] border border-[#30363d] text-white text-xs rounded-md px-2 py-1.5 cursor-pointer hover:border-[#f5b82e]/40 transition-colors",
+                  "bg-surface-base border border-border text-white text-xs rounded-md px-2 py-1.5 cursor-pointer hover:border-[#f5b82e]/40 transition-colors",
                 nav: "flex items-center gap-1",
                 button_previous:
-                  "size-7 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-[#30363d]",
+                  "size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-border",
                 button_next:
-                  "size-7 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-[#30363d]",
+                  "size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-border",
                 weeks: "mt-1 space-y-0.5",
                 weekdays: "flex mb-2",
                 weekday:
@@ -192,10 +184,10 @@ function DatePickerNativo({
                 week: "flex gap-0.5",
                 day: "flex-1 flex items-center justify-center",
                 day_button:
-                  "size-8 text-xs font-medium rounded-md text-[#8b949e] hover:bg-[#21262d] hover:text-white transition-colors",
+                  "size-8 text-xs font-medium rounded-md text-muted-foreground hover:bg-[#21262d] hover:text-white transition-colors",
                 selected:
                   "!bg-[#f5b82e] !text-black !font-bold rounded-md hover:!bg-[#d9a326]",
-                today: "!text-[#f5b82e] !font-bold",
+                today: "!text-brand !font-bold",
                 outside: "opacity-20",
                 disabled: "opacity-20 cursor-not-allowed",
               }}
@@ -209,7 +201,7 @@ function DatePickerNativo({
                   onSelect(undefined);
                   setOpen(false);
                 }}
-                className="w-full text-xs font-semibold text-[#8b949e] hover:text-red-400 transition-colors py-1 rounded-md hover:bg-red-500/5"
+                className="w-full text-xs font-semibold text-muted-foreground hover:text-red-400 transition-colors py-1 rounded-md hover:bg-red-500/5"
               >
                 Limpar
               </button>
@@ -239,7 +231,7 @@ function SelectInline({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           {label}
         </label>
       )}
@@ -249,11 +241,11 @@ function SelectInline({
             id={id}
             role="button"
             tabIndex={0}
-            className="h-9 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer min-w-[130px]"
+            className="h-9 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer min-w-[130px]"
           >
             <span>{value}</span>
             <svg
-              className="size-3.5 text-[#8b949e]"
+              className="size-3.5 text-muted-foreground"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -267,14 +259,14 @@ function SelectInline({
             </svg>
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+        <DropdownMenuContent className="bg-surface-raised border-border text-white">
           {options.map((opt) => (
             <DropdownMenuItem
               key={opt}
               onClick={() => onChange(opt)}
               className={cn(
                 "text-xs hover:bg-[#21262d] cursor-pointer",
-                value === opt && "text-[#f5b82e]",
+                value === opt && "text-brand",
               )}
             >
               {opt}
@@ -332,7 +324,7 @@ function TabOperacional() {
           {
             label: "Total Líquido (Comissões)",
             value: formatBRL(showData ? totalLiquido : 0),
-            color: "text-[#f5b82e]",
+            color: "text-brand",
           },
           {
             label: "Profissionais",
@@ -342,10 +334,10 @@ function TabOperacional() {
         ].map((card) => (
           <Card
             key={card.label}
-            className="bg-[#161b22] border-[#30363d] shadow-none"
+            className="bg-surface-raised border-border shadow-none"
           >
             <CardContent className="p-4">
-              <p className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider mb-1">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                 {card.label}
               </p>
               <p className={cn("text-xl font-bold", card.color)}>
@@ -357,16 +349,16 @@ function TabOperacional() {
       </div>
 
       {/* Tabela */}
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-raised border-border">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-[#30363d] hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 {["Profissional", "Serviços", "Taxa", "Bruto", "Líquido"].map(
                   (h) => (
                     <TableHead
                       key={h}
-                      className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
                     >
                       {h}
                     </TableHead>
@@ -376,9 +368,9 @@ function TabOperacional() {
             </TableHeader>
             <TableBody>
               {!showData ? (
-                <TableRow className="border-[#30363d] hover:bg-transparent">
+                <TableRow className="border-border hover:bg-transparent">
                   <TableCell colSpan={5} className="py-14 text-center">
-                    <div className="flex flex-col items-center gap-3 text-[#8b949e]">
+                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
                       <DollarSign className="size-10 opacity-30" />
                       <p className="text-sm">
                         Nenhuma comissão operacional encontrada. Selecione um
@@ -391,15 +383,15 @@ function TabOperacional() {
                 COMISSOES_MOCK.map((c, i) => (
                   <TableRow
                     key={i}
-                    className="border-[#30363d] hover:bg-[#21262d]/50 transition-colors"
+                    className="border-border hover:bg-[#21262d]/50 transition-colors"
                   >
                     <TableCell className="px-4 py-4 font-semibold text-white text-sm">
                       {c.profissional}
                     </TableCell>
-                    <TableCell className="px-4 py-4 text-[#8b949e] text-sm">
+                    <TableCell className="px-4 py-4 text-muted-foreground text-sm">
                       {c.servicos}
                     </TableCell>
-                    <TableCell className="px-4 py-4 text-[#f5b82e] font-semibold text-sm">
+                    <TableCell className="px-4 py-4 text-brand font-semibold text-sm">
                       {c.taxa}%
                     </TableCell>
                     <TableCell className="px-4 py-4 text-white text-sm">
@@ -484,14 +476,14 @@ function DialogComissaoAssinatura({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-lg p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-lg p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-sm font-bold">
                 Comissão de Assinaturas - Etapa {step}/3
               </DialogTitle>
-              <p className="text-[11px] text-[#8b949e] mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 {step === 1 &&
                   "Informe os serviços totais realizados pela barbearia no período."}
                 {step === 2 &&
@@ -506,7 +498,7 @@ function DialogComissaoAssinatura({
                 onOpenChange(false);
                 setStep(1);
               }}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -536,7 +528,7 @@ function DialogComissaoAssinatura({
           {/* Etapa 1 */}
           {step === 1 && (
             <>
-              <div className="flex flex-wrap md:flex-nowrap items-end gap-3 bg-[#0d1117] p-4 rounded-xl border border-[#30363d]">
+              <div className="flex flex-wrap md:flex-nowrap items-end gap-3 bg-surface-base p-4 rounded-xl border border-border">
                 {/* Filial - Seguindo a largura maior da imagem */}
                 <div className="flex flex-col gap-1.5 flex-1 min-w-[100px]">
                   <label className="text-[13px] font-semibold text-white ml-0.5">
@@ -544,12 +536,12 @@ function DialogComissaoAssinatura({
                   </label>
                   <DropdownMenu>
                     <DropdownMenuTrigger>
-                      <button className="w-full h-[42px] px-3 rounded-lg border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between group hover:border-[#8b949e] transition-all outline-none">
+                      <button className="w-full h-[42px] px-3 rounded-lg border border-border bg-surface-base text-sm text-white flex items-center justify-between group hover:border-[#8b949e] transition-all outline-none">
                         <span className="truncate">{filial || "Todas"}</span>
-                        <ChevronDown className="size-4 text-[#8b949e]" />
+                        <ChevronDown className="size-4 text-muted-foreground" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white min-w-[240px]">
+                    <DropdownMenuContent className="bg-surface-raised border-border text-white min-w-[240px]">
                       <DropdownMenuItem
                         onClick={() => setFilial("Todas")}
                         className="cursor-pointer"
@@ -590,12 +582,12 @@ function DialogComissaoAssinatura({
                 </div>
               </div>
 
-              <div className="border border-[#30363d] rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117] border-b border-[#21262d]">
-                  <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-surface-base border-b border-[#21262d]">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Serviço
                   </span>
-                  <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Quantidade
                   </span>
                 </div>
@@ -615,14 +607,14 @@ function DialogComissaoAssinatura({
                           [s]: parseInt(e.target.value) || 0,
                         }))
                       }
-                      className="w-20 h-8 text-sm text-center bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30"
+                      className="w-20 h-8 text-sm text-center bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30"
                     />
                   </div>
                 ))}
               </div>
 
-              <div className="flex items-center justify-between px-4 py-3 bg-[#0d1117] rounded-lg border border-[#21262d]">
-                <span className="text-sm text-[#8b949e]">Total de Fichas</span>
+              <div className="flex items-center justify-between px-4 py-3 bg-surface-base rounded-lg border border-[#21262d]">
+                <span className="text-sm text-muted-foreground">Total de Fichas</span>
                 <span className="text-sm font-bold text-white">
                   {totalFichasEtapa1}
                 </span>
@@ -654,20 +646,20 @@ function DialogComissaoAssinatura({
                 return (
                   <div
                     key={prof}
-                    className="border border-[#30363d] rounded-lg overflow-hidden"
+                    className="border border-border rounded-lg overflow-hidden"
                   >
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-[#0d1117] border-b border-[#21262d]">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-surface-base border-b border-[#21262d]">
                       <span className="text-sm font-semibold text-white">
                         {prof}
                       </span>
-                      <span className="text-xs text-[#8b949e]">
+                      <span className="text-xs text-muted-foreground">
                         Fichas: {totalProf}
                       </span>
                     </div>
                     <div className="px-4 py-3 flex flex-wrap gap-4">
                       {SERVICOS_MOCK.map((s) => (
                         <div key={s} className="flex items-center gap-2">
-                          <span className="text-xs text-[#8b949e]">{s}</span>
+                          <span className="text-xs text-muted-foreground">{s}</span>
                           <Input
                             type="number"
                             min={0}
@@ -681,7 +673,7 @@ function DialogComissaoAssinatura({
                                 },
                               }))
                             }
-                            className="w-16 h-8 text-sm text-center bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30"
+                            className="w-16 h-8 text-sm text-center bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30"
                           />
                         </div>
                       ))}
@@ -695,10 +687,10 @@ function DialogComissaoAssinatura({
                   "flex items-center justify-between px-4 py-3 rounded-lg border",
                   balanceOk && totalFichasBarbeiros > 0
                     ? "bg-emerald-500/5 border-emerald-500/20"
-                    : "bg-[#0d1117] border-[#21262d]",
+                    : "bg-surface-base border-[#21262d]",
                 )}
               >
-                <span className="text-sm text-[#8b949e]">Total Barbeiros</span>
+                <span className="text-sm text-muted-foreground">Total Barbeiros</span>
                 <span
                   className={cn(
                     "text-sm font-bold",
@@ -718,7 +710,7 @@ function DialogComissaoAssinatura({
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Faturamento em Assinaturas (R$)
                   </label>
                   <Input
@@ -726,11 +718,11 @@ function DialogComissaoAssinatura({
                     value={faturamento}
                     onChange={(e) => setFaturamento(e.target.value)}
                     min={0}
-                    className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     % do Pote
                   </label>
                   <Input
@@ -739,26 +731,26 @@ function DialogComissaoAssinatura({
                     onChange={(e) => setPctPote(e.target.value)}
                     min={0}
                     max={100}
-                    className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
                   />
                 </div>
               </div>
 
               <div className="px-4 py-3 rounded-lg bg-[#241a06] border border-[#f5b82e]/20">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e] mb-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
                   Valor Total do Pote
                 </p>
-                <p className="text-2xl font-bold text-[#f5b82e]">
+                <p className="text-2xl font-bold text-brand">
                   {formatBRL(pote)}
                 </p>
               </div>
 
-              <div className="border border-[#30363d] rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117] border-b border-[#21262d]">
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-surface-base border-b border-[#21262d]">
                   {["Barbeiro", "Fichas", "%", "Comissão"].map((h) => (
                     <span
                       key={h}
-                      className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider"
+                      className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                     >
                       {h}
                     </span>
@@ -777,11 +769,11 @@ function DialogComissaoAssinatura({
                       <span className="text-sm font-semibold text-white">
                         {c.prof}
                       </span>
-                      <span className="text-sm text-[#8b949e]">{c.fichas}</span>
-                      <span className="text-sm text-[#8b949e]">
+                      <span className="text-sm text-muted-foreground">{c.fichas}</span>
+                      <span className="text-sm text-muted-foreground">
                         {c.pct.toFixed(1)}%
                       </span>
-                      <span className="text-sm font-bold text-[#f5b82e]">
+                      <span className="text-sm font-bold text-brand">
                         {formatBRL(c.comissao)}
                       </span>
                     </div>
@@ -792,12 +784,12 @@ function DialogComissaoAssinatura({
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-[#21262d] flex items-center justify-between shrink-0 bg-[#161b22]">
+        <div className="px-6 py-4 border-t border-[#21262d] flex items-center justify-between shrink-0 bg-surface-raised">
           {step > 1 ? (
             <button
               type="button"
               onClick={() => setStep((s) => s - 1)}
-              className="h-9 px-4 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors flex items-center gap-1.5"
+              className="h-9 px-4 rounded-md border border-border bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors flex items-center gap-1.5"
             >
               <ChevronLeft className="size-4" />
               Voltar
@@ -841,7 +833,7 @@ function DialogComissaoAssinatura({
 
 function TabAssinaturas({ onGerarClick }: { onGerarClick: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-[#8b949e]">
+    <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
       <DollarSign className="size-12 opacity-20" />
       <p className="text-sm text-center">
         Use o botão Gerar Comissão Assinatura para criar um novo cálculo em 3
@@ -850,9 +842,9 @@ function TabAssinaturas({ onGerarClick }: { onGerarClick: () => void }) {
       <button
         type="button"
         onClick={onGerarClick}
-        className="h-9 px-4 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors"
+        className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors"
       >
-        <ClipboardList className="size-3.5 text-[#8b949e]" />
+        <ClipboardList className="size-3.5 text-muted-foreground" />
         Iniciar Cálculo
       </button>
     </div>
@@ -861,7 +853,7 @@ function TabAssinaturas({ onGerarClick }: { onGerarClick: () => void }) {
 
 function TabHistorico() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-3 text-[#8b949e]">
+    <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
       <FileText className="size-10 opacity-30" />
       <p className="text-sm">Nenhum histórico de comissões encontrado.</p>
     </div>
@@ -902,7 +894,7 @@ function TabRelatorio() {
           onChange={setBarbeiro}
         />
       </div>
-      <div className="flex flex-col items-center justify-center py-20 gap-3 text-[#8b949e]">
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
         <FileText className="size-10 opacity-30" />
         <p className="text-sm">
           Nenhum dado encontrado para os filtros selecionados.
@@ -926,13 +918,13 @@ export default function ComissoesPage() {
   const [dialogAssinatura, setDialogAssinatura] = useState(false);
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-white">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             Comissões
           </h1>
-          <p className="text-[#8b949e] text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Cálculo e histórico de comissões
           </p>
         </div>
@@ -957,7 +949,7 @@ export default function ComissoesPage() {
               "px-4 py-2 rounded-md text-xs font-semibold transition-colors",
               activeTab === tab.key
                 ? "bg-[#f5b82e] text-black"
-                : "text-[#8b949e] hover:text-white hover:bg-[#21262d]",
+                : "text-muted-foreground hover:text-white hover:bg-[#21262d]",
             )}
           >
             {tab.label}

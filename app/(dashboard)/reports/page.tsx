@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -16,11 +15,8 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   CalendarIcon,
-  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -306,7 +302,7 @@ function DatePickerField({
     <Field className="flex-1 min-w-[140px]">
       <FieldLabel
         htmlFor={id}
-        className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]"
+        className="text-[10px] font-bold uppercase tracking-widest text-brand"
       >
         {label}
       </FieldLabel>
@@ -316,10 +312,10 @@ function DatePickerField({
             id={id}
             type="button"
             className={cn(
-              "group w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all outline-none bg-[#0d1117]",
+              "group w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all outline-none bg-surface-base",
               open
                 ? "border-[#f5b82e]/70 shadow-[0_0_0_3px_rgba(245,184,46,0.08)]"
-                : "border-[#30363d] hover:border-[#f5b82e]/40",
+                : "border-border hover:border-[#f5b82e]/40",
             )}
           >
             <span
@@ -331,8 +327,8 @@ function DatePickerField({
               className={cn(
                 "size-3.5 shrink-0 transition-colors",
                 open
-                  ? "text-[#f5b82e]"
-                  : "text-[#4d5562] group-hover:text-[#8b949e]",
+                  ? "text-brand"
+                  : "text-[#4d5562] group-hover:text-muted-foreground",
               )}
             />
           </button>
@@ -340,10 +336,10 @@ function DatePickerField({
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-auto p-0 overflow-hidden bg-[#161b22] border border-[#30363d] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
+          className="w-auto p-0 overflow-hidden bg-surface-raised border border-border rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
         >
           <div className="px-4 pt-4 pb-3 border-b border-[#21262d]">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-brand">
               Selecionar data
             </p>
             <p className="text-base font-bold text-white mt-0.5">
@@ -374,12 +370,12 @@ function DatePickerField({
                 caption_label: "hidden",
                 dropdowns: "flex items-center gap-2 flex-1",
                 dropdown:
-                  "bg-[#0d1117] border border-[#30363d] text-white text-xs rounded-md px-2 py-1.5 font-medium focus:outline-none cursor-pointer hover:border-[#f5b82e]/40 transition-colors",
+                  "bg-surface-base border border-border text-white text-xs rounded-md px-2 py-1.5 font-medium focus:outline-none cursor-pointer hover:border-[#f5b82e]/40 transition-colors",
                 nav: "flex items-center gap-1",
                 button_previous:
-                  "size-7 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-[#30363d]",
+                  "size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-border",
                 button_next:
-                  "size-7 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-[#30363d]",
+                  "size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-border",
                 weeks: "mt-1 space-y-0.5",
                 weekdays: "flex mb-2",
                 weekday:
@@ -387,10 +383,10 @@ function DatePickerField({
                 week: "flex gap-0.5",
                 day: "flex-1 flex items-center justify-center",
                 day_button:
-                  "size-8 text-xs font-medium rounded-md text-[#8b949e] hover:bg-[#21262d] hover:text-white transition-colors focus:outline-none",
+                  "size-8 text-xs font-medium rounded-md text-muted-foreground hover:bg-[#21262d] hover:text-white transition-colors focus:outline-none",
                 selected:
                   "!bg-[#f5b82e] !text-black !font-bold rounded-md hover:!bg-[#d9a326] shadow-[0_0_12px_rgba(245,184,46,0.3)]",
-                today: "!text-[#f5b82e] !font-bold",
+                today: "!text-brand !font-bold",
                 outside: "opacity-20",
                 disabled: "opacity-20 cursor-not-allowed",
               }}
@@ -404,7 +400,7 @@ function DatePickerField({
                   onSelect(undefined);
                   setOpen(false);
                 }}
-                className="w-full text-xs font-semibold text-[#8b949e] hover:text-red-400 transition-colors py-1 rounded-md hover:bg-red-500/5"
+                className="w-full text-xs font-semibold text-muted-foreground hover:text-red-400 transition-colors py-1 rounded-md hover:bg-red-500/5"
               >
                 Limpar data
               </button>
@@ -435,7 +431,7 @@ function SelectField({
     <Field className="flex-1 min-w-[140px]">
       <FieldLabel
         htmlFor={id}
-        className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]"
+        className="text-[10px] font-bold uppercase tracking-widest text-brand"
       >
         {label}
       </FieldLabel>
@@ -445,20 +441,20 @@ function SelectField({
             id={id}
             role="button"
             tabIndex={0}
-            className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer"
+            className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer"
           >
             <span className="truncate">{value}</span>
-            <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+            <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white max-h-48 overflow-y-auto">
+        <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
           {options.map((opt) => (
             <DropdownMenuItem
               key={opt}
               onClick={() => onChange(opt)}
               className={cn(
                 "text-xs hover:bg-[#21262d] cursor-pointer",
-                value === opt && "text-[#f5b82e]",
+                value === opt && "text-brand",
               )}
             >
               {opt}
@@ -488,12 +484,12 @@ function CheckboxField({
       <Checkbox
         id={id}
         checked={checked}
-        onCheckedChange={(v: any) => onChange(!!v)}
-        className="border-[#30363d] data-[state=checked]:bg-[#f5b82e] data-[state=checked]:border-[#f5b82e] data-[state=checked]:text-black"
+        onCheckedChange={(v) => onChange(!!v)}
+        className="border-border data-[state=checked]:bg-[#f5b82e] data-[state=checked]:border-[#f5b82e] data-[state=checked]:text-black"
       />
       <label
         htmlFor={id}
-        className="text-xs text-[#8b949e] cursor-pointer select-none"
+        className="text-xs text-muted-foreground cursor-pointer select-none"
       >
         {label}
       </label>
@@ -511,7 +507,7 @@ function FilterCard({
   onFilter?: () => void;
 }) {
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-raised border-border">
       <CardContent className="p-4 space-y-4">
         <div className="flex flex-wrap gap-4 items-end">{children}</div>
         {onFilter && (
@@ -535,9 +531,9 @@ function FilterCard({
 
 function EmptyTableState({ cols }: { cols: number }) {
   return (
-    <TableRow className="border-[#30363d] hover:bg-transparent">
+    <TableRow className="border-border hover:bg-transparent">
       <TableCell colSpan={cols} className="py-14 text-center">
-        <div className="flex flex-col items-center gap-3 text-[#8b949e]">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <BarChart2 className="size-10 opacity-30" />
           <p className="text-sm">
             Nenhum dado encontrado para os filtros selecionados.
@@ -558,16 +554,16 @@ function StyledTable({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-raised border-border">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-[#30363d] hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 {headers.map((h) => (
                   <TableHead
                     key={h}
-                    className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto whitespace-nowrap"
+                    className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto whitespace-nowrap"
                   >
                     {h}
                   </TableHead>
@@ -961,11 +957,11 @@ function ReportGroupCard({
   activeKey: string | null;
 }) {
   return (
-    <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-5 flex flex-col gap-3">
+    <div className="bg-surface-raised border border-border rounded-xl p-5 flex flex-col gap-3">
       {/* Header do grupo */}
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-[#f5b82e]">{group.icon}</span>
-        <h2 className="text-sm font-bold text-[#f5b82e] uppercase tracking-wider">
+        <span className="text-brand">{group.icon}</span>
+        <h2 className="text-sm font-bold text-brand uppercase tracking-wider">
           {group.title}
         </h2>
       </div>
@@ -983,7 +979,7 @@ function ReportGroupCard({
                 "w-full text-left rounded-lg p-3 border transition-all group",
                 isActive
                   ? "bg-[#f5b82e]/10 border-[#f5b82e]/50"
-                  : "bg-[#0d1117] border-[#30363d] hover:border-[#f5b82e]/30 hover:bg-[#f5b82e]/5",
+                  : "bg-surface-base border-border hover:border-[#f5b82e]/30 hover:bg-[#f5b82e]/5",
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -992,8 +988,8 @@ function ReportGroupCard({
                     className={cn(
                       "text-sm font-semibold transition-colors",
                       isActive
-                        ? "text-[#f5b82e]"
-                        : "text-white group-hover:text-[#f5b82e]",
+                        ? "text-brand"
+                        : "text-white group-hover:text-brand",
                     )}
                   >
                     {item.title}
@@ -1006,8 +1002,8 @@ function ReportGroupCard({
                   className={cn(
                     "size-4 shrink-0 transition-colors",
                     isActive
-                      ? "text-[#f5b82e]"
-                      : "text-[#30363d] group-hover:text-[#f5b82e]/50",
+                      ? "text-brand"
+                      : "text-[#30363d] group-hover:text-brand/50",
                   )}
                 />
               </div>
@@ -1050,14 +1046,14 @@ export default function RelatoriosPage() {
   const col3 = REPORT_GROUPS.filter((_, i) => i % 3 === 2);
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
+    <div className="space-y-6 p-4 md:p-6 bg-surface-base min-h-screen text-white">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             Relatórios
           </h1>
-          <p className="text-[#8b949e] text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Análises e métricas do seu negócio
           </p>
         </div>
@@ -1066,9 +1062,9 @@ export default function RelatoriosPage() {
           <button
             type="button"
             onClick={handleBack}
-            className="h-9 px-4 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors self-start sm:self-auto"
+            className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors self-start sm:self-auto"
           >
-            <ArrowLeft className="size-3.5 text-[#8b949e]" />
+            <ArrowLeft className="size-3.5 text-muted-foreground" />
             Voltar
           </button>
         )}
@@ -1079,19 +1075,19 @@ export default function RelatoriosPage() {
         <div className="space-y-4">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs text-[#4d5562]">
-            <span className="text-[#f5b82e]">{activeGroup.title}</span>
+            <span className="text-brand">{activeGroup.title}</span>
             <ChevronRight className="size-3" />
             <span className="text-white font-medium">{activeItem.title}</span>
           </div>
 
           {/* Título do relatório */}
           <div className="flex items-center gap-3">
-            <span className="text-[#f5b82e]">{activeGroup.icon}</span>
+            <span className="text-brand">{activeGroup.icon}</span>
             <div>
               <h2 className="text-lg font-bold text-white">
                 {activeItem.title}
               </h2>
-              <p className="text-xs text-[#8b949e]">{activeItem.description}</p>
+              <p className="text-xs text-muted-foreground">{activeItem.description}</p>
             </div>
           </div>
 
@@ -1127,11 +1123,11 @@ export default function RelatoriosPage() {
             {REPORT_GROUPS.map((group) => (
               <div
                 key={group.key}
-                className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden"
+                className="bg-surface-raised border border-border rounded-xl overflow-hidden"
               >
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-[#21262d]">
-                  <span className="text-[#f5b82e]">{group.icon}</span>
-                  <span className="text-[11px] font-bold text-[#f5b82e] uppercase tracking-wider">
+                  <span className="text-brand">{group.icon}</span>
+                  <span className="text-[11px] font-bold text-brand uppercase tracking-wider">
                     {group.title}
                   </span>
                 </div>
@@ -1148,8 +1144,8 @@ export default function RelatoriosPage() {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-md text-xs transition-colors",
                           isActive
-                            ? "bg-[#f5b82e]/15 text-[#f5b82e] font-semibold"
-                            : "text-[#8b949e] hover:text-white hover:bg-[#21262d]",
+                            ? "bg-[#f5b82e]/15 text-brand font-semibold"
+                            : "text-muted-foreground hover:text-white hover:bg-[#21262d]",
                         )}
                       >
                         {item.title}
@@ -1164,17 +1160,17 @@ export default function RelatoriosPage() {
           {/* Conteúdo principal */}
           <div className="xl:col-span-3 space-y-4">
             <div className="flex items-center gap-2 text-xs text-[#4d5562]">
-              <span className="text-[#f5b82e]">{activeGroup?.title}</span>
+              <span className="text-brand">{activeGroup?.title}</span>
               <ChevronRight className="size-3" />
               <span className="text-white font-medium">{activeItem.title}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-[#f5b82e]">{activeGroup?.icon}</span>
+              <span className="text-brand">{activeGroup?.icon}</span>
               <div>
                 <h2 className="text-lg font-bold text-white">
                   {activeItem.title}
                 </h2>
-                <p className="text-xs text-[#8b949e]">
+                <p className="text-xs text-muted-foreground">
                   {activeItem.description}
                 </p>
               </div>

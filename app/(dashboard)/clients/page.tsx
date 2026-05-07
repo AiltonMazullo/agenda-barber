@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -10,11 +9,6 @@ import {
   ChevronDown,
   X,
   User,
-  Phone,
-  Mail,
-  FileText,
-  MapPin,
-  Star,
   Eye,
   EyeOff,
   Edit,
@@ -22,16 +16,16 @@ import {
   Upload,
   CalendarIcon,
   MoreHorizontal,
-  UserCheck,
-  Wifi,
-  Users,
-  MessageSquare,
+  Ban,
+  Repeat,
   BadgeCheck,
 } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -63,169 +57,21 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Tipos + Mock ─────────────────────────────────────────────────────────────
 
-type Origem =
-  | "manual"
-  | "online"
-  | "instagram"
-  | "indicacao"
-  | "whatsapp"
-  | "google";
-
-type StatusCliente = "ativo" | "inativo";
-
-type Cliente = {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  cpf: string;
-  dataNascimento: string;
-  origem: Origem;
-  profissionalPreferido: string;
-  status: StatusCliente;
-  foto: string | null;
-  // Endereço
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-  // Extras
-  notas: string;
-  senha: string;
-  criadoEm: string;
-  atualizadoEm: string;
-};
-
-// ─── Mock ─────────────────────────────────────────────────────────────────────
-
-const PROFISSIONAIS_OPCOES = ["Nenhum", "Carlos", "Marcos", "Rafael", "Diego"];
-
-const ORIGENS: { value: Origem; label: string; icon: React.ReactNode }[] = [
-  {
-    value: "manual",
-    label: "Manual",
-    icon: <UserCheck className="size-3.5" />,
-  },
-  { value: "online", label: "Online", icon: <Wifi className="size-3.5" /> },
-  {
-    value: "indicacao",
-    label: "Indicação",
-    icon: <Users className="size-3.5" />,
-  },
-  {
-    value: "whatsapp",
-    label: "WhatsApp",
-    icon: <MessageSquare className="size-3.5" />,
-  },
-  { value: "google", label: "Google", icon: <Star className="size-3.5" /> },
-];
-
-const ESTADOS_BR = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
-];
-
-const CLIENTES_MOCK: Cliente[] = [
-  {
-    id: "c1",
-    nome: "João Silva",
-    email: "joao@email.com",
-    telefone: "(81) 99999-0001",
-    cpf: "123.456.789-00",
-    dataNascimento: "15/03/1990",
-    origem: "online",
-    profissionalPreferido: "Carlos",
-    status: "ativo",
-    foto: null,
-    cep: "50000-000",
-    logradouro: "Rua das Flores",
-    numero: "123",
-    complemento: "Apto 4",
-    bairro: "Boa Vista",
-    cidade: "Recife",
-    estado: "PE",
-    notas: "Cliente VIP, prefere horários manhã.",
-    senha: "",
-    criadoEm: "09/04/2026",
-    atualizadoEm: "09/04/2026",
-  },
-  {
-    id: "c2",
-    nome: "Ana Costa",
-    email: "ana@email.com",
-    telefone: "(81) 98888-0002",
-    cpf: "987.654.321-00",
-    dataNascimento: "22/07/1995",
-    origem: "instagram",
-    profissionalPreferido: "Marcos",
-    status: "ativo",
-    foto: null,
-    cep: "51000-000",
-    logradouro: "Av. Boa Viagem",
-    numero: "456",
-    complemento: "",
-    bairro: "Boa Viagem",
-    cidade: "Recife",
-    estado: "PE",
-    notas: "",
-    senha: "",
-    criadoEm: "08/04/2026",
-    atualizadoEm: "08/04/2026",
-  },
-  {
-    id: "c3",
-    nome: "Pedro Lima",
-    email: "pedro@email.com",
-    telefone: "(81) 97777-0003",
-    cpf: "111.222.333-44",
-    dataNascimento: "01/01/1985",
-    origem: "indicacao",
-    profissionalPreferido: "Nenhum",
-    status: "inativo",
-    foto: null,
-    cep: "52000-000",
-    logradouro: "Rua do Sol",
-    numero: "789",
-    complemento: "",
-    bairro: "Casa Forte",
-    cidade: "Recife",
-    estado: "PE",
-    notas: "Inativo por 3 meses.",
-    senha: "",
-    criadoEm: "01/03/2026",
-    atualizadoEm: "01/04/2026",
-  },
-];
+import type {
+  Cliente,
+  ClientOrigem as Origem,
+  ClientStatus as StatusCliente,
+} from "@/types/client.types";
+import {
+  CLIENTES_MOCK,
+  ORIGENS,
+  ESTADOS_BR,
+  PROFISSIONAIS_OPCOES,
+} from "@/mock/clients";
+import { SubscriptionBadge, ImportCSVDialog } from "@/components/clients";
+import { downloadCSV, toCSV } from "@/utils/csv";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -237,7 +83,7 @@ function OrigemBadge({ origem }: { origem: Origem }) {
   const map: Record<Origem, { label: string; class: string }> = {
     manual: {
       label: "Manual",
-      class: "bg-[#21262d] text-[#8b949e] border-[#30363d]",
+      class: "bg-[#21262d] text-muted-foreground border-border",
     },
     online: {
       label: "Online",
@@ -276,7 +122,7 @@ function StatusBadge({ status }: { status: StatusCliente }) {
       </Badge>
     );
   return (
-    <Badge className="bg-[#30363d]/60 text-[#8b949e] border border-[#30363d] text-[10px] font-semibold px-2 py-0.5">
+    <Badge className="bg-[#30363d]/60 text-muted-foreground border border-border text-[10px] font-semibold px-2 py-0.5">
       Inativo
     </Badge>
   );
@@ -309,10 +155,10 @@ function DatePickerInline({
           id={id}
           type="button"
           className={cn(
-            "w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all outline-none bg-[#0d1117]",
+            "w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all outline-none bg-surface-base",
             open
               ? "border-[#f5b82e]/70 shadow-[0_0_0_3px_rgba(245,184,46,0.08)]"
-              : "border-[#30363d] hover:border-[#f5b82e]/40",
+              : "border-border hover:border-[#f5b82e]/40",
           )}
         >
           <span className={value ? "text-white" : "text-[#4d5562]"}>
@@ -321,7 +167,7 @@ function DatePickerInline({
           <CalendarIcon
             className={cn(
               "size-3.5 shrink-0 transition-colors",
-              open ? "text-[#f5b82e]" : "text-[#4d5562]",
+              open ? "text-brand" : "text-[#4d5562]",
             )}
           />
         </button>
@@ -329,10 +175,10 @@ function DatePickerInline({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-auto p-0 overflow-hidden bg-[#161b22] border border-[#30363d] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
+        className="w-auto p-0 overflow-hidden bg-surface-raised border border-border rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
       >
         <div className="px-4 pt-4 pb-3 border-b border-[#21262d]">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-brand">
             Data de nascimento
           </p>
           <p className="text-base font-bold text-white mt-0.5">
@@ -363,12 +209,12 @@ function DatePickerInline({
               caption_label: "hidden",
               dropdowns: "flex items-center gap-2 flex-1",
               dropdown:
-                "bg-[#0d1117] border border-[#30363d] text-white text-xs rounded-md px-2 py-1.5 font-medium focus:outline-none cursor-pointer hover:border-[#f5b82e]/40 transition-colors",
+                "bg-surface-base border border-border text-white text-xs rounded-md px-2 py-1.5 font-medium focus:outline-none cursor-pointer hover:border-[#f5b82e]/40 transition-colors",
               nav: "flex items-center gap-1",
               button_previous:
-                "size-7 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-[#30363d]",
+                "size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-border",
               button_next:
-                "size-7 flex items-center justify-center rounded-md text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-[#30363d]",
+                "size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors border border-transparent hover:border-border",
               weeks: "mt-1 space-y-0.5",
               weekdays: "flex mb-2",
               weekday:
@@ -376,10 +222,10 @@ function DatePickerInline({
               week: "flex gap-0.5",
               day: "flex-1 flex items-center justify-center",
               day_button:
-                "size-8 text-xs font-medium rounded-md text-[#8b949e] hover:bg-[#21262d] hover:text-white transition-colors focus:outline-none",
+                "size-8 text-xs font-medium rounded-md text-muted-foreground hover:bg-[#21262d] hover:text-white transition-colors focus:outline-none",
               selected:
                 "!bg-[#f5b82e] !text-black !font-bold rounded-md hover:!bg-[#d9a326]",
-              today: "!text-[#f5b82e] !font-bold",
+              today: "!text-brand !font-bold",
               outside: "opacity-20",
               disabled: "opacity-20 cursor-not-allowed",
             }}
@@ -393,7 +239,7 @@ function DatePickerInline({
                 onChange("");
                 setOpen(false);
               }}
-              className="w-full text-xs font-semibold text-[#8b949e] hover:text-red-400 transition-colors py-1 rounded-md hover:bg-red-500/5"
+              className="w-full text-xs font-semibold text-muted-foreground hover:text-red-400 transition-colors py-1 rounded-md hover:bg-red-500/5"
             >
               Limpar data
             </button>
@@ -426,22 +272,22 @@ function SelectField({
           id={id}
           role="button"
           tabIndex={0}
-          className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer"
+          className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer"
         >
           <span className={value ? "text-white" : "text-[#4d5562]"}>
             {value || placeholder || "Selecionar"}
           </span>
-          <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+          <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
         </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white max-h-48 overflow-y-auto">
+      <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
         {options.map((opt) => (
           <DropdownMenuItem
             key={opt}
             onClick={() => onChange(opt)}
             className={cn(
               "text-xs hover:bg-[#21262d] cursor-pointer",
-              value === opt && "text-[#f5b82e]",
+              value === opt && "text-brand",
             )}
           >
             {opt}
@@ -462,9 +308,9 @@ function FormLabel({
   required?: boolean;
 }) {
   return (
-    <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e] flex items-center gap-1">
+    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
       {children}
-      {required && <span className="text-[#f5b82e]">*</span>}
+      {required && <span className="text-brand">*</span>}
     </label>
   );
 }
@@ -472,7 +318,7 @@ function FormLabel({
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 pt-2">
-      <span className="text-[11px] font-bold uppercase tracking-widest text-[#f5b82e]">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-brand">
         {children}
       </span>
       <div className="flex-1 h-px bg-[#21262d]" />
@@ -501,6 +347,7 @@ const EMPTY_FORM = {
   estado: "",
   notas: "",
   senha: "",
+  subscriptionStatus: "nenhum" as Cliente["subscriptionStatus"],
 };
 
 function DialogCliente({
@@ -541,6 +388,7 @@ function DialogCliente({
           estado: clienteEdicao.estado,
           notas: clienteEdicao.notas,
           senha: "",
+          subscriptionStatus: clienteEdicao.subscriptionStatus,
         });
         setFotoPreview(clienteEdicao.foto);
       } else {
@@ -550,7 +398,7 @@ function DialogCliente({
     }
   }, [open, clienteEdicao]);
 
-  const set = (key: keyof typeof form) => (val: any) =>
+  const set = (key: keyof typeof form) => (val: unknown) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
   const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -582,7 +430,7 @@ function DialogCliente({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-2xl p-0 gap-0 max-h-[92vh] flex flex-col">
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-2xl p-0 gap-0 max-h-[92vh] flex flex-col">
         {/* Header fixo */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d] shrink-0">
           <div className="flex items-center justify-between">
@@ -592,7 +440,7 @@ function DialogCliente({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -612,7 +460,7 @@ function DialogCliente({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="size-16 rounded-full bg-[#21262d] border-2 border-dashed border-[#30363d] flex items-center justify-center hover:border-[#f5b82e]/50 transition-colors overflow-hidden shrink-0"
+              className="size-16 rounded-full bg-[#21262d] border-2 border-dashed border-border flex items-center justify-center hover:border-[#f5b82e]/50 transition-colors overflow-hidden shrink-0"
             >
               {fotoPreview ? (
                 <img
@@ -628,7 +476,7 @@ function DialogCliente({
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="text-sm font-semibold text-[#f5b82e] hover:text-[#d9a326] transition-colors"
+                className="text-sm font-semibold text-brand hover:text-[#d9a326] transition-colors"
               >
                 Enviar foto
               </button>
@@ -655,7 +503,7 @@ function DialogCliente({
                 value={form.nome}
                 onChange={(e) => set("nome")(e.target.value)}
                 placeholder="Nome completo"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -665,7 +513,7 @@ function DialogCliente({
                 onChange={(e) => set("email")(e.target.value)}
                 type="email"
                 placeholder="email@exemplo.com"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -674,7 +522,7 @@ function DialogCliente({
                 value={form.telefone}
                 onChange={(e) => set("telefone")(e.target.value)}
                 placeholder="(00) 00000-0000"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -683,7 +531,7 @@ function DialogCliente({
                 value={form.cpf}
                 onChange={(e) => set("cpf")(e.target.value)}
                 placeholder="000.000.000-00"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -701,7 +549,7 @@ function DialogCliente({
                   <div
                     role="button"
                     tabIndex={0}
-                    className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer"
+                    className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
                       {ORIGENS.find((o) => o.value === form.origem)?.icon}
@@ -709,17 +557,17 @@ function DialogCliente({
                         {ORIGENS.find((o) => o.value === form.origem)?.label}
                       </span>
                     </div>
-                    <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+                <DropdownMenuContent className="bg-surface-raised border-border text-white">
                   {ORIGENS.map((o) => (
                     <DropdownMenuItem
                       key={o.value}
                       onClick={() => set("origem")(o.value)}
                       className={cn(
                         "text-xs hover:bg-[#21262d] cursor-pointer gap-2",
-                        form.origem === o.value && "text-[#f5b82e]",
+                        form.origem === o.value && "text-brand",
                       )}
                     >
                       {o.icon}
@@ -754,8 +602,8 @@ function DialogCliente({
                       form.status === s
                         ? s === "ativo"
                           ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
-                          : "bg-[#30363d]/50 border-[#30363d] text-[#8b949e]"
-                        : "border-[#30363d] bg-[#0d1117] text-[#4d5562] hover:border-[#f5b82e]/30",
+                          : "bg-[#30363d]/50 border-border text-muted-foreground"
+                        : "border-border bg-surface-base text-[#4d5562] hover:border-[#f5b82e]/30",
                     )}
                   >
                     <BadgeCheck className="size-3.5" />
@@ -776,7 +624,7 @@ function DialogCliente({
                 value={form.cep}
                 onChange={(e) => set("cep")(e.target.value)}
                 placeholder="00000-000"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
@@ -785,7 +633,7 @@ function DialogCliente({
                 value={form.logradouro}
                 onChange={(e) => set("logradouro")(e.target.value)}
                 placeholder="Rua, Avenida..."
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -794,7 +642,7 @@ function DialogCliente({
                 value={form.numero}
                 onChange={(e) => set("numero")(e.target.value)}
                 placeholder="Nº"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -803,7 +651,7 @@ function DialogCliente({
                 value={form.complemento}
                 onChange={(e) => set("complemento")(e.target.value)}
                 placeholder="Apto, Bloco..."
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -812,7 +660,7 @@ function DialogCliente({
                 value={form.bairro}
                 onChange={(e) => set("bairro")(e.target.value)}
                 placeholder="Bairro"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
@@ -821,7 +669,7 @@ function DialogCliente({
                 value={form.cidade}
                 onChange={(e) => set("cidade")(e.target.value)}
                 placeholder="Cidade"
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
@@ -851,12 +699,12 @@ function DialogCliente({
                     ? "Deixe em branco para manter a atual"
                     : "Criar senha de acesso"
                 }
-                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10 pr-10"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowSenha((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4d5562] hover:text-[#8b949e] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4d5562] hover:text-muted-foreground transition-colors"
               >
                 {showSenha ? (
                   <EyeOff className="size-4" />
@@ -880,17 +728,17 @@ function DialogCliente({
               value={form.notas}
               onChange={(e) => set("notas")(e.target.value)}
               placeholder="Observações visíveis apenas para a equipe..."
-              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-[80px]"
+              className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-20"
             />
           </div>
         </div>
 
         {/* Footer fixo */}
-        <div className="px-6 py-4 border-t border-[#21262d] flex justify-end gap-3 shrink-0 bg-[#161b22]">
+        <div className="px-6 py-4 border-t border-[#21262d] flex justify-end gap-3 shrink-0 bg-surface-raised">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
           >
             Cancelar
           </button>
@@ -914,10 +762,18 @@ export default function ClientesPage() {
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [filtroOrigem, setFiltroOrigem] = useState("Todas");
+  const [mostrarInativos, setMostrarInativos] = useState(false);
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [dialogImport, setDialogImport] = useState(false);
   const [clienteEdicao, setClienteEdicao] = useState<Cliente | null>(null);
 
   const filtrados = clientes.filter((c) => {
+    // Bloqueados ficam fora da listagem principal — vão para /clients/blocked
+    if (c.status === "bloqueado") return false;
+
+    // Inativos só aparecem se toggle estiver ligado (regra do KAN-99)
+    if (!mostrarInativos && c.status === "inativo") return false;
+
     const matchSearch =
       c.nome.toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -931,6 +787,11 @@ export default function ClientesPage() {
       filtroOrigem === "Todas" || c.origem === filtroOrigem.toLowerCase();
     return matchSearch && matchStatus && matchOrigem;
   });
+
+  const totalBloqueados = clientes.filter((c) => c.status === "bloqueado").length;
+  const totalRecompra = clientes.filter(
+    (c) => c.recompraEm && c.status === "ativo",
+  ).length;
 
   const handleNovoCliente = () => {
     setClienteEdicao(null);
@@ -973,39 +834,134 @@ export default function ClientesPage() {
     [clienteEdicao],
   );
 
+  function handleExportCSV() {
+    if (filtrados.length === 0) {
+      toast.error("Nenhum cliente para exportar.");
+      return;
+    }
+    const csv = toCSV(
+      filtrados.map((c) => ({
+        nome: c.nome,
+        email: c.email,
+        telefone: c.telefone,
+        cpf: c.cpf,
+        dataNascimento: c.dataNascimento,
+        origem: c.origem,
+        profissionalPreferido: c.profissionalPreferido,
+        status: c.status,
+        cidade: c.cidade,
+        estado: c.estado,
+        plano: c.subscriptionPlanoNome ?? "",
+        statusAssinatura: c.subscriptionStatus,
+      })),
+    );
+    downloadCSV(`clientes-${new Date().toISOString().slice(0, 10)}`, csv);
+    toast.success(`${filtrados.length} cliente(s) exportado(s).`);
+  }
+
+  function handleImportCSV(rows: Record<string, string>[]): number {
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    const novos: Cliente[] = rows
+      .filter((r) => r.nome && r.telefone)
+      .map((r) => ({
+        id: gerarId(),
+        nome: r.nome,
+        email: r.email ?? "",
+        telefone: r.telefone,
+        cpf: r.cpf ?? "",
+        dataNascimento: r.dataNascimento ?? "",
+        origem: (r.origem as Origem) || "manual",
+        profissionalPreferido: r.profissionalPreferido || "Nenhum",
+        status: (r.status as StatusCliente) || "ativo",
+        foto: null,
+        cep: r.cep ?? "",
+        logradouro: r.logradouro ?? "",
+        numero: r.numero ?? "",
+        complemento: r.complemento ?? "",
+        bairro: r.bairro ?? "",
+        cidade: r.cidade ?? "",
+        estado: r.estado ?? "",
+        notas: r.notas ?? "",
+        senha: "",
+        criadoEm: hoje,
+        atualizadoEm: hoje,
+        subscriptionStatus: "nenhum",
+      }));
+    setClientes((prev) => [...novos, ...prev]);
+    return novos.length;
+  }
+
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-[#0d1117] min-h-screen text-white">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-white">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             Clientes
           </h1>
-          <p className="text-[#8b949e] text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}{" "}
             cadastrado{clientes.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleNovoCliente}
-          className="h-9 px-4 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          <Plus className="size-3.5" />
-          Novo Cliente
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/clients/blocked">
+            <button
+              type="button"
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-xs text-foreground hover:border-danger/40 transition-colors flex items-center gap-1.5"
+            >
+              <Ban className="size-3.5 text-danger-foreground" />
+              Bloqueados
+              {totalBloqueados > 0 && (
+                <span className="bg-danger/20 text-danger-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  {totalBloqueados}
+                </span>
+              )}
+            </button>
+          </Link>
+          <Link href="/clients/recompra">
+            <button
+              type="button"
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-xs text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5"
+            >
+              <Repeat className="size-3.5 text-brand" />
+              Recompra
+              {totalRecompra > 0 && (
+                <span className="bg-brand/20 text-brand text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  {totalRecompra}
+                </span>
+              )}
+            </button>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setDialogImport(true)}
+            className="h-9 px-3 rounded-md border border-border bg-surface-raised text-xs text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5"
+          >
+            <Upload className="size-3.5 text-muted-foreground" />
+            Importar CSV
+          </button>
+          <button
+            type="button"
+            onClick={handleNovoCliente}
+            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5"
+          >
+            <Plus className="size-3.5" />
+            Novo Cliente
+          </button>
+        </div>
       </div>
 
       {/* ── Filtros ── */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Busca */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, email, telefone ou CPF..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-[#161b22] border-[#30363d] text-white placeholder:text-[#8b949e] h-9 text-sm focus-visible:ring-[#f5b82e]/40"
+            className="pl-9 bg-surface-raised border-border text-white placeholder:text-muted-foreground h-9 text-sm focus-visible:ring-[#f5b82e]/40"
           />
         </div>
 
@@ -1015,20 +971,20 @@ export default function ClientesPage() {
             <div
               role="button"
               tabIndex={0}
-              className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer min-w-[100px]"
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer min-w-25"
             >
               <span>{filtroStatus}</span>
-              <ChevronDown className="size-3.5 text-[#8b949e] ml-auto" />
+              <ChevronDown className="size-3.5 text-muted-foreground ml-auto" />
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+          <DropdownMenuContent className="bg-surface-raised border-border text-white">
             {["Todos", "Ativo", "Inativo"].map((s) => (
               <DropdownMenuItem
                 key={s}
                 onClick={() => setFiltroStatus(s)}
                 className={cn(
                   "text-xs hover:bg-[#21262d] cursor-pointer",
-                  filtroStatus === s && "text-[#f5b82e]",
+                  filtroStatus === s && "text-brand",
                 )}
               >
                 {s}
@@ -1043,20 +999,20 @@ export default function ClientesPage() {
             <div
               role="button"
               tabIndex={0}
-              className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer min-w-[110px]"
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer min-w-[110px]"
             >
               <span>{filtroOrigem}</span>
-              <ChevronDown className="size-3.5 text-[#8b949e] ml-auto" />
+              <ChevronDown className="size-3.5 text-muted-foreground ml-auto" />
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+          <DropdownMenuContent className="bg-surface-raised border-border text-white">
             {["Todas", ...ORIGENS.map((o) => o.label)].map((o) => (
               <DropdownMenuItem
                 key={o}
                 onClick={() => setFiltroOrigem(o)}
                 className={cn(
                   "text-xs hover:bg-[#21262d] cursor-pointer",
-                  filtroOrigem === o && "text-[#f5b82e]",
+                  filtroOrigem === o && "text-brand",
                 )}
               >
                 {o}
@@ -1065,37 +1021,52 @@ export default function ClientesPage() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* CSV */}
+        {/* Exportar CSV */}
         <button
           type="button"
-          className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-[#8b949e] flex items-center gap-2 hover:border-[#f5b82e]/40 hover:text-white transition-colors"
+          onClick={handleExportCSV}
+          className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-muted-foreground flex items-center gap-2 hover:border-brand/40 hover:text-foreground transition-colors"
         >
           <Download className="size-3.5" />
-          CSV
+          Exportar
         </button>
+
+        {/* Toggle: exibir inativos */}
+        <label
+          htmlFor="mostrar-inativos"
+          className="h-9 px-3 rounded-md border border-border bg-surface-raised text-xs text-muted-foreground flex items-center gap-2 cursor-pointer hover:border-brand/40 transition-colors select-none"
+        >
+          <Checkbox
+            id="mostrar-inativos"
+            checked={mostrarInativos}
+            onCheckedChange={(v) => setMostrarInativos(v === true)}
+            className="border-border data-[state=checked]:bg-brand data-[state=checked]:border-brand data-[state=checked]:text-brand-foreground"
+          />
+          Mostrar inativos
+        </label>
       </div>
 
       {/* ── Tabela ── */}
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-raised border-border">
         <CardContent className="p-0">
           {/* Desktop */}
           <div className="hidden md:block">
             <Table>
               <TableHeader>
-                <TableRow className="border-[#30363d] hover:bg-transparent">
+                <TableRow className="border-border hover:bg-transparent">
                   {[
                     "Nome",
                     "Contato",
                     "Profissional",
                     "Origem",
+                    "Assinatura",
                     "Criado em",
-                    "Atualizado",
                     "Status",
                     "Ações",
                   ].map((col) => (
                     <TableHead
                       key={col}
-                      className="text-[#8b949e] text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
                     >
                       {col}
                     </TableHead>
@@ -1104,9 +1075,9 @@ export default function ClientesPage() {
               </TableHeader>
               <TableBody>
                 {filtrados.length === 0 ? (
-                  <TableRow className="border-[#30363d] hover:bg-transparent">
+                  <TableRow className="border-border hover:bg-transparent">
                     <TableCell colSpan={8} className="py-16 text-center">
-                      <div className="flex flex-col items-center gap-3 text-[#8b949e]">
+                      <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <User className="size-10 opacity-30" />
                         <p className="text-sm">Nenhum cliente encontrado.</p>
                       </div>
@@ -1116,7 +1087,7 @@ export default function ClientesPage() {
                   filtrados.map((c) => (
                     <TableRow
                       key={c.id}
-                      className="border-[#30363d] hover:bg-[#21262d]/50 transition-colors"
+                      className="border-border hover:bg-[#21262d]/50 transition-colors"
                     >
                       <TableCell className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -1128,7 +1099,7 @@ export default function ClientesPage() {
                                 className="size-8 object-cover rounded-full"
                               />
                             ) : (
-                              <span className="text-[10px] font-bold text-[#f5b82e]">
+                              <span className="text-[10px] font-bold text-brand">
                                 {c.nome
                                   .split(" ")
                                   .map((n) => n[0])
@@ -1151,17 +1122,20 @@ export default function ClientesPage() {
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-[#8b949e] text-sm">
+                      <TableCell className="px-4 py-3 text-muted-foreground text-sm">
                         {c.profissionalPreferido}
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <OrigemBadge origem={c.origem} />
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-[#8b949e] text-sm">
-                        {c.criadoEm}
+                      <TableCell className="px-4 py-3">
+                        <SubscriptionBadge
+                          status={c.subscriptionStatus}
+                          planoNome={c.subscriptionPlanoNome}
+                        />
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-[#8b949e] text-sm">
-                        {c.atualizadoEm}
+                      <TableCell className="px-4 py-3 text-muted-foreground text-sm">
+                        {c.criadoEm}
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <StatusBadge status={c.status} />
@@ -1172,14 +1146,14 @@ export default function ClientesPage() {
                             <div
                               role="button"
                               tabIndex={0}
-                              className="size-8 rounded-md border border-[#30363d] bg-[#0d1117] text-[#8b949e] flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-[#f5b82e] transition-colors cursor-pointer"
+                              className="size-8 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors cursor-pointer"
                             >
                               <MoreHorizontal className="size-3.5" />
                             </div>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="end"
-                            className="bg-[#161b22] border-[#30363d] text-white"
+                            className="bg-surface-raised border-border text-white"
                           >
                             <DropdownMenuItem
                               onClick={() => handleEditar(c)}
@@ -1207,7 +1181,7 @@ export default function ClientesPage() {
           {/* Mobile */}
           <div className="md:hidden px-4 py-4 space-y-3">
             {filtrados.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 text-[#8b949e] py-12">
+              <div className="flex flex-col items-center gap-3 text-muted-foreground py-12">
                 <User className="size-10 opacity-30" />
                 <p className="text-sm">Nenhum cliente encontrado.</p>
               </div>
@@ -1215,12 +1189,12 @@ export default function ClientesPage() {
               filtrados.map((c) => (
                 <div
                   key={c.id}
-                  className="bg-[#0d1117] rounded-lg p-4 border border-[#30363d] space-y-3"
+                  className="bg-surface-base rounded-lg p-4 border border-border space-y-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3">
                       <div className="size-9 rounded-full bg-[#f5b82e]/15 border border-[#f5b82e]/20 flex items-center justify-center shrink-0">
-                        <span className="text-[11px] font-bold text-[#f5b82e]">
+                        <span className="text-[11px] font-bold text-brand">
                           {c.nome
                             .split(" ")
                             .map((n) => n[0])
@@ -1243,13 +1217,13 @@ export default function ClientesPage() {
                       <button
                         type="button"
                         onClick={() => handleEditar(c)}
-                        className="size-7 rounded-md border border-[#30363d] bg-[#161b22] text-[#8b949e] flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-[#f5b82e] transition-colors"
+                        className="size-7 rounded-md border border-border bg-surface-raised text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
                       >
                         <Edit className="size-3" />
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[#8b949e]">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span>
                       <span className="text-[#4d5562]">Tel: </span>
                       {c.telefone}
@@ -1273,12 +1247,28 @@ export default function ClientesPage() {
         </CardContent>
       </Card>
 
-      {/* ── Dialog ── */}
+      {/* ── Dialogs ── */}
       <DialogCliente
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         clienteEdicao={clienteEdicao}
         onSave={handleSave}
+      />
+
+      <ImportCSVDialog
+        open={dialogImport}
+        onOpenChange={setDialogImport}
+        title="Importar Clientes"
+        description="Migre uma base de clientes via CSV. Colunas extras são ignoradas; nome e telefone são obrigatórios."
+        expectedColumns={[
+          "nome",
+          "telefone",
+          "email",
+          "cpf",
+          "dataNascimento",
+          "origem",
+        ]}
+        onImport={handleImportCSV}
       />
     </div>
   );

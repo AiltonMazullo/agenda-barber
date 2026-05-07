@@ -12,7 +12,7 @@ const SESSION_DAYS = 7;
 
 const FAKE_USER: User = {
   id: "u_owner",
-  nome: "José Guilherme",
+  nome: "José",
   email: "jose@barbearia.com",
   role: "owner",
   empresaId: "emp_1",
