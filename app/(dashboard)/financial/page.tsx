@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -16,6 +16,10 @@ import {
   Wallet,
   Scale,
   ChevronDown,
+  CheckCheck,
+  Pencil,
+  Trash2,
+  Tag,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,20 +37,25 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import {
   PageHeader,
   EmptyState,
   StatusBadge,
   DatePickerField,
 } from "@/components/shared";
-import { formatBRL, formatDate } from "@/utils/format";
 import {
-  CONTAS_PAGAR_MOCK,
-  CONTAS_RECEBER_MOCK,
-} from "@/mock/financial";
-import type { Conta, ContaStatus } from "@/types/financial.types";
+  SummaryRow,
+  ContaDialog,
+  CategoriaDialog,
+  GerarComissoesDialog,
+} from "@/components/financial";
+import { formatBRL, formatDate } from "@/utils/format";
+import { useFinancial } from "@/hooks/useFinancial";
+import type { Conta, ContaStatus, ContaTipo } from "@/types/financial.types";
 import type { Tone } from "@/types/common.types";
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
@@ -120,85 +129,44 @@ function FilialField({
   );
 }
 
-// ─── SummaryRow ────────────────────────────────────────────────────────────────
-
-interface SummaryCardData {
-  label: string;
-  value: string;
-  valueColor: string;
-  icon: ReactNode;
-  iconColor: string;
-  bg: string;
-}
-
-function SummaryRow({
-  title,
-  icon,
-  iconColor,
-  accentColor,
-  cards,
-}: {
-  title: string;
-  icon: ReactNode;
-  iconColor: string;
-  accentColor: string;
-  cards: SummaryCardData[];
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 pl-1">
-        <span className={iconColor}>{icon}</span>
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-          {title}
-        </h2>
-        <div className={`flex-1 h-px border-t ${accentColor}`} />
-      </div>
-      <div
-        className={`grid gap-3 ${
-          cards.length === 2
-            ? "grid-cols-1 sm:grid-cols-2"
-            : "grid-cols-2 lg:grid-cols-4"
-        }`}
-      >
-        {cards.map((card) => (
-          <Card
-            key={card.label}
-            className={`${card.bg} border-border shadow-none`}
-          >
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">
-                  {card.label}
-                </p>
-                <span className={card.iconColor}>{card.icon}</span>
-              </div>
-              <div
-                className={`text-lg md:text-xl font-bold ${card.valueColor}`}
-              >
-                {card.value}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function FinanceiroPage() {
+  const {
+    contasPagar,
+    contasReceber,
+    categorias,
+    comissoesPendentes,
+    resumoPagar,
+    resumoReceber,
+    balanco,
+    criarConta,
+    atualizarConta,
+    removerConta,
+    marcarComoPago,
+    criarCategoria,
+    removerCategoria,
+    gerarComissoesSelecionadas,
+  } = useFinancial();
+
   const [activeTab, setActiveTab] = useState<TabKey>("contas_pagar");
   const [search, setSearch] = useState("");
   const [filial, setFilial] = useState("Todas as filiais");
   const [dataInicial, setDataInicial] = useState<Date | undefined>();
   const [dataFinal, setDataFinal] = useState<Date | undefined>();
 
+  // Dialogs
+  const [dialogConta, setDialogConta] = useState(false);
+  const [tipoNovaConta, setTipoNovaConta] = useState<ContaTipo>("pagar");
+  const [contaEdicao, setContaEdicao] = useState<Conta | null>(null);
+  const [dialogCategoria, setDialogCategoria] = useState(false);
+  const [dialogComissoes, setDialogComissoes] = useState(false);
+
   const contas: Conta[] =
     activeTab === "contas_pagar"
-      ? CONTAS_PAGAR_MOCK
+      ? contasPagar
       : activeTab === "contas_receber"
-        ? CONTAS_RECEBER_MOCK
+        ? contasReceber
         : [];
 
   const filtered = contas.filter(
@@ -206,6 +174,50 @@ export default function FinanceiroPage() {
       c.descricao.toLowerCase().includes(search.toLowerCase()) ||
       c.categoria.toLowerCase().includes(search.toLowerCase()),
   );
+
+  function abrirNovaConta(tipo: ContaTipo) {
+    setTipoNovaConta(tipo);
+    setContaEdicao(null);
+    setDialogConta(true);
+  }
+
+  function abrirEdicaoConta(conta: Conta) {
+    setTipoNovaConta(conta.tipo);
+    setContaEdicao(conta);
+    setDialogConta(true);
+  }
+
+  function handleSaveConta(dados: Omit<Conta, "id">, id?: string) {
+    if (id) {
+      atualizarConta(id, dados);
+      toast.success("Lançamento atualizado.");
+    } else {
+      criarConta(dados);
+      toast.success(
+        dados.tipo === "pagar" ? "Despesa criada." : "Receita criada.",
+      );
+    }
+  }
+
+  function handleRemoverConta(id: string) {
+    removerConta(id);
+    toast.success("Lançamento removido.");
+  }
+
+  function handleMarcarPago(c: Conta) {
+    marcarComoPago(c.id);
+    toast.success(c.tipo === "pagar" ? "Conta paga." : "Conta recebida.");
+  }
+
+  function handleSaveCategoria(dados: Parameters<typeof criarCategoria>[0]) {
+    criarCategoria(dados);
+    toast.success(`Categoria "${dados.nome}" criada.`);
+  }
+
+  function handleRemoverCategoria(id: string, nome: string) {
+    removerCategoria(id);
+    toast.success(`Categoria "${nome}" removida.`);
+  }
 
   const searchPlaceholder =
     activeTab === "contas_pagar"
@@ -223,19 +235,29 @@ export default function FinanceiroPage() {
           <>
             <Button
               variant="outline"
+              onClick={() => setDialogComissoes(true)}
               className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9 text-xs"
             >
               <RefreshCw className="size-3.5 mr-1.5" />
               Gerar Comissões
+              {comissoesPendentes.length > 0 && (
+                <span className="ml-1.5 bg-brand/20 text-brand text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  {comissoesPendentes.length}
+                </span>
+              )}
             </Button>
             <Button
               variant="outline"
+              onClick={() => abrirNovaConta("pagar")}
               className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9 text-xs"
             >
               <Plus className="size-3.5 mr-1.5" />
               Despesa
             </Button>
-            <Button className="bg-brand hover:bg-brand-hover text-brand-foreground font-bold h-9 text-xs">
+            <Button
+              onClick={() => abrirNovaConta("receber")}
+              className="bg-brand hover:bg-brand-hover text-brand-foreground font-bold h-9 text-xs"
+            >
               <Plus className="size-3.5 mr-1.5" />
               Receita
             </Button>
@@ -282,7 +304,7 @@ export default function FinanceiroPage() {
         cards={[
           {
             label: "Vencidos",
-            value: "R$ 4.700,00",
+            value: formatBRL(resumoPagar.vencidos),
             valueColor: "text-danger-foreground",
             icon: <AlertCircle className="size-3.5" />,
             iconColor: "text-danger-foreground",
@@ -290,7 +312,7 @@ export default function FinanceiroPage() {
           },
           {
             label: "A Vencer",
-            value: "R$ 0,00",
+            value: formatBRL(resumoPagar.aVencer),
             valueColor: "text-brand",
             icon: <Clock className="size-3.5" />,
             iconColor: "text-brand",
@@ -298,7 +320,7 @@ export default function FinanceiroPage() {
           },
           {
             label: "Pagos",
-            value: "R$ 2.530,00",
+            value: formatBRL(resumoPagar.pagos),
             valueColor: "text-success-foreground",
             icon: <CheckCircle2 className="size-3.5" />,
             iconColor: "text-success-foreground",
@@ -306,7 +328,7 @@ export default function FinanceiroPage() {
           },
           {
             label: "Total a Pagar",
-            value: "R$ 7.230,00",
+            value: formatBRL(resumoPagar.total),
             valueColor: "text-foreground",
             icon: <Wallet className="size-3.5" />,
             iconColor: "text-muted-foreground",
@@ -324,7 +346,7 @@ export default function FinanceiroPage() {
         cards={[
           {
             label: "Não Recebidos",
-            value: "R$ 0,00",
+            value: formatBRL(resumoReceber.naoRecebidos),
             valueColor: "text-danger-foreground",
             icon: <AlertCircle className="size-3.5" />,
             iconColor: "text-danger-foreground",
@@ -332,7 +354,7 @@ export default function FinanceiroPage() {
           },
           {
             label: "A Receber",
-            value: "R$ 199,90",
+            value: formatBRL(resumoReceber.aReceber),
             valueColor: "text-brand",
             icon: <Clock className="size-3.5" />,
             iconColor: "text-brand",
@@ -340,7 +362,7 @@ export default function FinanceiroPage() {
           },
           {
             label: "Recebido",
-            value: "R$ 199,90",
+            value: formatBRL(resumoReceber.recebidos),
             valueColor: "text-success-foreground",
             icon: <CheckCircle2 className="size-3.5" />,
             iconColor: "text-success-foreground",
@@ -348,7 +370,7 @@ export default function FinanceiroPage() {
           },
           {
             label: "Total a Receber",
-            value: "R$ 399,80",
+            value: formatBRL(resumoReceber.total),
             valueColor: "text-foreground",
             icon: <Wallet className="size-3.5" />,
             iconColor: "text-muted-foreground",
@@ -365,17 +387,21 @@ export default function FinanceiroPage() {
         accentColor="border-info/30"
         cards={[
           {
-            label: "Balanço",
-            value: "-R$ 2.422,00",
-            valueColor: "text-brand",
+            label: "Balanço (realizado)",
+            value: formatBRL(balanco.atual),
+            valueColor:
+              balanco.atual >= 0 ? "text-success-foreground" : "text-brand",
             icon: <DollarSign className="size-3.5" />,
             iconColor: "text-brand",
             bg: "bg-warning-bg",
           },
           {
             label: "Balanço Projetado",
-            value: "-R$ 6.722,20",
-            valueColor: "text-info-foreground",
+            value: formatBRL(balanco.projetado),
+            valueColor:
+              balanco.projetado >= 0
+                ? "text-success-foreground"
+                : "text-info-foreground",
             icon: <TrendingUp className="size-3.5" />,
             iconColor: "text-info-foreground",
             bg: "bg-info-bg",
@@ -418,8 +444,60 @@ export default function FinanceiroPage() {
           </div>
 
           {activeTab === "categorias" && (
-            <div className="px-4 pb-6">
-              <EmptyState message="Nenhuma categoria cadastrada." />
+            <div className="px-4 pb-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {categorias.length} categoria
+                  {categorias.length !== 1 ? "s" : ""} cadastrada
+                  {categorias.length !== 1 ? "s" : ""}
+                </p>
+                <Button
+                  onClick={() => setDialogCategoria(true)}
+                  className="bg-brand hover:bg-brand-hover text-brand-foreground font-bold h-9 text-xs"
+                >
+                  <Plus className="size-3.5 mr-1.5" />
+                  Nova Categoria
+                </Button>
+              </div>
+
+              {categorias.length === 0 ? (
+                <EmptyState
+                  message="Nenhuma categoria cadastrada."
+                  icon={<Tag className="size-10" />}
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {categorias.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-md border border-border bg-surface-base group hover:border-brand/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Tag
+                          className={`size-3.5 shrink-0 ${cat.tipo === "pagar" ? "text-danger-foreground" : "text-success-foreground"}`}
+                        />
+                        <span className="text-sm text-foreground truncate">
+                          {cat.nome}
+                        </span>
+                        <StatusBadge
+                          tone={cat.tipo === "pagar" ? "danger" : "success"}
+                        >
+                          {cat.tipo === "pagar" ? "Despesa" : "Receita"}
+                        </StatusBadge>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRemoverCategoria(cat.id, cat.nome)
+                        }
+                        className="size-7 rounded flex items-center justify-center text-text-subtle hover:text-danger-foreground hover:bg-danger/10 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -436,6 +514,7 @@ export default function FinanceiroPage() {
                         "Forma",
                         "Valor",
                         "Status",
+                        "Ações",
                       ].map((col) => (
                         <TableHead
                           key={col}
@@ -449,7 +528,7 @@ export default function FinanceiroPage() {
                   <TableBody>
                     {filtered.length === 0 ? (
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableCell colSpan={6} className="py-16">
+                        <TableCell colSpan={7} className="py-16">
                           <EmptyState message="Nenhum registro encontrado." />
                         </TableCell>
                       </TableRow>
@@ -471,13 +550,63 @@ export default function FinanceiroPage() {
                           <TableCell className="px-4 py-4 text-muted-foreground text-sm">
                             {conta.forma}
                           </TableCell>
-                          <TableCell className="px-4 py-4 text-danger-foreground font-semibold text-sm">
+                          <TableCell
+                            className={`px-4 py-4 font-semibold text-sm ${
+                              conta.tipo === "pagar"
+                                ? "text-danger-foreground"
+                                : "text-success-foreground"
+                            }`}
+                          >
                             {formatBRL(conta.valor)}
                           </TableCell>
                           <TableCell className="px-4 py-4">
                             <StatusBadge tone={STATUS_TONE[conta.status]}>
                               {STATUS_LABELS[conta.status]}
                             </StatusBadge>
+                          </TableCell>
+                          <TableCell className="px-4 py-4">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger>
+                                <div
+                                  role="button"
+                                  tabIndex={0}
+                                  className="size-8 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors cursor-pointer"
+                                >
+                                  <ChevronDown className="size-3.5" />
+                                </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="bg-surface-raised border-border text-foreground"
+                              >
+                                {conta.status !== "pago" && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleMarcarPago(conta)}
+                                    className="text-xs hover:bg-surface-elevated cursor-pointer gap-2"
+                                  >
+                                    <CheckCheck className="size-3.5 text-success-foreground" />
+                                    {conta.tipo === "pagar"
+                                      ? "Marcar como pago"
+                                      : "Marcar como recebido"}
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  onClick={() => abrirEdicaoConta(conta)}
+                                  className="text-xs hover:bg-surface-elevated cursor-pointer gap-2"
+                                >
+                                  <Pencil className="size-3.5" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-border-subtle" />
+                                <DropdownMenuItem
+                                  onClick={() => handleRemoverConta(conta.id)}
+                                  className="text-xs hover:bg-danger/10 text-danger-foreground cursor-pointer gap-2"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                  Remover
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))
@@ -516,9 +645,41 @@ export default function FinanceiroPage() {
                           <span className="text-text-subtle">Vencimento: </span>
                           {formatDate(conta.vencimento)}
                         </span>
-                        <span className="text-danger-foreground font-bold">
+                        <span
+                          className={`font-bold ${
+                            conta.tipo === "pagar"
+                              ? "text-danger-foreground"
+                              : "text-success-foreground"
+                          }`}
+                        >
                           {formatBRL(conta.valor)}
                         </span>
+                      </div>
+                      <div className="flex gap-2 pt-1 border-t border-border-subtle">
+                        {conta.status !== "pago" && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarcarPago(conta)}
+                            className="flex-1 h-8 rounded-md border border-success/30 bg-success/10 text-[10px] font-semibold text-success-foreground hover:bg-success/20 transition-colors flex items-center justify-center gap-1"
+                          >
+                            <CheckCheck className="size-3" />
+                            {conta.tipo === "pagar" ? "Pagar" : "Receber"}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => abrirEdicaoConta(conta)}
+                          className="size-8 rounded-md border border-border bg-surface-raised text-muted-foreground flex items-center justify-center hover:text-brand hover:border-brand/40 transition-colors"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverConta(conta.id)}
+                          className="size-8 rounded-md border border-border bg-surface-raised text-muted-foreground flex items-center justify-center hover:text-danger-foreground hover:border-danger/40 transition-colors"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
                       </div>
                     </div>
                   ))
@@ -528,6 +689,29 @@ export default function FinanceiroPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Dialogs ── */}
+      <ContaDialog
+        open={dialogConta}
+        onOpenChange={setDialogConta}
+        tipo={tipoNovaConta}
+        categorias={categorias}
+        contaEdicao={contaEdicao}
+        onSave={handleSaveConta}
+      />
+
+      <CategoriaDialog
+        open={dialogCategoria}
+        onOpenChange={setDialogCategoria}
+        onSave={handleSaveCategoria}
+      />
+
+      <GerarComissoesDialog
+        open={dialogComissoes}
+        onOpenChange={setDialogComissoes}
+        comissoes={comissoesPendentes}
+        onConfirm={gerarComissoesSelecionadas}
+      />
     </div>
   );
 }

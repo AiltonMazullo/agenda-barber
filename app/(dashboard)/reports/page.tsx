@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import Link from "next/link";
 import {
   DollarSign,
   BarChart2,
@@ -15,6 +16,7 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   CalendarIcon,
+  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1092,6 +1094,74 @@ export default function RelatoriosPage() {
           </div>
 
           {renderSubReport(activeItemKey!)}
+        </div>
+      )}
+
+      {/* ── Atalhos: relatórios prontos ── */}
+      {!activeItem && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="size-3.5 text-brand" />
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Relatórios Prontos
+            </h2>
+            <div className="flex-1 h-px border-t border-brand/30" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Link
+              href="/reports/faturamento"
+              className="rounded-lg border border-border bg-surface-raised hover:border-brand/50 hover:shadow-[0_0_16px_rgba(245,184,46,0.12)] transition-all p-4 group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <DollarSign className="size-5 text-brand" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">
+                  KAN-108
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-foreground group-hover:text-brand transition-colors">
+                Faturamento
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Curva mensal · Serviços · Produtos · Assinaturas
+              </p>
+            </Link>
+
+            <Link
+              href="/reports/ticket-medio"
+              className="rounded-lg border border-border bg-surface-raised hover:border-brand/50 hover:shadow-[0_0_16px_rgba(245,184,46,0.12)] transition-all p-4 group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Users className="size-5 text-brand" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">
+                  KAN-132/133/134
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-foreground group-hover:text-brand transition-colors">
+                Ticket Médio
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Por profissional, por cliente e geral
+              </p>
+            </Link>
+
+            <Link
+              href="/reports/comissoes"
+              className="rounded-lg border border-border bg-surface-raised hover:border-brand/50 hover:shadow-[0_0_16px_rgba(245,184,46,0.12)] transition-all p-4 group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <TrendingUp className="size-5 text-brand" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">
+                  KAN-119/120
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-foreground group-hover:text-brand transition-colors">
+                Comissões
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Por profissional · Serviços e produtos
+              </p>
+            </Link>
+          </div>
         </div>
       )}
 

@@ -35,16 +35,33 @@ export interface ResumoContas {
   total: number;
 }
 
+export interface ResumoContasReceber {
+  naoRecebidos: number;
+  aReceber: number;
+  recebidos: number;
+  total: number;
+}
+
 export interface ResumoFinanceiro {
   contasPagar: ResumoContas;
-  contasReceber: {
-    naoRecebidos: number;
-    aReceber: number;
-    recebidos: number;
-    total: number;
-  };
+  contasReceber: ResumoContasReceber;
   balanco: {
     atual: number;
     projetado: number;
   };
+}
+
+/** Comissão pendente de geração (KAN-143). */
+export interface ComissaoPendente {
+  id: string;
+  profissionalId: string;
+  profissionalNome: string;
+  servicosCount: number;
+  produtosCount: number;
+  totalBruto: number;
+  taxa: number;
+  /** Valor já calculado: bruto * (taxa / 100) */
+  valorComissao: number;
+  periodoInicio: string;
+  periodoFim: string;
 }

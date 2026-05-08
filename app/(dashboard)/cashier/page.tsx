@@ -12,6 +12,7 @@ import {
   X,
   CreditCard,
   Banknote,
+  ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ import { formatBRL } from "@/utils/format";
 
 type CaixaStatus = "fechado" | "aberto";
 type MovimentoTipo = "Entrada" | "Saída";
+type ComandaStatus = "aberta" | "fechada";
 
 interface Movimentacao {
   id: string;
@@ -55,12 +57,39 @@ interface Movimentacao {
   hora: string;
 }
 
+interface ComandaCaixa {
+  id: string;
+  numero: string;
+  cliente: string;
+  total: number;
+  status: ComandaStatus;
+}
+
 interface CaixaData {
   abertura: string;
   filial: string;
   valorInicial: number;
   movimentacoes: Movimentacao[];
+  comandas: ComandaCaixa[];
 }
+
+// Seed inicial de comandas vinculadas ao caixa quando ele é aberto.
+const COMANDAS_INICIAIS: ComandaCaixa[] = [
+  {
+    id: "cmd_1",
+    numero: "#001",
+    cliente: "João Silva",
+    total: 45,
+    status: "aberta",
+  },
+  {
+    id: "cmd_2",
+    numero: "#002",
+    cliente: "Ana Costa",
+    total: 100,
+    status: "fechada",
+  },
+];
 
 // ─── Cálculos ─────────────────────────────────────────────────────────────────
 
@@ -480,6 +509,7 @@ export default function CaixaPage() {
       filial: filial === "Todas as filiais" ? "Matriz" : filial,
       valorInicial,
       movimentacoes: [],
+      comandas: [...COMANDAS_INICIAIS],
     });
     setStatus("aberto");
     toast.success("Caixa aberto com sucesso!");
@@ -489,6 +519,41 @@ export default function CaixaPage() {
     setStatus("fechado");
     setCaixa(null);
     toast.success("Caixa fechado com sucesso!");
+  };
+
+  /** KAN-94: bloqueia abertura do dialog de fechar se houver comanda aberta. */
+  const tentarFecharCaixa = () => {
+    if (!caixa) return;
+    const abertas = caixa.comandas.filter((c) => c.status === "aberta");
+    if (abertas.length > 0) {
+      toast.error(
+        `${abertas.length} comanda(s) ainda aberta(s). Feche-as antes de fechar o caixa.`,
+      );
+      return;
+    }
+    setDialogFechar(true);
+  };
+
+  const handleReabrirComanda = (id: string) => {
+    if (!caixa) return;
+    setCaixa({
+      ...caixa,
+      comandas: caixa.comandas.map((c) =>
+        c.id === id ? { ...c, status: "aberta" } : c,
+      ),
+    });
+    toast.success("Comanda reaberta.");
+  };
+
+  const handleFecharComanda = (id: string) => {
+    if (!caixa) return;
+    setCaixa({
+      ...caixa,
+      comandas: caixa.comandas.map((c) =>
+        c.id === id ? { ...c, status: "fechada" } : c,
+      ),
+    });
+    toast.success("Comanda fechada.");
   };
 
   const handleMovimento = (valor: number, descricao: string) => {
@@ -647,7 +712,7 @@ export default function CaixaPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setDialogFechar(true)}
+                  onClick={tentarFecharCaixa}
                   className="w-full h-9 rounded-md text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Lock className="size-3.5" />
@@ -656,6 +721,79 @@ export default function CaixaPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Comandas vinculadas ao caixa (KAN-94) */}
+          <Card className="bg-surface-raised border-border">
+            <CardContent className="p-0">
+              <div className="px-4 py-4 border-b border-border-subtle flex items-center justify-between">
+                <h2 className="text-sm font-bold text-foreground">
+                  Comandas do Caixa ({caixa.comandas.length})
+                </h2>
+                {caixa.comandas.some((c) => c.status === "aberta") && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-warning-foreground bg-warning/15 px-2 py-1 rounded">
+                    {
+                      caixa.comandas.filter((c) => c.status === "aberta")
+                        .length
+                    }{" "}
+                    em aberto
+                  </span>
+                )}
+              </div>
+              {caixa.comandas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <ClipboardList className="size-8 opacity-30" />
+                  <p className="text-xs">Nenhuma comanda neste caixa.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border-subtle">
+                  {caixa.comandas.map((c) => (
+                    <div
+                      key={c.id}
+                      className="px-4 py-3 flex items-center justify-between hover:bg-surface-elevated/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-mono text-brand text-sm font-semibold">
+                          {c.numero}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {c.cliente}
+                          </p>
+                          <p className="text-[10px] text-text-subtle">
+                            {formatBRL(c.total)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StatusBadge
+                          tone={c.status === "aberta" ? "warning" : "success"}
+                        >
+                          {c.status === "aberta" ? "Aberta" : "Fechada"}
+                        </StatusBadge>
+                        {c.status === "aberta" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleFecharComanda(c.id)}
+                            className="h-7 px-2 rounded-md border border-success/30 bg-success/10 text-[10px] font-semibold text-success-foreground hover:bg-success/20 transition-colors"
+                          >
+                            Fechar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleReabrirComanda(c.id)}
+                            className="h-7 px-2 rounded-md border border-warning/30 bg-warning/10 text-[10px] font-semibold text-warning-foreground hover:bg-warning/20 transition-colors"
+                          >
+                            Reabrir
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Movimentações */}
           <Card className="bg-surface-raised border-border">

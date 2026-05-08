@@ -377,14 +377,23 @@ export default function CaixaHistoricoPage() {
   const [caixaSelecionado, setCaixaSelecionado] =
     useState<CaixaHistorico | null>(null);
   const [dialogVisualizar, setDialogVisualizar] = useState(false);
+  const [historico, setHistorico] = useState<CaixaHistorico[]>(HISTORICO);
 
   const handleVisualizar = (caixa: CaixaHistorico) => {
     setCaixaSelecionado(caixa);
     setDialogVisualizar(true);
   };
 
+  /** KAN-94: reabertura real — flipa status do caixa para "Aberto". */
   const handleReabrir = (caixa: CaixaHistorico) => {
-    toast.success(`Caixa de ${caixa.data} reaberto!`);
+    setHistorico((prev) =>
+      prev.map((c) =>
+        c.data === caixa.data && c.filial === caixa.filial
+          ? { ...c, status: "Aberto", fechamento: "—" }
+          : c,
+      ),
+    );
+    toast.success(`Caixa de ${caixa.data} reaberto.`);
   };
 
   return (
@@ -500,7 +509,7 @@ export default function CaixaHistoricoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {HISTORICO.length === 0 ? (
+                {historico.length === 0 ? (
                   <TableRow className="border-border hover:bg-transparent">
                     <TableCell colSpan={8} className="py-16">
                       <EmptyState
@@ -510,7 +519,7 @@ export default function CaixaHistoricoPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  HISTORICO.map((c, i) => (
+                  historico.map((c, i) => (
                     <TableRow
                       key={i}
                       className="border-border hover:bg-surface-elevated/50 transition-colors"
@@ -579,7 +588,7 @@ export default function CaixaHistoricoPage() {
 
           {/* Mobile */}
           <div className="md:hidden px-4 py-4 space-y-3">
-            {HISTORICO.map((c, i) => (
+            {historico.map((c, i) => (
               <div
                 key={i}
                 className="bg-surface-base rounded-lg p-4 border border-border space-y-2"

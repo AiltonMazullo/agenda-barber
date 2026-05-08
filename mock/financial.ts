@@ -1,4 +1,8 @@
-import type { CategoriaFinanceira, Conta } from "@/types/financial.types";
+import type {
+  CategoriaFinanceira,
+  ComissaoPendente,
+  Conta,
+} from "@/types/financial.types";
 
 export const CONTAS_PAGAR_MOCK: Conta[] = [
   {
@@ -73,4 +77,43 @@ export const CATEGORIAS_FINANCEIRAS_MOCK: CategoriaFinanceira[] = [
   { id: "cat_4", nome: "Comissões", tipo: "pagar" },
   { id: "cat_5", nome: "Assinaturas", tipo: "receber" },
   { id: "cat_6", nome: "Serviços", tipo: "receber" },
+];
+
+export const COMISSOES_PENDENTES_MOCK: ComissaoPendente[] = [
+  {
+    id: "com_1",
+    profissionalId: "prof_carlos",
+    profissionalNome: "Carlos Barbeiro",
+    servicosCount: 12,
+    produtosCount: 3,
+    totalBruto: 540,
+    taxa: 50,
+    valorComissao: 270,
+    periodoInicio: "2026-04-01",
+    periodoFim: "2026-04-30",
+  },
+  {
+    id: "com_2",
+    profissionalId: "prof_marcos",
+    profissionalNome: "Marcos Silva",
+    servicosCount: 8,
+    produtosCount: 1,
+    totalBruto: 360,
+    taxa: 45,
+    valorComissao: 162,
+    periodoInicio: "2026-04-01",
+    periodoFim: "2026-04-30",
+  },
+  {
+    id: "com_3",
+    profissionalId: "prof_rafael",
+    profissionalNome: "Rafael Costa",
+    servicosCount: 6,
+    produtosCount: 0,
+    totalBruto: 270,
+    taxa: 50,
+    valorComissao: 135,
+    periodoInicio: "2026-04-01",
+    periodoFim: "2026-04-30",
+  },
 ];
