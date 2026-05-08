@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,7 +17,6 @@ import {
   Settings,
   Shield,
   LogOut,
-  Scissors,
   TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -72,22 +72,29 @@ export function Navbar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      {/* Logo / nome da barbearia */}
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
-        {" "}
-        {/* Aumentei levemente o py para 4 */}
-        <div className="flex items-center gap-3">
-          {/* LOGO: Alterado para rounded-lg e tamanho ajustado */}
-          <div className="flex size-9 items-center justify-center rounded-lg bg-[#f5b82e] text-black shrink-0 shadow-sm group-data-[collapsible=icon]:size-7 flex justify-items-center">
-            <Scissors className="size-5" />
+      <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
+        <div className="flex items-center justify-center group-data-[collapsible=icon]:justify-center gap-2">
+          {/* Collapsed: icon mark centered */}
+          <div className="size-9 shrink-0 group-data-[collapsible=icon]:flex hidden items-center justify-center">
+            <Image
+              src="/Logo-Agendle-06.png"
+              alt="Agendle"
+              width={32}
+              height={32}
+              className="object-contain"
+              priority
+            />
           </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-bold text-white leading-tight">
-              Barbearia do José
-            </span>
-            <span className="text-[11px] text-[#8b949e]">
-              barbearia-do-jose
-            </span>
+          {/* Expanded: full white horizontal logo */}
+          <div className="group-data-[collapsible=icon]:hidden py-1">
+            <Image
+              src="/Logo-Agendle-05.png"
+              alt="Agendle"
+              width={112}
+              height={30}
+              className="object-contain"
+              priority
+            />
           </div>
         </div>
       </SidebarHeader>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Scissors } from "lucide-react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -23,18 +23,15 @@ export function AuthCard({
 }: AuthCardProps) {
   return (
     <div className="min-h-screen bg-surface-base flex flex-col items-center justify-center px-4 font-sans">
-      <div className="flex flex-col items-center gap-3 mb-6">
-        <div className="flex size-14 items-center justify-center rounded-xl bg-brand">
-          <Scissors className="size-7 text-brand-foreground" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            Smart Man OS
-          </h1>
-          <p className="text-muted-foreground text-xs font-medium">
-            Sistema de Gestão para Barbearias
-          </p>
-        </div>
+      <div className="flex flex-col items-center mb-6">
+        <Image
+          src="/Logo-Agendle-05.png"
+          alt="Agendle"
+          width={170}
+          height={48}
+          className="object-contain"
+          priority
+        />
       </div>
 
       <Card className="w-full max-w-[450px] bg-surface-raised border-border shadow-xl">

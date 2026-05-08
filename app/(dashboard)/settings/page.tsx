@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useRef } from "react";
 import {
   Plus,
@@ -182,8 +183,8 @@ function FormLabel({
 // ─── Tab: Empresa ─────────────────────────────────────────────────────────────
 
 function TabEmpresa() {
-  const [nome, setNome] = useState("Barbearia do José");
-  const [slug, setSlug] = useState("barbearia-do-jose");
+  const [nome, setNome] = useState("Smart Man OS");
+  const [slug, setSlug] = useState("smart-man-os");
   const [email, setEmail] = useState("jose@jose.com.br");
   const [telefone, setTelefone] = useState("(11) 98765-4321");
   const [endereco, setEndereco] = useState("Rua das Flores, 123 - Centro");
@@ -219,7 +220,13 @@ function TabEmpresa() {
                   className="size-16 object-cover rounded-xl"
                 />
               ) : (
-                <Building2 className="size-7 text-brand/60" />
+                <Image
+                  src="/Logo-Agendle-05.png"
+                  alt="Agendle"
+                  width={48}
+                  height={28}
+                  className="object-contain"
+                />
               )}
             </button>
             <div>
