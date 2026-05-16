@@ -13,7 +13,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthInput } from "@/components/auth/AuthInput";
-import { authService } from "@/services/auth.service";
 
 type Step = "email" | "success";
 
@@ -25,10 +24,10 @@ export default function ForgotPasswordPage() {
   async function handleSubmit() {
     setIsLoading(true);
     try {
-      await authService.forgotPassword(email);
+      toast.info(
+        "Recuperação de senha ainda não disponível. Entre em contato com o suporte.",
+      );
       setStep("success");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao enviar");
     } finally {
       setIsLoading(false);
     }

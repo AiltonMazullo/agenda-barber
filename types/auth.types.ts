@@ -1,18 +1,16 @@
-export type UserRole = "owner" | "admin" | "professional" | "receptionist";
+import type {
+  Barbershop,
+  CreateBarbershopPayload,
+} from "@/types/barbershop.types";
 
-export interface User {
-  id: string;
-  nome: string;
-  email: string;
-  role: UserRole;
-  empresaId: string;
-  avatarUrl?: string;
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
 }
 
-export interface Session {
-  user: User;
-  token: string;
-  expiresAt: string;
+export interface AuthSession {
+  barbershop: Barbershop;
+  tokens: AuthTokens;
 }
 
 export interface LoginCredentials {
@@ -20,8 +18,4 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterCredentials {
-  nome: string;
-  email: string;
-  password: string;
-}
+export type RegisterCredentials = CreateBarbershopPayload;

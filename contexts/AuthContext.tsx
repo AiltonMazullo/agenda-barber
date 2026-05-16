@@ -8,20 +8,21 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authService } from "@/services/auth.service";
+import { authService, setCachedBarbershop } from "@/services/auth.service";
 import type {
   LoginCredentials,
   RegisterCredentials,
-  User,
 } from "@/types/auth.types";
+import type { Barbershop } from "@/types/barbershop.types";
 
 interface AuthContextValue {
-  user: User | null;
+  barbershop: Barbershop | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<User>;
-  register: (credentials: RegisterCredentials) => Promise<User>;
+  login: (credentials: LoginCredentials) => Promise<Barbershop>;
+  register: (credentials: RegisterCredentials) => Promise<Barbershop>;
   logout: () => Promise<void>;
+  updateBarbershop: (b: Barbershop) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -31,15 +32,15 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     authService
       .me()
-      .then((u) => {
-        if (!cancelled) setUser(u);
+      .then((b) => {
+        if (!cancelled) setBarbershop(b);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -51,30 +52,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     const session = await authService.login(credentials);
-    setUser(session.user);
-    return session.user;
+    setBarbershop(session.barbershop);
+    return session.barbershop;
   }, []);
 
   const register = useCallback(async (credentials: RegisterCredentials) => {
     const session = await authService.register(credentials);
-    setUser(session.user);
-    return session.user;
+    setBarbershop(session.barbershop);
+    return session.barbershop;
   }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
-    setUser(null);
+    setBarbershop(null);
+  }, []);
+
+  const updateBarbershop = useCallback((b: Barbershop) => {
+    setBarbershop(b);
+    setCachedBarbershop(b);
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        isAuthenticated: user !== null,
+        barbershop,
+        isAuthenticated: barbershop !== null,
         isLoading,
         login,
         register,
         logout,
+        updateBarbershop,
       }}
     >
       {children}

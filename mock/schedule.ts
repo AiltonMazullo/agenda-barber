@@ -1,3 +1,5 @@
+import type { ScheduleFilial } from "@/types/schedule.types";
+
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export type Servico = {
@@ -195,4 +197,12 @@ export const AGENDAMENTOS_MOCK: Agendamento[] = [
     inicioMin: 16 * 60,
     origem: "recepcao",
   },
+];
+
+// ─── Filiais ──────────────────────────────────────────────────────────────────
+
+export const FILIAIS: ScheduleFilial[] = [
+  { id: "fil_1", nome: "Filial Centro", cidade: "Recife" },
+  { id: "fil_2", nome: "Filial Boa Viagem", cidade: "Recife" },
+  { id: "fil_3", nome: "Filial Olinda", cidade: "Olinda" },
 ];

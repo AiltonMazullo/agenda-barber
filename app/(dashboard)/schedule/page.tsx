@@ -1,1654 +1,81 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import React, {
-  useState,
-  useMemo,
-  useCallback,
-  useEffect,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
-  type DragEndEvent,
-  type DragStartEvent,
   DragOverlay,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  closestCenter,
+  type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   Plus,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Settings2,
   Scissors,
-  X,
-  Phone,
   User,
-  FileText,
-  Wifi,
-  UserCheck,
-  Trash2,
-  AlertTriangle,
-  Timer,
   LayoutList,
   LayoutGrid,
   Building2,
-  Filter,
-  Search,
-  TrendingUp,
-  DollarSign,
-  Users,
   Ban,
   Receipt,
-  GripVertical,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import {
-  SERVICOS,
-  PROFISSIONAIS,
   AGENDAMENTOS_MOCK,
+  FILIAIS,
+  PROFISSIONAIS,
+  SERVICOS,
   type Agendamento,
-  type Profissional,
 } from "@/mock/schedule";
 import {
+  END_HOUR,
   SLOT_OPTIONS,
   START_HOUR,
-  END_HOUR,
-  type SlotSize,
-  type ScheduleViewMode,
   type BloqueioHorario,
-  type ScheduleFilial,
+  type ScheduleViewMode,
+  type SlotSize,
 } from "@/types/schedule.types";
 import {
+  calcNowTopPx,
+  findConflicts,
+  gerarAgendamentoId,
   getDuracao,
   minToTime,
   snapToSlot,
-  gerarAgendamentoId,
-  findConflicts,
-  calcNowTopPx,
   type AgendamentoComCustom,
 } from "@/utils/schedule.utils";
 
-// ─── Filiais mock ─────────────────────────────────────────────────────────────
-
-const FILIAIS: ScheduleFilial[] = [
-  { id: "fil_1", nome: "Filial Centro", cidade: "Recife" },
-  { id: "fil_2", nome: "Filial Boa Viagem", cidade: "Recife" },
-  { id: "fil_3", nome: "Filial Olinda", cidade: "Olinda" },
-];
-
-// ─── DropdownButton ───────────────────────────────────────────────────────────
-
-function DropdownButton({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div role="button" tabIndex={0} className={className}>
-      {children}
-    </div>
-  );
-}
-
-// ─── Dialog: Novo Agendamento ─────────────────────────────────────────────────
-
-function DialogNovoAgendamento({
-  open,
-  onOpenChange,
-  onConfirm,
-  prefilledHora,
-  prefilledProfId,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onConfirm: (ag: Omit<Agendamento, "id">) => void;
-  prefilledHora?: string;
-  prefilledProfId?: string;
-}) {
-  const [cliente, setCliente] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [servicoId, setServicoId] = useState(SERVICOS[0].id);
-  const [profissionalId, setProfissionalId] = useState(
-    prefilledProfId ?? PROFISSIONAIS[0].id,
-  );
-  const [hora, setHora] = useState(prefilledHora ?? "09:00");
-  const [observacao, setObservacao] = useState("");
-  const [origem, setOrigem] = useState<"online" | "recepcao">("recepcao");
-
-  useEffect(() => {
-    if (open) {
-      if (prefilledHora) setHora(prefilledHora);
-      if (prefilledProfId) setProfissionalId(prefilledProfId);
-    }
-  }, [open, prefilledHora, prefilledProfId]);
-
-  const servico = SERVICOS.find((s) => s.id === servicoId)!;
-  const prof = PROFISSIONAIS.find((p) => p.id === profissionalId)!;
-  const duracao = prof.tempos[servicoId] ?? servico.tempoPadrao;
-
-  const handleConfirm = () => {
-    if (!cliente.trim()) {
-      toast.error("Informe o nome do cliente.");
-      return;
-    }
-    const [h, m] = hora.split(":").map(Number);
-    onConfirm({
-      cliente,
-      telefone,
-      servicoId,
-      profissionalId,
-      inicioMin: h * 60 + (m || 0),
-      observacao,
-      origem,
-    });
-    onOpenChange(false);
-    setCliente("");
-    setTelefone("");
-    setObservacao("");
-    setHora("09:00");
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-base font-bold">
-              Novo Agendamento
-            </DialogTitle>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </DialogHeader>
-
-        <div className="px-6 py-5 space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Cliente
-            </label>
-            <Input
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-              placeholder="Nome do cliente"
-              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Telefone
-            </label>
-            <Input
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              placeholder="(81) 99999-0000"
-              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 h-10"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Serviço
-              </label>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="w-full">
-                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-2 truncate">
-                      <span
-                        className={cn(
-                          "size-2 rounded-full shrink-0",
-                          servico.cor,
-                        )}
-                      />
-                      <span className="truncate text-sm">{servico.nome}</span>
-                    </div>
-                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-                  </DropdownButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-surface-raised border-border text-white w-48">
-                  {SERVICOS.map((s) => (
-                    <DropdownMenuItem
-                      key={s.id}
-                      onClick={() => setServicoId(s.id)}
-                      className="text-xs hover:bg-surface-elevated cursor-pointer"
-                    >
-                      <span
-                        className={cn(
-                          "size-2 rounded-full mr-2 shrink-0",
-                          s.cor,
-                        )}
-                      />
-                      {s.nome}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Profissional
-              </label>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="w-full">
-                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                    <span className="truncate text-sm">{prof.nome}</span>
-                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-                  </DropdownButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-surface-raised border-border text-white">
-                  {PROFISSIONAIS.filter((p) => p.ativo).map((p) => (
-                    <DropdownMenuItem
-                      key={p.id}
-                      onClick={() => setProfissionalId(p.id)}
-                      className="text-xs hover:bg-surface-elevated cursor-pointer"
-                    >
-                      {p.nome}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Horário
-            </label>
-            <Input
-              type="time"
-              value={hora}
-              onChange={(e) => setHora(e.target.value)}
-              className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Origem
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["recepcao", "online"] as const).map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => setOrigem(o)}
-                  className={cn(
-                    "h-9 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
-                    origem === o
-                      ? "bg-[#f5b82e]/15 border-[#f5b82e]/60 text-brand"
-                      : "border-border bg-surface-base text-muted-foreground hover:border-[#f5b82e]/30",
-                  )}
-                >
-                  {o === "recepcao" ? (
-                    <UserCheck className="size-3.5" />
-                  ) : (
-                    <Wifi className="size-3.5" />
-                  )}
-                  {o === "recepcao" ? "Recepção" : "Online"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-surface-base border border-border-subtle">
-            <Timer className="size-3.5 text-brand" />
-            <span className="text-xs text-muted-foreground">Duração estimada:</span>
-            <span className="text-xs font-bold text-white">{duracao} min</span>
-            <span className="text-xs text-text-subtle ml-auto">
-              R$ {servico.preco.toFixed(2).replace(".", ",")}
-            </span>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Observação
-            </label>
-            <Textarea
-              value={observacao}
-              onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Opcional"
-              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 resize-none min-h-[70px]"
-            />
-          </div>
-        </div>
-
-        <div className="px-6 pb-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] transition-colors"
-          >
-            Agendar
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Dialog: Detalhe ──────────────────────────────────────────────────────────
-
-function DialogDetalhe({
-  open,
-  onOpenChange,
-  agendamento,
-  onDelete,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  agendamento: Agendamento | null;
-  onDelete: (id: string) => void;
-}) {
-  if (!agendamento) return null;
-  const servico = SERVICOS.find((s) => s.id === agendamento.servicoId)!;
-  const prof = PROFISSIONAIS.find((p) => p.id === agendamento.profissionalId)!;
-  const duracao = getDuracao(agendamento);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-white max-w-sm p-0 gap-0">
-        <div className={cn("h-1 w-full rounded-t-lg", servico.cor)} />
-        <DialogHeader className="px-6 pt-4 pb-4 border-b border-border-subtle">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className={cn("size-2 rounded-full", servico.cor)} />
-              <DialogTitle className="text-base font-bold">
-                {servico.nome}
-              </DialogTitle>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </DialogHeader>
-        <div className="px-6 py-5 space-y-3">
-          <InfoRow
-            icon={<User className="size-3.5" />}
-            label="Cliente"
-            value={agendamento.cliente}
-          />
-          <InfoRow
-            icon={<Phone className="size-3.5" />}
-            label="Telefone"
-            value={agendamento.telefone || "—"}
-          />
-          <InfoRow
-            icon={<Scissors className="size-3.5" />}
-            label="Profissional"
-            value={prof.nome}
-          />
-          <InfoRow
-            icon={<Clock className="size-3.5" />}
-            label="Horário"
-            value={`${minToTime(agendamento.inicioMin)} – ${minToTime(agendamento.inicioMin + duracao)} (${duracao}min)`}
-          />
-          <InfoRow
-            icon={
-              agendamento.origem === "online" ? (
-                <Wifi className="size-3.5" />
-              ) : (
-                <UserCheck className="size-3.5" />
-              )
-            }
-            label="Origem"
-            value={agendamento.origem === "online" ? "Online" : "Recepção"}
-          />
-          {agendamento.observacao && (
-            <InfoRow
-              icon={<FileText className="size-3.5" />}
-              label="Obs."
-              value={agendamento.observacao}
-            />
-          )}
-          <div className="pt-1 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Valor do serviço</span>
-            <span className="text-sm font-bold text-emerald-400">
-              R$ {servico.preco.toFixed(2).replace(".", ",")}
-            </span>
-          </div>
-        </div>
-        <div className="px-6 pb-6 flex justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              onDelete(agendamento.id);
-              onOpenChange(false);
-              toast.success("Agendamento removido.");
-            }}
-            className="h-9 px-4 rounded-md border border-red-500/30 bg-red-500/10 text-sm text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
-          >
-            <Trash2 className="size-3.5" />
-            Remover
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
-          >
-            Fechar
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <span className="text-text-subtle mt-0.5 shrink-0">{icon}</span>
-      <div className="flex flex-col min-w-0">
-        <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">
-          {label}
-        </span>
-        <span className="text-sm text-white leading-tight">{value}</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Dialog: Mudança de duração ───────────────────────────────────────────────
-
-function DialogMudancaDuracao({
-  open,
-  onOpenChange,
-  dados,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  dados: {
-    profAnterior: string;
-    profNovo: string;
-    duracaoAntes: number;
-    duracaoDepois: number;
-    servico: string;
-  } | null;
-  onConfirm: () => void;
-}) {
-  if (!dados) return null;
-  const diff = dados.duracaoDepois - dados.duracaoAntes;
-  const aumentou = diff > 0;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-white max-w-sm p-0 gap-0">
-        <div
-          className={cn(
-            "h-1 w-full rounded-t-lg",
-            aumentou ? "bg-amber-500" : "bg-emerald-500",
-          )}
-        />
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border-subtle">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle
-                className={cn(
-                  "size-4",
-                  aumentou ? "text-amber-400" : "text-emerald-400",
-                )}
-              />
-              <DialogTitle className="text-base font-bold">
-                Duração diferente
-              </DialogTitle>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </DialogHeader>
-        <div className="px-6 py-5 space-y-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Ao transferir{" "}
-            <span className="text-white font-semibold">{dados.servico}</span>{" "}
-            para{" "}
-            <span className="text-white font-semibold">{dados.profNovo}</span>,
-            o tempo será{" "}
-            <span
-              className={cn(
-                "font-bold",
-                aumentou ? "text-amber-400" : "text-emerald-400",
-              )}
-            >
-              {aumentou
-                ? `${Math.abs(diff)}min a mais`
-                : `${Math.abs(diff)}min a menos`}
-            </span>{" "}
-            que com{" "}
-            <span className="text-white font-semibold">
-              {dados.profAnterior}
-            </span>
-            .
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-surface-base border border-border rounded-lg p-3 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-text-subtle mb-1">
-                {dados.profAnterior}
-              </p>
-              <p className="text-xl font-bold text-white">
-                {dados.duracaoAntes}
-                <span className="text-xs text-text-subtle ml-0.5">min</span>
-              </p>
-            </div>
-            <div
-              className={cn(
-                "border rounded-lg p-3 text-center",
-                aumentou
-                  ? "bg-amber-500/10 border-amber-500/30"
-                  : "bg-emerald-500/10 border-emerald-500/30",
-              )}
-            >
-              <p className="text-[9px] font-bold uppercase tracking-widest text-text-subtle mb-1">
-                {dados.profNovo}
-              </p>
-              <p
-                className={cn(
-                  "text-xl font-bold",
-                  aumentou ? "text-amber-400" : "text-emerald-400",
-                )}
-              >
-                {dados.duracaoDepois}
-                <span className="text-xs ml-0.5 opacity-60">min</span>
-              </p>
-            </div>
-          </div>
-          <p className="text-[11px] text-text-subtle">
-            O card será redimensionado automaticamente.
-          </p>
-        </div>
-        <div className="px-6 pb-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] transition-colors"
-          >
-            Confirmar
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Dialog: Conflito de Horário ──────────────────────────────────────────────
-
-function DialogConflito({
-  open,
-  onOpenChange,
-  dados,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  dados: {
-    agMovendo: Agendamento;
-    conflitantes: Agendamento[];
-    novoInicio: number;
-    novoProfId: string;
-  } | null;
-  onConfirm: () => void;
-}) {
-  if (!dados) return null;
-  const servMovendo = SERVICOS.find((s) => s.id === dados.agMovendo.servicoId)!;
-  const durMovendo = getDuracao(dados.agMovendo, dados.novoProfId);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
-        <div className="h-1 w-full rounded-t-lg bg-red-500" />
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border-subtle">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-4 text-red-400" />
-              <DialogTitle className="text-base font-bold">
-                Conflito de Horário
-              </DialogTitle>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </DialogHeader>
-
-        <div className="px-6 py-5 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            O agendamento abaixo conflita com{" "}
-            <span className="text-white font-semibold">
-              {dados.conflitantes.length} agendamento
-              {dados.conflitantes.length > 1 ? "s" : ""}
-            </span>{" "}
-            existente{dados.conflitantes.length > 1 ? "s" : ""}. Deseja sobrepor
-            mesmo assim?
-          </p>
-
-          {/* Card movendo */}
-          <div className="rounded-lg border border-[#f5b82e]/40 bg-[#f5b82e]/5 p-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-brand mb-2">
-              Movendo
-            </p>
-            <div className="flex items-center gap-2">
-              <span
-                className={cn("size-2 rounded-full shrink-0", servMovendo.cor)}
-              />
-              <span className="text-sm font-semibold text-white">
-                {dados.agMovendo.cliente}
-              </span>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {minToTime(dados.novoInicio)} –{" "}
-                {minToTime(dados.novoInicio + durMovendo)}
-              </span>
-            </div>
-            <p className="text-xs text-text-subtle mt-1">
-              {servMovendo.nome} · {durMovendo}min
-            </p>
-          </div>
-
-          {/* Conflitantes */}
-          <div className="space-y-2">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-red-400">
-              Conflito com
-            </p>
-            {dados.conflitantes.map((c) => {
-              const s = SERVICOS.find((sv) => sv.id === c.servicoId)!;
-              const d = getDuracao(c);
-              return (
-                <div
-                  key={c.id}
-                  className="rounded-lg border border-red-500/30 bg-red-500/5 p-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn("size-2 rounded-full shrink-0", s.cor)}
-                    />
-                    <span className="text-sm font-semibold text-white">
-                      {c.cliente}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {minToTime(c.inicioMin)} – {minToTime(c.inicioMin + d)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-subtle mt-1">
-                    {s.nome} · {d}min
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-red-500/5 border border-red-500/20">
-            <AlertTriangle className="size-3.5 text-red-400 mt-0.5 shrink-0" />
-            <p className="text-xs text-red-300/80">
-              Sobrepor agendamentos pode prejudicar a qualidade do atendimento.
-            </p>
-          </div>
-        </div>
-
-        <div className="px-6 pb-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-colors"
-          >
-            Sobrepor mesmo assim
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Dialog: Nova Comanda ─────────────────────────────────────────────────────
-
-function DialogNovaComanda({
-  open,
-  onOpenChange,
-  agendamentos,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  agendamentos: Agendamento[];
-}) {
-  const [agSelecionadoId, setAgSelecionadoId] = useState<string | null>(null);
-
-  const handleGerar = () => {
-    if (!agSelecionadoId) {
-      toast.error("Selecione um agendamento para gerar a comanda.");
-      return;
-    }
-    const ag = agendamentos.find((a) => a.id === agSelecionadoId)!;
-    const servico = SERVICOS.find((s) => s.id === ag.servicoId)!;
-    toast.success(
-      `Comanda gerada para ${ag.cliente} — ${servico.nome} (R$ ${servico.preco.toFixed(2)})`,
-    );
-    onOpenChange(false);
-    setAgSelecionadoId(null);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Receipt className="size-4 text-brand" />
-              <DialogTitle className="text-base font-bold">
-                Nova Comanda
-              </DialogTitle>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </DialogHeader>
-        <div className="px-6 py-5 space-y-3 max-h-80 overflow-y-auto">
-          <p className="text-xs text-muted-foreground">
-            Selecione o agendamento para criar uma comanda:
-          </p>
-          {agendamentos.length === 0 && (
-            <p className="text-sm text-text-subtle text-center py-4">
-              Nenhum agendamento disponível.
-            </p>
-          )}
-          {agendamentos.map((ag) => {
-            const s = SERVICOS.find((sv) => sv.id === ag.servicoId)!;
-            const p = PROFISSIONAIS.find((pr) => pr.id === ag.profissionalId)!;
-            const d = getDuracao(ag);
-            return (
-              <button
-                key={ag.id}
-                type="button"
-                onClick={() => setAgSelecionadoId(ag.id)}
-                className={cn(
-                  "w-full text-left rounded-lg border p-3 transition-colors",
-                  agSelecionadoId === ag.id
-                    ? "border-[#f5b82e]/60 bg-[#f5b82e]/10"
-                    : "border-border bg-surface-base hover:border-[#f5b82e]/30",
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full shrink-0", s.cor)} />
-                  <span className="text-sm font-semibold text-white">
-                    {ag.cliente}
-                  </span>
-                  <span className="text-xs font-bold text-emerald-400 ml-auto">
-                    R$ {s.preco.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">{s.nome}</span>
-                  <span className="text-[10px] text-text-subtle">·</span>
-                  <span className="text-xs text-muted-foreground">{p.nome}</span>
-                  <span className="text-[10px] text-text-subtle">·</span>
-                  <span className="text-xs text-muted-foreground">
-                    {minToTime(ag.inicioMin)} ({d}min)
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <div className="px-6 pb-6 flex justify-end gap-3 border-t border-border-subtle pt-4">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleGerar}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] transition-colors flex items-center gap-1.5"
-          >
-            <Receipt className="size-3.5" />
-            Gerar Comanda
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Resumo do Dia ────────────────────────────────────────────────────────────
-
-function ResumoDia({ agendamentos }: { agendamentos: Agendamento[] }) {
-  const total = agendamentos.length;
-  const faturamento = agendamentos.reduce((acc, ag) => {
-    const s = SERVICOS.find((sv) => sv.id === ag.servicoId);
-    return acc + (s?.preco ?? 0);
-  }, 0);
-
-  const servicoCount = agendamentos.reduce<Record<string, number>>(
-    (acc, ag) => {
-      acc[ag.servicoId] = (acc[ag.servicoId] ?? 0) + 1;
-      return acc;
-    },
-    {},
-  );
-
-  const topServico = Object.entries(servicoCount).sort(
-    (a, b) => b[1] - a[1],
-  )[0];
-  const topServicoNome = topServico
-    ? (SERVICOS.find((s) => s.id === topServico[0])?.nome ?? "—")
-    : "—";
-
-  return (
-    <div className="flex items-center gap-3 px-4 md:px-6 py-2.5 border-b border-border-subtle shrink-0 overflow-x-auto">
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
-        <Users className="size-3.5 text-brand" />
-        <span className="text-[10px] text-muted-foreground">Atendimentos</span>
-        <span className="text-sm font-bold text-white">{total}</span>
-      </div>
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
-        <DollarSign className="size-3.5 text-emerald-400" />
-        <span className="text-[10px] text-muted-foreground">Faturamento</span>
-        <span className="text-sm font-bold text-emerald-400">
-          R$ {faturamento.toFixed(2).replace(".", ",")}
-        </span>
-      </div>
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
-        <TrendingUp className="size-3.5 text-blue-400" />
-        <span className="text-[10px] text-muted-foreground">Mais realizado</span>
-        <span className="text-sm font-bold text-white truncate max-w-[120px]">
-          {topServicoNome}
-        </span>
-        {topServico && (
-          <span className="text-[10px] text-text-subtle">({topServico[1]}x)</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Modo Lista ───────────────────────────────────────────────────────────────
-
-function ModoLista({
-  agendamentos,
-  onCardClick,
-}: {
-  agendamentos: Agendamento[];
-  onCardClick: (ag: Agendamento) => void;
-}) {
-  const [filtroServico, setFiltroServico] = useState("todos");
-  const [filtroProf, setFiltroProf] = useState("todos");
-  const [filtroOrigem, setFiltroOrigem] = useState("todos");
-  const [busca, setBusca] = useState("");
-
-  const filtrados = useMemo(() => {
-    return agendamentos
-      .filter((ag) => {
-        if (filtroServico !== "todos" && ag.servicoId !== filtroServico)
-          return false;
-        if (filtroProf !== "todos" && ag.profissionalId !== filtroProf)
-          return false;
-        if (filtroOrigem !== "todos" && ag.origem !== filtroOrigem)
-          return false;
-        if (busca && !ag.cliente.toLowerCase().includes(busca.toLowerCase()))
-          return false;
-        return true;
-      })
-      .sort((a, b) => a.inicioMin - b.inicioMin);
-  }, [agendamentos, filtroServico, filtroProf, filtroOrigem, busca]);
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Filtros */}
-      <div className="flex items-center gap-2 px-4 md:px-6 py-3 border-b border-border-subtle shrink-0 flex-wrap">
-        <div className="flex items-center gap-2 flex-1 min-w-[160px]">
-          <Search className="size-3.5 text-text-subtle shrink-0" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar cliente..."
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-text-subtle outline-none min-w-0"
-          />
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <DropdownButton className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs text-white flex items-center gap-1.5 cursor-pointer">
-              <Scissors className="size-3 text-muted-foreground" />
-              {filtroServico === "todos"
-                ? "Todos serviços"
-                : SERVICOS.find((s) => s.id === filtroServico)?.nome}
-              <ChevronDown className="size-3 text-muted-foreground" />
-            </DropdownButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-surface-raised border-border text-white">
-            <DropdownMenuItem
-              onClick={() => setFiltroServico("todos")}
-              className="text-xs hover:bg-surface-elevated"
-            >
-              Todos
-            </DropdownMenuItem>
-            {SERVICOS.map((s) => (
-              <DropdownMenuItem
-                key={s.id}
-                onClick={() => setFiltroServico(s.id)}
-                className="text-xs hover:bg-surface-elevated"
-              >
-                <span className={cn("size-2 rounded-full mr-2", s.cor)} />
-                {s.nome}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <DropdownButton className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs text-white flex items-center gap-1.5 cursor-pointer">
-              <User className="size-3 text-muted-foreground" />
-              {filtroProf === "todos"
-                ? "Todos prof."
-                : PROFISSIONAIS.find((p) => p.id === filtroProf)?.nome}
-              <ChevronDown className="size-3 text-muted-foreground" />
-            </DropdownButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-surface-raised border-border text-white">
-            <DropdownMenuItem
-              onClick={() => setFiltroProf("todos")}
-              className="text-xs hover:bg-surface-elevated"
-            >
-              Todos
-            </DropdownMenuItem>
-            {PROFISSIONAIS.filter((p) => p.ativo).map((p) => (
-              <DropdownMenuItem
-                key={p.id}
-                onClick={() => setFiltroProf(p.id)}
-                className="text-xs hover:bg-surface-elevated"
-              >
-                {p.nome}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <DropdownButton className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs text-white flex items-center gap-1.5 cursor-pointer">
-              {filtroOrigem === "todos"
-                ? "Todas origens"
-                : filtroOrigem === "online"
-                  ? "Online"
-                  : "Recepção"}
-              <ChevronDown className="size-3 text-muted-foreground" />
-            </DropdownButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-surface-raised border-border text-white">
-            <DropdownMenuItem
-              onClick={() => setFiltroOrigem("todos")}
-              className="text-xs hover:bg-surface-elevated"
-            >
-              Todas
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setFiltroOrigem("recepcao")}
-              className="text-xs hover:bg-surface-elevated"
-            >
-              Recepção
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setFiltroOrigem("online")}
-              className="text-xs hover:bg-surface-elevated"
-            >
-              Online
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <span className="text-[11px] text-text-subtle ml-auto shrink-0">
-          {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      {/* Tabela */}
-      <div className="flex-1 overflow-auto schedule-scroll px-4 md:px-6 py-4">
-        {filtrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-text-subtle">
-            <Filter className="size-8 mb-3 opacity-40" />
-            <p className="text-sm">Nenhum agendamento encontrado.</p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {filtrados.map((ag) => {
-              const s = SERVICOS.find((sv) => sv.id === ag.servicoId)!;
-              const p = PROFISSIONAIS.find(
-                (pr) => pr.id === ag.profissionalId,
-              )!;
-              const d = getDuracao(ag);
-              return (
-                <button
-                  key={ag.id}
-                  type="button"
-                  onClick={() => onCardClick(ag)}
-                  className="w-full text-left rounded-lg border border-border-subtle bg-surface-raised hover:border-border hover:bg-surface-elevated transition-colors p-3 flex items-center gap-3"
-                >
-                  <div
-                    className={cn(
-                      "w-0.5 self-stretch rounded-full shrink-0",
-                      s.cor,
-                    )}
-                  />
-                  <div className="flex-1 grid grid-cols-4 gap-2 items-center min-w-0">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
-                        {ag.cliente}
-                      </p>
-                      {ag.telefone && (
-                        <p className="text-xs text-text-subtle truncate">
-                          {ag.telefone}
-                        </p>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "size-1.5 rounded-full shrink-0",
-                            s.cor,
-                          )}
-                        />
-                        <p className="text-xs text-muted-foreground truncate">
-                          {s.nome}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground truncate">
-                        {p.nome}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 justify-end">
-                      <span className="text-xs text-white font-mono">
-                        {minToTime(ag.inicioMin)}
-                      </span>
-                      <span className="text-[10px] text-text-subtle">{d}min</span>
-                      {ag.origem === "online" ? (
-                        <Wifi className="size-3 text-text-subtle" />
-                      ) : (
-                        <UserCheck className="size-3 text-text-subtle" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-xs font-bold text-emerald-400 shrink-0">
-                    R$ {s.preco.toFixed(2)}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── AgendamentoCard ──────────────────────────────────────────────────────────
-
-function AgendamentoCard({
-  agendamento,
-  slotSize,
-  slotHeightPx,
-  isDragging = false,
-  onClick,
-  onResizeStart,
-}: {
-  agendamento: Agendamento;
-  slotSize: SlotSize;
-  slotHeightPx: number;
-  isDragging?: boolean;
-  onClick?: () => void;
-  onResizeStart?: (e: React.PointerEvent) => void;
-}) {
-  const servico = SERVICOS.find((s) => s.id === agendamento.servicoId)!;
-  const duracao = getDuracao(agendamento);
-  const heightPx = (duracao / slotSize) * slotHeightPx;
-
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "absolute left-0.5 right-0.5 rounded-md overflow-hidden select-none border-l-[3px] transition-all",
-        isDragging ? "opacity-40" : "opacity-100",
-        onClick && !isDragging
-          ? "cursor-pointer hover:brightness-110"
-          : "cursor-grab active:cursor-grabbing",
-      )}
-      style={{
-        height: `${heightPx - 2}px`,
-        borderLeftColor: "transparent",
-        background: "rgba(28,33,40,0.97)",
-        boxShadow: isDragging ? "none" : "0 1px 8px rgba(0,0,0,0.5)",
-      }}
-    >
-      <div className={cn("h-0.5 w-full", servico.cor)} />
-      <div className="px-2 py-1.5 flex flex-col justify-between h-[calc(100%-2px)] overflow-hidden">
-        <div>
-          <div className="flex items-center gap-1 mb-0.5">
-            <span
-              className={cn("size-1.5 rounded-full shrink-0", servico.cor)}
-            />
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide truncate">
-              {servico.nome}
-            </span>
-            {agendamento.origem === "online" && (
-              <Wifi className="size-2.5 text-text-subtle ml-auto shrink-0" />
-            )}
-          </div>
-          {heightPx >= 38 && (
-            <p className="text-[11px] font-semibold text-white truncate leading-tight">
-              {agendamento.cliente}
-            </p>
-          )}
-        </div>
-        {heightPx >= 54 && (
-          <div className="flex items-center gap-1">
-            <Clock className="size-2.5 text-text-subtle shrink-0" />
-            <span className="text-[9px] text-text-subtle">
-              {minToTime(agendamento.inicioMin)} · {duracao}min
-            </span>
-          </div>
-        )}
-      </div>
-      {/* Resize handle */}
-      {onResizeStart && heightPx >= 28 && (
-        <div
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeStart(e);
-          }}
-          className="absolute bottom-0 left-0 right-0 h-3 flex items-center justify-center cursor-s-resize group"
-        >
-          <GripVertical className="size-2.5 text-text-subtle group-hover:text-muted-foreground rotate-90 transition-colors" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── DraggableAgendamento ─────────────────────────────────────────────────────
-
-function DraggableAgendamento({
-  agendamento,
-  slotSize,
-  slotHeightPx,
-  activeId,
-  onCardClick,
-  onResizeEnd,
-}: {
-  agendamento: Agendamento;
-  slotSize: SlotSize;
-  slotHeightPx: number;
-  activeId: string | null;
-  onCardClick: (ag: Agendamento) => void;
-  onResizeEnd: (id: string, novaDuracao: number) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: agendamento.id,
-    data: { agendamento },
-  });
-
-  const duracao = getDuracao(agendamento);
-  const heightPx = (duracao / slotSize) * slotHeightPx;
-  const topPx =
-    ((agendamento.inicioMin - START_HOUR * 60) / slotSize) * slotHeightPx;
-  const isThis = activeId === agendamento.id;
-
-  // Resize state
-  const isResizing = useRef(false);
-  const resizeStartY = useRef(0);
-  const resizeStartDur = useRef(0);
-  const [resizeDelta, setResizeDelta] = useState(0);
-
-  const handleResizeStart = useCallback(
-    (e: React.PointerEvent) => {
-      isResizing.current = true;
-      resizeStartY.current = e.clientY;
-      resizeStartDur.current = duracao;
-      setResizeDelta(0);
-      e.currentTarget.setPointerCapture(e.pointerId);
-
-      const handleMove = (ev: PointerEvent) => {
-        if (!isResizing.current) return;
-        const dy = ev.clientY - resizeStartY.current;
-        const deltaSlots = Math.round(dy / slotHeightPx);
-        setResizeDelta(deltaSlots * slotSize);
-      };
-
-      const handleUp = (ev: PointerEvent) => {
-        if (!isResizing.current) return;
-        isResizing.current = false;
-        const dy = ev.clientY - resizeStartY.current;
-        const deltaSlots = Math.round(dy / slotHeightPx);
-        const novaDuracao = Math.max(
-          slotSize,
-          resizeStartDur.current + deltaSlots * slotSize,
-        );
-        setResizeDelta(0);
-        onResizeEnd(agendamento.id, novaDuracao);
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleUp);
-      };
-
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", handleUp);
-    },
-    [duracao, slotHeightPx, slotSize, agendamento.id, onResizeEnd],
-  );
-
-  const displayDur = Math.max(slotSize, duracao + resizeDelta);
-  const displayH = (displayDur / slotSize) * slotHeightPx;
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      style={{
-        position: "absolute",
-        top: topPx,
-        left: 0,
-        right: 0,
-        height: resizeDelta !== 0 ? displayH : heightPx,
-        zIndex: isThis ? 0 : 10,
-        transform: transform ? CSS.Translate.toString(transform) : undefined,
-        touchAction: "none",
-      }}
-      onClick={(e) => {
-        if (!transform && !isResizing.current) {
-          e.stopPropagation();
-          onCardClick(agendamento);
-        }
-      }}
-    >
-      <AgendamentoCard
-        agendamento={agendamento}
-        slotSize={slotSize}
-        slotHeightPx={slotHeightPx}
-        isDragging={isThis}
-        onResizeStart={handleResizeStart}
-      />
-    </div>
-  );
-}
-
-// ─── BloqueioCard ─────────────────────────────────────────────────────────────
-
-function BloqueioCard({
-  bloqueio,
-  slotSize,
-  slotHeightPx,
-  onDelete,
-}: {
-  bloqueio: BloqueioHorario;
-  slotSize: SlotSize;
-  slotHeightPx: number;
-  onDelete: (id: string) => void;
-}) {
-  const heightPx = (bloqueio.duracaoMin / slotSize) * slotHeightPx;
-  const topPx =
-    ((bloqueio.inicioMin - START_HOUR * 60) / slotSize) * slotHeightPx;
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: topPx,
-        left: 0,
-        right: 0,
-        height: heightPx - 2,
-        zIndex: 5,
-      }}
-      className="opacity-80"
-    >
-      <div
-        className="absolute left-0.5 right-0.5 rounded-md border border-red-500/40 bg-red-500/10 flex flex-col overflow-hidden group"
-        style={{ height: "100%" }}
-      >
-        <div className="h-0.5 w-full bg-red-500/60" />
-        <div className="flex-1 flex items-center justify-between px-2 py-1 overflow-hidden">
-          <div className="flex items-center gap-1 truncate">
-            <Ban className="size-2.5 text-red-400 shrink-0" />
-            {heightPx >= 36 && (
-              <span className="text-[9px] font-bold text-red-400/80 uppercase tracking-wide truncate">
-                {bloqueio.motivo || "Bloqueado"}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(bloqueio.id);
-            }}
-            className="size-4 rounded flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-          >
-            <X className="size-2.5" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── ProfissionalColuna ───────────────────────────────────────────────────────
-
-function ProfissionalColuna({
-  profissional,
-  agendamentos,
-  slotSize,
-  slotHeightPx,
-  totalSlots,
-  activeId,
-  onCardClick,
-  onResizeEnd,
-  bloqueios,
-  onDeleteBloqueio,
-  onCriarBloqueio,
-  modoBloquear,
-  onSlotClick,
-}: {
-  profissional: Profissional;
-  agendamentos: Agendamento[];
-  slotSize: SlotSize;
-  slotHeightPx: number;
-  totalSlots: number;
-  activeId: string | null;
-  onCardClick: (ag: Agendamento) => void;
-  onResizeEnd: (id: string, novaDuracao: number) => void;
-  bloqueios: BloqueioHorario[];
-  onDeleteBloqueio: (id: string) => void;
-  onCriarBloqueio: (profId: string, inicio: number, dur: number) => void;
-  modoBloquear: boolean;
-  onSlotClick: (profId: string, inicioMin: number) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `col-${profissional.id}`,
-    data: { profissionalId: profissional.id },
-  });
-
-  // Bloqueio via drag no grid
-  const bloqueioStart = useRef<number | null>(null);
-  const [bloqueioPreview, setBloqueioPreview] = useState<{
-    inicio: number;
-    fim: number;
-  } | null>(null);
-
-  const handleGridPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!modoBloquear) return;
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const slotIdx = Math.floor(y / slotHeightPx);
-      const minInicio = START_HOUR * 60 + slotIdx * slotSize;
-      bloqueioStart.current = minInicio;
-      setBloqueioPreview({ inicio: minInicio, fim: minInicio + slotSize });
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    [modoBloquear, slotHeightPx, slotSize],
-  );
-
-  const handleGridPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!modoBloquear || bloqueioStart.current === null) return;
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const slotIdx = Math.floor(y / slotHeightPx);
-      const minFim = Math.max(
-        bloqueioStart.current + slotSize,
-        START_HOUR * 60 + (slotIdx + 1) * slotSize,
-      );
-      setBloqueioPreview({ inicio: bloqueioStart.current, fim: minFim });
-    },
-    [modoBloquear, slotHeightPx, slotSize],
-  );
-
-  const handleGridPointerUp = useCallback(
-    (onCreated: (inicio: number, dur: number) => void) => {
-      if (!modoBloquear || bloqueioStart.current === null || !bloqueioPreview)
-        return;
-      const dur = bloqueioPreview.fim - bloqueioPreview.inicio;
-      if (dur >= slotSize) onCreated(bloqueioPreview.inicio, dur);
-      bloqueioStart.current = null;
-      setBloqueioPreview(null);
-    },
-    [modoBloquear, bloqueioPreview, slotSize],
-  );
-
-  const profBloqueios = bloqueios.filter(
-    (b) => b.profissionalId === profissional.id || b.profissionalId === "todos",
-  );
-
-  return (
-    <div className="flex flex-col min-w-[180px] flex-1">
-      <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle px-3 py-3 flex flex-col items-center gap-1.5">
-        <div className="size-9 rounded-full bg-[#f5b82e]/15 border border-[#f5b82e]/30 flex items-center justify-center">
-          <span className="text-xs font-bold text-brand">
-            {profissional.avatar}
-          </span>
-        </div>
-        <span className="text-[11px] font-bold text-white">
-          {profissional.nome}
-        </span>
-        <Badge className="bg-surface-elevated text-muted-foreground border-none text-[9px] px-1.5 py-0">
-          {agendamentos.length} agend.
-        </Badge>
-      </div>
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "relative transition-colors",
-          isOver && !modoBloquear ? "bg-[#f5b82e]/5" : "",
-          modoBloquear ? "cursor-crosshair" : "",
-        )}
-        style={{ height: totalSlots * slotHeightPx }}
-        onPointerDown={handleGridPointerDown}
-        onPointerMove={handleGridPointerMove}
-        onPointerUp={() =>
-          handleGridPointerUp((inicio, dur) => {
-            onCriarBloqueio(profissional.id, inicio, dur);
-          })
-        }
-        onClick={(e) => {
-          if (modoBloquear) return;
-          const target = e.target as HTMLElement;
-          if (
-            target === e.currentTarget ||
-            target.classList.contains("slot-row")
-          ) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const y = e.clientY - rect.top;
-            const slotIdx = Math.floor(y / slotHeightPx);
-            const inicioMin = START_HOUR * 60 + slotIdx * slotSize;
-            onSlotClick(profissional.id, inicioMin);
-          }
-        }}
-      >
-        {Array.from({ length: totalSlots }).map((_, i) => {
-          const min = START_HOUR * 60 + i * slotSize;
-          return (
-            <div
-              key={i}
-              className={cn(
-                "slot-row absolute left-0 right-0 border-t hover:bg-[#f5b82e]/3 transition-colors",
-                min % 60 === 0 ? "border-border" : "border-border-subtle",
-              )}
-              style={{ top: i * slotHeightPx, height: slotHeightPx }}
-            />
-          );
-        })}
-        {isOver && !modoBloquear && (
-          <div className="absolute inset-0 border-2 border-[#f5b82e]/30 rounded-sm pointer-events-none" />
-        )}
-
-        {/* Bloqueio preview */}
-        {bloqueioPreview && modoBloquear && (
-          <div
-            className="absolute left-0.5 right-0.5 bg-red-500/20 border border-red-500/50 rounded pointer-events-none z-20"
-            style={{
-              top:
-                ((bloqueioPreview.inicio - START_HOUR * 60) / slotSize) *
-                slotHeightPx,
-              height:
-                ((bloqueioPreview.fim - bloqueioPreview.inicio) / slotSize) *
-                slotHeightPx,
-            }}
-          />
-        )}
-
-        {/* Bloqueios */}
-        {profBloqueios.map((bl) => (
-          <BloqueioCard
-            key={bl.id}
-            bloqueio={bl}
-            slotSize={slotSize}
-            slotHeightPx={slotHeightPx}
-            onDelete={onDeleteBloqueio}
-          />
-        ))}
-
-        {/* Agendamentos */}
-        {agendamentos.map((ag) => (
-          <DraggableAgendamento
-            key={ag.id}
-            agendamento={ag}
-            slotSize={slotSize}
-            slotHeightPx={slotHeightPx}
-            activeId={activeId}
-            onCardClick={onCardClick}
-            onResizeEnd={onResizeEnd}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── TimeLine ─────────────────────────────────────────────────────────────────
-
-function TimeLine({
-  slotSize,
-  slotHeightPx,
-  totalSlots,
-}: {
-  slotSize: SlotSize;
-  slotHeightPx: number;
-  totalSlots: number;
-}) {
-  return (
-    <div className="flex flex-col w-14 shrink-0">
-      <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle h-[92px]" />
-      <div className="relative" style={{ height: totalSlots * slotHeightPx }}>
-        {Array.from({ length: totalSlots }).map((_, i) => {
-          const min = START_HOUR * 60 + i * slotSize;
-          return (
-            <div
-              key={i}
-              className="absolute right-2 flex items-start"
-              style={{ top: i * slotHeightPx - 7 }}
-            >
-              {min % 60 === 0 && (
-                <span className="text-[9px] text-text-subtle font-mono">
-                  {minToTime(min)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Página Principal ─────────────────────────────────────────────────────────
+import {
+  AgendamentoCard,
+  DialogConflito,
+  DialogDetalhe,
+  DialogMudancaDuracao,
+  DialogNovaComanda,
+  DialogNovoAgendamento,
+  DropdownButton,
+  ModoLista,
+  ProfissionalColuna,
+  ResumoDia,
+  TimeLine,
+  type DadosConflito,
+  type DadosMudancaDuracao,
+} from "@/components/schedule";
 
 export default function SchedulePage() {
   const [agendamentos, setAgendamentos] =
@@ -1661,30 +88,21 @@ export default function SchedulePage() {
   const [filialId, setFilialId] = useState<string>(FILIAIS[0].id);
   const [modoBloquear, setModoBloquear] = useState(false);
 
-  // Dialogs
   const [dialogNovo, setDialogNovo] = useState(false);
   const [dialogDetalhe, setDialogDetalhe] = useState(false);
   const [agSelecionado, setAgSelecionado] = useState<Agendamento | null>(null);
   const [dialogDuracao, setDialogDuracao] = useState(false);
-  const [dadosDuracao, setDadosDuracao] = useState<{
-    profAnterior: string;
-    profNovo: string;
-    duracaoAntes: number;
-    duracaoDepois: number;
-    servico: string;
-  } | null>(null);
+  const [dadosDuracao, setDadosDuracao] =
+    useState<DadosMudancaDuracao | null>(null);
   const [transferenciaPendente, setTransferenciaPendente] = useState<{
     agId: string;
     novoProfId: string;
     novoInicio: number;
   } | null>(null);
   const [dialogConflito, setDialogConflito] = useState(false);
-  const [dadosConflito, setDadosConflito] = useState<{
-    agMovendo: Agendamento;
-    conflitantes: Agendamento[];
-    novoInicio: number;
-    novoProfId: string;
-  } | null>(null);
+  const [dadosConflito, setDadosConflito] = useState<DadosConflito | null>(
+    null,
+  );
   const [conflitoPendente, setConflitoPendente] = useState<{
     agId: string;
     novoProfId: string;
@@ -1692,7 +110,6 @@ export default function SchedulePage() {
   } | null>(null);
   const [dialogComanda, setDialogComanda] = useState(false);
 
-  // Slot click
   const [prefilledHora, setPrefilledHora] = useState<string | undefined>();
   const [prefilledProfId, setPrefilledProfId] = useState<string | undefined>();
 
@@ -1766,7 +183,6 @@ export default function SchedulePage() {
         Math.min(END_HOUR * 60 - durNovaProf, newInicio),
       );
 
-      // ── Verificar conflitos ──────────────────────────────────────────────
       const conflicts = findConflicts(
         agendamentos,
         newProfId,
@@ -1803,7 +219,6 @@ export default function SchedulePage() {
         return;
       }
 
-      // ── Verificar mudança de duração ─────────────────────────────────────
       if (newProfId !== ag.profissionalId) {
         const durAtual = getDuracao(ag);
         if (durNovaProf !== durAtual) {
@@ -1916,8 +331,6 @@ export default function SchedulePage() {
       setAgendamentos((prev) =>
         prev.map((a) => {
           if (a.id !== id) return a;
-          // Sobrescreve a duração calculada localmente (em produção, ficaria
-          // num campo customDuracao do agendamento persistido).
           const updated: AgendamentoComCustom = {
             ...a,
             _customDuracao: novaDuracao,
@@ -1968,7 +381,6 @@ export default function SchedulePage() {
 
   return (
     <>
-      {/* Custom scrollbar style */}
       <style>{`
         .schedule-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .schedule-scroll::-webkit-scrollbar-track { background: #0d1117; }
@@ -1978,17 +390,17 @@ export default function SchedulePage() {
       `}</style>
 
       <div className="flex flex-col h-screen bg-surface-base text-white overflow-hidden">
-        {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               Agendamentos
             </h1>
-            <p className="text-muted-foreground text-sm mt-0.5">{dataCapitalizada}</p>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {dataCapitalizada}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Filial */}
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
@@ -2017,7 +429,6 @@ export default function SchedulePage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Navegação de data */}
             <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
               <button
                 type="button"
@@ -2036,7 +447,6 @@ export default function SchedulePage() {
               </button>
             </div>
 
-            {/* View toggle */}
             <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
               <button
                 type="button"
@@ -2066,7 +476,6 @@ export default function SchedulePage() {
               </button>
             </div>
 
-            {/* Filtro profissional */}
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
@@ -2104,7 +513,6 @@ export default function SchedulePage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Slot size */}
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
@@ -2129,7 +537,6 @@ export default function SchedulePage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Bloquear horário */}
             <button
               type="button"
               onClick={() => {
@@ -2148,7 +555,6 @@ export default function SchedulePage() {
               {modoBloquear ? "Bloqueando..." : "Bloquear"}
             </button>
 
-            {/* Nova comanda */}
             <button
               type="button"
               onClick={() => setDialogComanda(true)}
@@ -2158,7 +564,6 @@ export default function SchedulePage() {
               Comanda
             </button>
 
-            {/* Novo agendamento */}
             <button
               type="button"
               onClick={() => {
@@ -2174,17 +579,19 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        {/* ── Resumo do Dia ── */}
         <ResumoDia agendamentos={agendamentos} />
 
-        {/* ── Legenda ── */}
         {viewMode === "kanban" && (
           <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-border-subtle shrink-0 overflow-x-auto schedule-scroll">
             {SERVICOS.map((s) => (
               <div key={s.id} className="flex items-center gap-1.5 shrink-0">
                 <span className={cn("size-2 rounded-full", s.cor)} />
-                <span className="text-[10px] text-muted-foreground">{s.nome}</span>
-                <span className="text-[9px] text-text-subtle">R$ {s.preco}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {s.nome}
+                </span>
+                <span className="text-[9px] text-text-subtle">
+                  R$ {s.preco}
+                </span>
               </div>
             ))}
             <div className="ml-auto text-[9px] text-text-subtle flex items-center gap-1 shrink-0">
@@ -2203,7 +610,6 @@ export default function SchedulePage() {
           </div>
         )}
 
-        {/* ── Conteúdo ── */}
         {viewMode === "kanban" ? (
           <div className="flex-1 overflow-auto schedule-scroll">
             <DndContext
@@ -2279,7 +685,6 @@ export default function SchedulePage() {
           </div>
         )}
 
-        {/* ── Dialogs ── */}
         <DialogNovoAgendamento
           open={dialogNovo}
           onOpenChange={setDialogNovo}

@@ -1,0 +1,42 @@
+import { api } from "@/lib/api";
+import type {
+  Appointment,
+  CreateAppointmentPayload,
+  UpdateAppointmentStatusPayload,
+} from "@/types/appointment.types";
+
+export const appointmentsService = {
+  async list(barbershopId: string): Promise<Appointment[]> {
+    const { data } = await api.get<Appointment[]>(
+      `/barbershops/${barbershopId}/appointments`,
+    );
+    return data;
+  },
+
+  async create(
+    barbershopId: string,
+    payload: CreateAppointmentPayload,
+  ): Promise<Appointment> {
+    const { data } = await api.post<Appointment>(
+      `/barbershops/${barbershopId}/appointments`,
+      payload,
+    );
+    return data;
+  },
+
+  async updateStatus(
+    barbershopId: string,
+    id: string,
+    payload: UpdateAppointmentStatusPayload,
+  ): Promise<Appointment> {
+    const { data } = await api.patch<Appointment>(
+      `/barbershops/${barbershopId}/appointments/${id}/status`,
+      payload,
+    );
+    return data;
+  },
+
+  async cancel(barbershopId: string, id: string): Promise<void> {
+    await api.delete<void>(`/barbershops/${barbershopId}/appointments/${id}`);
+  },
+};
