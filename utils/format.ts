@@ -72,6 +72,15 @@ export function maskCnpj(value: string): string {
 }
 
 /**
+ * Máscara progressiva de CEP: "12345678" -> "12345-678"
+ */
+export function maskCep(value: string): string {
+  const d = digitsOnly(value).slice(0, 8);
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
+/**
  * Máscara progressiva de telefone BR (celular ou fixo) para onChange de input:
  * "1" -> "(1"
  * "11" -> "(11"
@@ -88,6 +97,31 @@ export function maskPhone(value: string): string {
   if (d.length <= 10)
     return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+/**
+ * Máscara de valor monetário BRL para uso em onChange de input.
+ * O usuário digita apenas números; a vírgula e o R$ entram automaticamente
+ * preenchendo da direita para a esquerda (padrão PDV brasileiro).
+ *
+ * "1"       → "R$ 0,01"
+ * "123"     → "R$ 1,23"
+ * "12345"   → "R$ 123,45"
+ * "1234567" → "R$ 12.345,67"
+ *
+ * Passa a string bruta do evento onChange — a função extrai apenas os dígitos.
+ */
+export function maskBRLInput(value: string): string {
+  const digits = digitsOnly(value);
+  if (!digits) return "";
+  const num = parseInt(digits, 10);
+  return (
+    "R$ " +
+    (num / 100).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
 }
 
 /** Converte string BRL ("1.234,56" / "R$ 1.234,56") em número (1234.56). */

@@ -45,7 +45,8 @@ import type {
   CreateServicePayload,
   Service,
 } from "@/types/service.types";
-import { maskPhone } from "@/utils/format";
+import { maskBRLInput, maskCep, maskPhone } from "@/utils/format";
+import { fetchAddressByCep } from "@/utils/cep";
 
 type TabKey = "empresa" | "filiais" | "profissionais" | "servicos";
 
@@ -297,6 +298,7 @@ function DialogFilial({
 }) {
   const [form, setForm] = useState<BranchFormState>(EMPTY_BRANCH_FORM);
   const [saving, setSaving] = useState(false);
+  const [fetchingCep, setFetchingCep] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -322,6 +324,28 @@ function DialogFilial({
     value: BranchFormState[K],
   ) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleCepChange(raw: string) {
+    const masked = maskCep(raw);
+    update("cep", masked);
+    if (masked.replace(/\D/g, "").length !== 8) return;
+    setFetchingCep(true);
+    try {
+      const address = await fetchAddressByCep(masked);
+      if (address) {
+        setForm((prev) => ({
+          ...prev,
+          cep: masked,
+          street: address.street || prev.street,
+          neighborhood: address.neighborhood || prev.neighborhood,
+          city: address.city || prev.city,
+          uf: address.uf || prev.uf,
+        }));
+      }
+    } finally {
+      setFetchingCep(false);
+    }
   }
 
   async function handleSave() {
@@ -397,13 +421,22 @@ function DialogFilial({
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <FormLabel required>CEP</FormLabel>
+              <FormLabel required>
+                CEP
+                {fetchingCep && (
+                  <span className="ml-1 text-[9px] font-normal text-muted-foreground normal-case tracking-normal animate-pulse">
+                    buscando…
+                  </span>
+                )}
+              </FormLabel>
               <Input
                 value={form.cep}
-                onChange={(e) => update("cep", e.target.value)}
+                onChange={(e) => void handleCepChange(e.target.value)}
                 placeholder="00000-000"
+                inputMode="numeric"
                 maxLength={9}
-                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
+                disabled={fetchingCep}
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10 disabled:opacity-70"
               />
             </div>
             <div className="space-y-1.5 col-span-2">
@@ -893,9 +926,7 @@ function DialogServico({
         name: service.name,
         description: service.description ?? "",
         durationMin: String(service.durationMin),
-        priceBRL: (service.priceInCents / 100)
-          .toFixed(2)
-          .replace(".", ","),
+        priceBRL: maskBRLInput(String(service.priceInCents)),
       });
     } else {
       setForm(EMPTY_SERVICE_FORM);
@@ -969,24 +1000,31 @@ function DialogServico({
             <div className="space-y-1.5">
               <FormLabel required>Duração (min)</FormLabel>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={form.durationMin}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, durationMin: e.target.value }))
+                  setForm((p) => ({
+                    ...p,
+                    durationMin: e.target.value.replace(/\D/g, ""),
+                  }))
                 }
-                min={5}
-                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                placeholder="30"
+                className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
             <div className="space-y-1.5">
-              <FormLabel required>Preço (R$)</FormLabel>
+              <FormLabel required>Valor</FormLabel>
               <Input
                 value={form.priceBRL}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, priceBRL: e.target.value }))
+                  setForm((p) => ({
+                    ...p,
+                    priceBRL: maskBRLInput(e.target.value),
+                  }))
                 }
-                inputMode="decimal"
-                placeholder="0,00"
+                inputMode="numeric"
+                placeholder="R$ 0,00"
                 className="bg-surface-base border-border text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
