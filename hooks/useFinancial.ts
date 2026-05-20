@@ -1,12 +1,6 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import {
-  CONTAS_PAGAR_MOCK,
-  CONTAS_RECEBER_MOCK,
-  CATEGORIAS_FINANCEIRAS_MOCK,
-  COMISSOES_PENDENTES_MOCK,
-} from "@/mock/financial";
 import type {
   CategoriaFinanceira,
   ComissaoPendente,
@@ -70,15 +64,10 @@ function computeResumoReceber(contas: Conta[]): ResumoContasReceber {
  * (substitui mock + setters por chamadas ao service).
  */
 export function useFinancial() {
-  const [contasPagar, setContasPagar] = useState<Conta[]>(CONTAS_PAGAR_MOCK);
-  const [contasReceber, setContasReceber] =
-    useState<Conta[]>(CONTAS_RECEBER_MOCK);
-  const [categorias, setCategorias] = useState<CategoriaFinanceira[]>(
-    CATEGORIAS_FINANCEIRAS_MOCK,
-  );
-  const [comissoesPendentes, setComissoesPendentes] = useState<
-    ComissaoPendente[]
-  >(COMISSOES_PENDENTES_MOCK);
+  const [contasPagar, setContasPagar] = useState<Conta[]>([]);
+  const [contasReceber, setContasReceber] = useState<Conta[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaFinanceira[]>([]);
+  const [comissoesPendentes, setComissoesPendentes] = useState<ComissaoPendente[]>([]);
 
   const resumoPagar = useMemo(
     () => computeResumoPagar(contasPagar),

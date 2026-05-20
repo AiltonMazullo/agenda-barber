@@ -55,6 +55,8 @@ import {
 } from "@/components/financial";
 import { formatBRL, formatDate } from "@/utils/format";
 import { useFinancial } from "@/hooks/useFinancial";
+import { useAuth } from "@/hooks/useAuth";
+import { useBranches } from "@/hooks/useBranches";
 import type { Conta, ContaStatus, ContaTipo } from "@/types/financial.types";
 import type { Tone } from "@/types/common.types";
 
@@ -85,9 +87,11 @@ const STATUS_TONE: Record<ContaStatus, Tone> = {
 function FilialField({
   filial,
   onSelect,
+  options,
 }: {
   filial: string;
   onSelect: (f: string) => void;
+  options: string[];
 }) {
   return (
     <Field className="flex-1 min-w-45">
@@ -109,12 +113,7 @@ function FilialField({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-surface-raised border-border text-foreground min-w-50">
-          {[
-            "Todas as filiais",
-            "Filial Centro",
-            "Filial Norte",
-            "Filial Sul",
-          ].map((f) => (
+          {options.map((f) => (
             <DropdownMenuItem
               key={f}
               onClick={() => onSelect(f)}
@@ -132,6 +131,13 @@ function FilialField({
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function FinanceiroPage() {
+  const { barbershop } = useAuth();
+  const { branches } = useBranches(barbershop?.id);
+  const filialOptions = [
+    "Todas as filiais",
+    ...branches.map((b) => `${b.street}, ${b.number} — ${b.city}/${b.uf}`),
+  ];
+
   const {
     contasPagar,
     contasReceber,
@@ -269,7 +275,7 @@ export default function FinanceiroPage() {
       <Card className="bg-surface-raised border-border">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <FilialField filial={filial} onSelect={setFilial} />
+            <FilialField filial={filial} onSelect={setFilial} options={filialOptions} />
 
             <DatePickerField
               id="financial-data-inicial"

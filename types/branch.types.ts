@@ -4,6 +4,7 @@
 
 export interface Branch {
   id: string;
+  name: string;
   email: string;
   phone: string;
   cep: string;
@@ -19,6 +20,7 @@ export interface Branch {
 }
 
 export interface CreateBranchPayload {
+  name: string;
   email: string;
   phone: string;
   cep: string;
@@ -31,6 +33,7 @@ export interface CreateBranchPayload {
 }
 
 export interface UpdateBranchPayload {
+  name?: string;
   email?: string;
   phone?: string;
   cep?: string;

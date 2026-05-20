@@ -9,6 +9,7 @@ export interface Service {
   description: string | null;
   durationMin: number;
   priceInCents: number;
+  hex: string | null;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
@@ -19,6 +20,7 @@ export interface CreateServicePayload {
   description?: string;
   durationMin: number;
   priceInCents: number;
+  hex?: string;
 }
 
 export interface UpdateServicePayload {
@@ -26,4 +28,5 @@ export interface UpdateServicePayload {
   description?: string;
   durationMin?: number;
   priceInCents?: number;
+  hex?: string;
 }

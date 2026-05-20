@@ -173,7 +173,6 @@ function DialogProduto({
     } else {
       setForm(EMPTY_PRODUCT_FORM);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
   }, [open, product]);
 
   function update<K extends keyof ProductFormState>(
@@ -388,13 +387,12 @@ function DialogEstoque({
         );
         return {
           branchId: b.id,
-          branchLabel: `${b.street}, ${b.number} — ${b.city}/${b.uf}`,
+          branchLabel: b.name,
           minStock: String(existing?.minStock ?? 0),
           currentStock: String(existing?.currentStock ?? 0),
         };
       }),
     );
-    // eslint-disable-next-line react-hooks/set-state-in-effect
   }, [open, product, branches]);
 
   function update(branchId: string, key: "minStock" | "currentStock", value: string) {
@@ -824,7 +822,7 @@ export default function EstoquePage() {
                         <TableCell className="px-4 py-4 text-muted-foreground text-sm">
                           {CATEGORY_LABEL[p.category]}
                         </TableCell>
-                        <TableCell className="px-4 py-4 text-muted-foreground text-sm font-mono text-xs">
+                        <TableCell className="px-4 py-4 text-muted-foreground text-xs font-mono">
                           {p.sku ?? "—"}
                         </TableCell>
                         <TableCell className="px-4 py-4 text-brand font-semibold text-sm">
