@@ -41,7 +41,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, StatusBadge } from "@/components/shared";
-import { formatBRL } from "@/utils/format";
+import { formatBRL, maskBRLInput } from "@/utils/format";
+
+function brlInputToReais(masked: string): number {
+  const digits = masked.replace(/\D/g, "");
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+}
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -125,14 +131,14 @@ function DialogAbrirCaixa({
   onOpenChange,
   onConfirm,
 }: DialogAbrirCaixaProps) {
-  const [valor, setValor] = useState("0,00");
+  const [valor, setValor] = useState("");
   const [obs, setObs] = useState("");
 
   const handleConfirm = () => {
-    const num = parseFloat(valor.replace(",", ".")) || 0;
+    const num = brlInputToReais(valor);
     onConfirm(num);
     onOpenChange(false);
-    setValor("0,00");
+    setValor("");
     setObs("");
   };
 
@@ -157,14 +163,14 @@ function DialogAbrirCaixa({
         <div className="px-6 py-5 space-y-5">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-brand">
-              Valor Inicial (R$)
+              Valor Inicial
             </label>
             <Input
-              type="number"
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(e) => setValor(maskBRLInput(e.target.value))}
+              inputMode="numeric"
               className="bg-surface-base border-brand/60 text-foreground focus-visible:ring-brand/30 h-11"
-              placeholder="0,00"
+              placeholder="R$ 0,00"
             />
           </div>
 
@@ -217,7 +223,7 @@ function DialogFecharCaixa({
   caixa,
   onConfirm,
 }: DialogFecharCaixaProps) {
-  const [valorContado, setValorContado] = useState("0,00");
+  const [valorContado, setValorContado] = useState("");
   const [obs, setObs] = useState("");
 
   const totalFaturado = calcTotalFaturado(caixa);
@@ -227,10 +233,10 @@ function DialogFecharCaixa({
   const comandas = caixa.movimentacoes.length;
 
   const handleConfirm = () => {
-    const num = parseFloat(String(valorContado).replace(",", ".")) || 0;
+    const num = brlInputToReais(valorContado);
     onConfirm(num, obs);
     onOpenChange(false);
-    setValorContado("0,00");
+    setValorContado("");
     setObs("");
   };
 
@@ -320,14 +326,14 @@ function DialogFecharCaixa({
           <div className="bg-surface-base border border-brand/40 rounded-lg p-4 space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-foreground">
-                Valor Contado em Caixa (R$)
+                Valor Contado em Caixa
               </label>
               <Input
-                type="number"
                 value={valorContado}
-                onChange={(e) => setValorContado(e.target.value)}
+                onChange={(e) => setValorContado(maskBRLInput(e.target.value))}
+                inputMode="numeric"
                 className="bg-surface-raised border-brand/60 text-foreground focus-visible:ring-brand/30 h-11"
-                placeholder="0,00"
+                placeholder="R$ 0,00"
               />
             </div>
             <div className="space-y-2">
@@ -405,19 +411,19 @@ function DialogMovimentacao({
   tipo,
   onConfirm,
 }: DialogMovimentacaoProps) {
-  const [valor, setValor] = useState("0,00");
+  const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const isEntrada = tipo === "Entrada";
 
   const handleConfirm = () => {
-    const num = parseFloat(String(valor).replace(",", ".")) || 0;
+    const num = brlInputToReais(valor);
     if (num <= 0) {
       toast.error("Informe um valor válido.");
       return;
     }
     onConfirm(num, descricao);
     onOpenChange(false);
-    setValor("0,00");
+    setValor("");
     setDescricao("");
   };
 
@@ -442,14 +448,14 @@ function DialogMovimentacao({
         <div className="px-6 py-5 space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-brand">
-              Valor (R$)
+              Valor
             </label>
             <Input
-              type="number"
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(e) => setValor(maskBRLInput(e.target.value))}
+              inputMode="numeric"
               className="bg-surface-base border-brand/60 text-foreground focus-visible:ring-brand/30 h-11"
-              placeholder="0,00"
+              placeholder="R$ 0,00"
             />
           </div>
           <div className="space-y-2">

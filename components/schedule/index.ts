@@ -7,7 +7,9 @@ export { AgendamentoCard } from "./AgendamentoCard";
 export { DraggableAgendamento } from "./DraggableAgendamento";
 export { ProfissionalColuna } from "./ProfissionalColuna";
 export { ModoLista } from "./ModoLista";
+export { ListaAgendamentosReais } from "./ListaAgendamentosReais";
 export { DialogNovoAgendamento } from "./DialogNovoAgendamento";
+export { DialogNovoAgendamentoAPI } from "./DialogNovoAgendamentoAPI";
 export { DialogDetalhe } from "./DialogDetalhe";
 export {
   DialogMudancaDuracao,

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Pencil,
@@ -14,6 +15,7 @@ import {
   CreditCard,
   Eye,
   EyeOff,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -136,7 +138,8 @@ function parseBRLToCents(input: string): number {
 // ─── Tab: Empresa ─────────────────────────────────────────────────────────────
 
 function TabEmpresa() {
-  const { barbershop, updateBarbershop } = useAuth();
+  const router = useRouter();
+  const { barbershop, updateBarbershop, logout } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(barbershop?.name ?? "");
@@ -144,6 +147,9 @@ function TabEmpresa() {
   const [address, setAddress] = useState(barbershop?.address ?? "");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setName(barbershop?.name ?? "");
@@ -180,6 +186,31 @@ function TabEmpresa() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openDeleteDialog() {
+    setDeleteConfirm("");
+    setDeleteDialog(true);
+  }
+
+  async function handleDelete() {
+    if (!barbershop) return;
+    if (deleteConfirm.trim() !== barbershop.slug) {
+      toast.error("Digite o slug exatamente como mostrado para confirmar.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      await barbershopsService.remove(barbershop.id);
+      toast.success("Conta excluída.");
+      await logout();
+      router.push("/login");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao excluir conta.",
+      );
+      setDeleting(false);
     }
   }
 
@@ -296,6 +327,107 @@ function TabEmpresa() {
           </button>
         </CardContent>
       </Card>
+
+      {/* Danger zone */}
+      <Card className="bg-surface-raised border-danger/30">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-danger-foreground" />
+            <h3 className="text-sm font-bold text-danger-foreground">
+              Zona de Perigo
+            </h3>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white">Excluir conta</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Remove a barbearia e todos os dados associados (filiais,
+                profissionais, serviços, agendamentos, estoque). Essa ação não
+                pode ser desfeita.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openDeleteDialog}
+              className="h-9 px-4 rounded-md border border-danger/40 bg-danger/10 text-sm font-semibold text-danger-foreground hover:bg-danger/20 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <Trash2 className="size-3.5" />
+              Excluir
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent className="bg-surface-raised border border-danger/40 text-white max-w-md p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="size-4 text-danger-foreground" />
+                <DialogTitle className="text-base font-bold">
+                  Confirmar exclusão
+                </DialogTitle>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteDialog(false)}
+                className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Esta ação <span className="text-danger-foreground font-bold">não pode ser desfeita</span>. Todos os dados serão removidos permanentemente.
+            </p>
+
+            <div className="bg-danger/5 border border-danger/20 rounded-md px-3 py-2.5 text-xs text-muted-foreground space-y-1">
+              <p>Serão excluídos:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>Conta da barbearia</li>
+                <li>Filiais, profissionais e serviços</li>
+                <li>Produtos, estoque e agendamentos</li>
+                <li>Credenciais de pagamento</li>
+              </ul>
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel required>
+                Digite o slug{" "}
+                <span className="font-mono text-brand">{barbershop.slug}</span>{" "}
+                para confirmar
+              </FormLabel>
+              <Input
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder={barbershop.slug}
+                autoComplete="off"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-danger/40 h-10 font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="px-6 pb-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteDialog(false)}
+              className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={deleting || deleteConfirm.trim() !== barbershop.slug}
+              onClick={handleDelete}
+              className="h-9 px-5 rounded-md text-sm font-bold bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? "Excluindo…" : "Excluir definitivamente"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

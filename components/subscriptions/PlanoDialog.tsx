@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SelectField } from "@/components/shared";
-import { parseBRL } from "@/utils/format";
+import { maskBRLInput, parseBRL } from "@/utils/format";
 import type { Plano, PlanoCiclo } from "@/types/subscription.types";
 
 const CICLOS: { value: PlanoCiclo; label: string }[] = [
@@ -62,7 +62,7 @@ export function PlanoDialog({
     if (planoEdicao) {
       setForm({
         nome: planoEdicao.nome,
-        preco: planoEdicao.preco.toString().replace(".", ","),
+        preco: maskBRLInput(String(Math.round(planoEdicao.preco * 100))),
         ciclo: planoEdicao.ciclo,
         beneficios: [...planoEdicao.beneficios],
         ativo: planoEdicao.ativo,
@@ -143,15 +143,15 @@ export function PlanoDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Preço (R$)
+                Valor
               </label>
               <Input
                 value={form.preco}
                 onChange={(e) =>
-                  setForm((s) => ({ ...s, preco: e.target.value }))
+                  setForm((s) => ({ ...s, preco: maskBRLInput(e.target.value) }))
                 }
-                placeholder="0,00"
-                inputMode="decimal"
+                placeholder="R$ 0,00"
+                inputMode="numeric"
                 className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
               />
             </div>

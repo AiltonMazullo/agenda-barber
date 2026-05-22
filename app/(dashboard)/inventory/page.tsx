@@ -32,6 +32,7 @@ import {
 import { PageHeader, EmptyState, StatusBadge } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { maskBRLInput } from "@/utils/format";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import {
@@ -162,7 +163,7 @@ function DialogProduto({
     if (product) {
       setForm({
         name: product.name,
-        priceBRL: (product.priceInCents / 100).toFixed(2).replace(".", ","),
+        priceBRL: maskBRLInput(String(product.priceInCents)),
         category: product.category,
         sku: product.sku ?? "",
         status: product.status,
@@ -249,12 +250,14 @@ function DialogProduto({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <FormLabel required>Preço (R$)</FormLabel>
+              <FormLabel required>Valor</FormLabel>
               <Input
                 value={form.priceBRL}
-                onChange={(e) => update("priceBRL", e.target.value)}
-                inputMode="decimal"
-                placeholder="0,00"
+                onChange={(e) =>
+                  update("priceBRL", maskBRLInput(e.target.value))
+                }
+                inputMode="numeric"
+                placeholder="R$ 0,00"
                 className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
               />
             </div>
@@ -294,13 +297,16 @@ function DialogProduto({
             <div className="space-y-1.5">
               <FormLabel>Recompra (dias)</FormLabel>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={form.repurchasePeriodDays}
                 onChange={(e) =>
-                  update("repurchasePeriodDays", e.target.value)
+                  update(
+                    "repurchasePeriodDays",
+                    e.target.value.replace(/\D/g, ""),
+                  )
                 }
                 placeholder="Opcional"
-                min={1}
                 className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
               />
             </div>
@@ -457,24 +463,34 @@ function DialogEstoque({
                   <div className="space-y-1.5">
                     <FormLabel>Qtd. mínima</FormLabel>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
                       value={r.minStock}
                       onChange={(e) =>
-                        update(r.branchId, "minStock", e.target.value)
+                        update(
+                          r.branchId,
+                          "minStock",
+                          e.target.value.replace(/\D/g, ""),
+                        )
                       }
+                      placeholder="0"
                       className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <FormLabel>Qtd. atual</FormLabel>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
                       value={r.currentStock}
                       onChange={(e) =>
-                        update(r.branchId, "currentStock", e.target.value)
+                        update(
+                          r.branchId,
+                          "currentStock",
+                          e.target.value.replace(/\D/g, ""),
+                        )
                       }
+                      placeholder="0"
                       className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
                     />
                   </div>

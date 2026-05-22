@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePickerField, SelectField } from "@/components/shared";
-import { parseBRL } from "@/utils/format";
+import { maskBRLInput, parseBRL } from "@/utils/format";
 import type {
   CategoriaFinanceira,
   Conta,
@@ -88,17 +88,19 @@ export function ContaDialog({
         categoria: contaEdicao.categoria,
         vencimento: new Date(contaEdicao.vencimento),
         forma: contaEdicao.forma,
-        valor: contaEdicao.valor.toString().replace(".", ","),
+        valor: maskBRLInput(String(Math.round(contaEdicao.valor * 100))),
         status: contaEdicao.status,
         observacao: contaEdicao.observacao ?? "",
       });
     } else {
-      setForm({
-        ...EMPTY_FORM,
-        categoria: categoriasDoTipo[0]?.nome ?? "",
-      });
+      const primeiraCategoria =
+        categorias.find((c) => c.tipo === tipo)?.nome ?? "";
+      setForm({ ...EMPTY_FORM, categoria: primeiraCategoria });
     }
-  }, [open, contaEdicao, categoriasDoTipo]);
+    // categorias é referencialmente estável (vem do hook), mas filtrar por tipo
+    // dentro do effect evita o bug de "form reseta a cada keystroke" causado
+    // pela referência nova retornada por filter() a cada render.
+  }, [open, contaEdicao, categorias, tipo]);
 
   function handleSave() {
     if (!form.descricao.trim()) {
@@ -195,15 +197,15 @@ export function ContaDialog({
             />
             <div className="space-y-1.5 flex-1 min-w-35">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Valor (R$)
+                Valor
               </label>
               <Input
                 value={form.valor}
                 onChange={(e) =>
-                  setForm((s) => ({ ...s, valor: e.target.value }))
+                  setForm((s) => ({ ...s, valor: maskBRLInput(e.target.value) }))
                 }
-                placeholder="0,00"
-                inputMode="decimal"
+                placeholder="R$ 0,00"
+                inputMode="numeric"
                 className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
               />
             </div>

@@ -4,7 +4,7 @@ export const END_HOUR = 20;
 
 export type SlotSize = 10 | 20 | 30;
 
-export type ScheduleViewMode = "kanban" | "lista";
+export type ScheduleViewMode = "kanban" | "lista" | "reais";
 
 export interface BloqueioHorario {
   id: string;

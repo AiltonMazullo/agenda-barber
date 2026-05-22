@@ -45,7 +45,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { formatBRL } from "@/utils/format";
+import { formatBRL, maskBRLInput } from "@/utils/format";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -434,7 +434,7 @@ function DialogComissaoAssinatura({
   >({});
 
   // Etapa 3
-  const [faturamento, setFaturamento] = useState("0");
+  const [faturamento, setFaturamento] = useState("");
   const [pctPote, setPctPote] = useState("50");
 
   const totalFichasEtapa1 = Object.values(qtdServicos).reduce(
@@ -449,7 +449,11 @@ function DialogComissaoAssinatura({
   const balanceOk = totalFichasBarbeiros === totalFichasEtapa1;
 
   const pote =
-    (parseFloat(faturamento) || 0) * ((parseFloat(pctPote) || 0) / 100);
+    (() => {
+      const digits = faturamento.replace(/\D/g, "");
+      const reais = digits ? parseInt(digits, 10) / 100 : 0;
+      return reais * ((parseFloat(pctPote) || 0) / 100);
+    })();
 
   const comissaoPorBarbeiro = PROFISSIONAIS_MOCK.map((prof) => {
     const fichas = Object.values(qtdPorBarbeiro[prof] ?? {}).reduce(
@@ -598,15 +602,17 @@ function DialogComissaoAssinatura({
                   >
                     <span className="text-sm text-white">{s}</span>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
                       value={qtdServicos[s] ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
                         setQtdServicos((prev) => ({
                           ...prev,
-                          [s]: parseInt(e.target.value) || 0,
-                        }))
-                      }
+                          [s]: v ? parseInt(v, 10) : 0,
+                        }));
+                      }}
+                      placeholder="0"
                       className="w-20 h-8 text-sm text-center bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30"
                     />
                   </div>
@@ -661,18 +667,20 @@ function DialogComissaoAssinatura({
                         <div key={s} className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">{s}</span>
                           <Input
-                            type="number"
-                            min={0}
+                            type="text"
+                            inputMode="numeric"
                             value={(qtdPorBarbeiro[prof] ?? {})[s] ?? ""}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, "");
                               setQtdPorBarbeiro((prev) => ({
                                 ...prev,
                                 [prof]: {
                                   ...(prev[prof] ?? {}),
-                                  [s]: parseInt(e.target.value) || 0,
+                                  [s]: v ? parseInt(v, 10) : 0,
                                 },
-                              }))
-                            }
+                              }));
+                            }}
+                            placeholder="0"
                             className="w-16 h-8 text-sm text-center bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30"
                           />
                         </div>
@@ -711,13 +719,13 @@ function DialogComissaoAssinatura({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Faturamento em Assinaturas (R$)
+                    Faturamento em Assinaturas
                   </label>
                   <Input
-                    type="number"
                     value={faturamento}
-                    onChange={(e) => setFaturamento(e.target.value)}
-                    min={0}
+                    onChange={(e) => setFaturamento(maskBRLInput(e.target.value))}
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
                   />
                 </div>
@@ -726,11 +734,15 @@ function DialogComissaoAssinatura({
                     % do Pote
                   </label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={pctPote}
-                    onChange={(e) => setPctPote(e.target.value)}
-                    min={0}
-                    max={100}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      const n = v ? Math.min(100, parseInt(v, 10)) : 0;
+                      setPctPote(String(n));
+                    }}
+                    placeholder="0"
                     className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
                   />
                 </div>

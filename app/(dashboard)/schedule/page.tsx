@@ -21,6 +21,7 @@ import {
   User,
   LayoutList,
   LayoutGrid,
+  Wifi,
   Building2,
   Ban,
   Receipt,
@@ -69,6 +70,7 @@ import {
   DialogNovaComanda,
   DialogNovoAgendamento,
   DropdownButton,
+  ListaAgendamentosReais,
   ModoLista,
   ProfissionalColuna,
   ResumoDia,
@@ -83,7 +85,7 @@ export default function SchedulePage() {
   const [bloqueios, setBloqueios] = useState<BloqueioHorario[]>([]);
   const [slotSize, setSlotSize] = useState<SlotSize>(10);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>("kanban");
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>("reais");
   const [filtroProf, setFiltroProf] = useState<string>("todos");
   const [filialId, setFilialId] = useState<string>(FILIAIS[0].id);
   const [modoBloquear, setModoBloquear] = useState(false);
@@ -474,6 +476,20 @@ export default function SchedulePage() {
                 <LayoutList className="size-3.5" />
                 Lista
               </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("reais")}
+                className={cn(
+                  "h-9 px-3 flex items-center gap-1.5 text-xs transition-colors",
+                  viewMode === "reais"
+                    ? "bg-surface-elevated text-white"
+                    : "text-muted-foreground hover:text-white hover:bg-surface-elevated",
+                )}
+                title="Dados reais da API"
+              >
+                <Wifi className="size-3.5" />
+                API
+              </button>
             </div>
 
             <DropdownMenu>
@@ -676,12 +692,16 @@ export default function SchedulePage() {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (
+        ) : viewMode === "lista" ? (
           <div className="flex-1 overflow-hidden">
             <ModoLista
               agendamentos={agendamentos}
               onCardClick={handleCardClick}
             />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-hidden">
+            <ListaAgendamentosReais />
           </div>
         )}
 

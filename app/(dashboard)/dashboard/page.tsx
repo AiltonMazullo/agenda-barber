@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Users,
   UserPlus,
@@ -15,12 +16,65 @@ import {
   Package,
   TrendingUp,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageHeader, SummaryCard } from "@/components/shared";
+import { PageHeader, SummaryCard, StatusBadge } from "@/components/shared";
+import { useAuth } from "@/hooks/useAuth";
+import { useAppointments } from "@/hooks/useAppointments";
+import type { AppointmentStatus } from "@/types/appointment.types";
+import type { Tone } from "@/types/common.types";
+
+const STATUS_LABEL: Record<AppointmentStatus, string> = {
+  PENDING: "Pendente",
+  CONFIRMED: "Confirmado",
+  COMPLETED: "Concluído",
+  CANCELLED: "Cancelado",
+};
+
+const STATUS_TONE: Record<AppointmentStatus, Tone> = {
+  PENDING: "warning",
+  CONFIRMED: "info",
+  COMPLETED: "success",
+  CANCELLED: "danger",
+};
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
 
 export default function DashboardPage() {
+  const { barbershop } = useAuth();
+  const { appointments, isLoading } = useAppointments(barbershop?.id);
+
+  const today = new Date();
+
+  const stats = useMemo(() => {
+    const todayAppts = appointments.filter((a) =>
+      isSameDay(new Date(a.scheduledAt), today),
+    );
+    const future = appointments.filter(
+      (a) => new Date(a.scheduledAt) >= today && a.status !== "CANCELLED",
+    );
+    return {
+      todayCount: todayAppts.length,
+      totalCount: appointments.length,
+      futureCount: future.length,
+      todayList: todayAppts
+        .sort(
+          (a, b) =>
+            new Date(a.scheduledAt).getTime() -
+            new Date(b.scheduledAt).getTime(),
+        )
+        .slice(0, 6),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointments]);
   return (
     <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
@@ -68,7 +122,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           label="Agenda Hoje"
-          value="0"
+          value={isLoading ? "…" : String(stats.todayCount)}
           icon={<Calendar className="size-4" />}
           tone="brand"
         />
@@ -80,8 +134,8 @@ export default function DashboardPage() {
         />
         <SummaryCard
           label="Agendamentos"
-          value="0"
-          subtitle="0 online"
+          value={isLoading ? "…" : String(stats.totalCount)}
+          subtitle={`${stats.futureCount} futuros`}
           subtitleTone="success"
           icon={<Calendar className="size-4" />}
           tone="brand"
@@ -198,9 +252,46 @@ export default function DashboardPage() {
           title="Agenda do Dia"
           actionLabel="Ver agenda"
         >
-          <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
-            <p className="text-sm">Nenhum agendamento para hoje.</p>
-          </div>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
+              <p className="text-sm">Carregando…</p>
+            </div>
+          ) : stats.todayList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
+              <p className="text-sm">Nenhum agendamento para hoje.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {stats.todayList.map((a) => {
+                const time = new Date(a.scheduledAt).toLocaleTimeString(
+                  "pt-BR",
+                  { hour: "2-digit", minute: "2-digit" },
+                );
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-3 px-3 py-2 rounded-md bg-surface-base border border-border-subtle"
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-foreground min-w-12">
+                      <Clock className="size-3 text-muted-foreground" />
+                      {time}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {a.client.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {a.service.name}
+                      </p>
+                    </div>
+                    <StatusBadge tone={STATUS_TONE[a.status]}>
+                      {STATUS_LABEL[a.status]}
+                    </StatusBadge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard

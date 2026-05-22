@@ -10,7 +10,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DatePickerField, SelectField } from "@/components/shared";
-import { parseBRL } from "@/utils/format";
+import { maskBRLInput, parseBRL } from "@/utils/format";
+
+function valorToBRLMask(valor: number): string {
+  return maskBRLInput(String(Math.round(valor * 100)));
+}
 import { CLIENTES_MOCK } from "@/mock/clients";
 import type {
   CobrancaOrigem,
@@ -62,25 +66,26 @@ export function ContratoDialog({
         planoId: contratoEdicao.planoId,
         origem: contratoEdicao.origem,
         inicio: new Date(contratoEdicao.inicio),
-        valor: contratoEdicao.valor.toString().replace(".", ","),
+        valor: valorToBRLMask(contratoEdicao.valor),
       });
     } else {
+      const primeiroPlano = planos.find((p) => p.ativo);
       setForm({
         clienteId: "",
-        planoId: planosAtivos[0]?.id ?? "",
+        planoId: primeiroPlano?.id ?? "",
         origem: "gateway",
         inicio: new Date(),
-        valor: planosAtivos[0]?.preco.toString().replace(".", ",") ?? "",
+        valor: primeiroPlano ? valorToBRLMask(primeiroPlano.preco) : "",
       });
     }
-  }, [open, contratoEdicao, planosAtivos]);
+  }, [open, contratoEdicao, planos]);
 
   // Auto-preencher valor ao trocar plano
   useEffect(() => {
     if (!open || isEditing) return;
     const plano = planos.find((p) => p.id === form.planoId);
     if (plano) {
-      setForm((s) => ({ ...s, valor: plano.preco.toString().replace(".", ",") }));
+      setForm((s) => ({ ...s, valor: valorToBRLMask(plano.preco) }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.planoId]);
@@ -204,15 +209,15 @@ export function ContratoDialog({
             />
             <div className="space-y-1.5 flex-1">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Valor (R$)
+                Valor
               </label>
               <input
                 value={form.valor}
                 onChange={(e) =>
-                  setForm((s) => ({ ...s, valor: e.target.value }))
+                  setForm((s) => ({ ...s, valor: maskBRLInput(e.target.value) }))
                 }
-                placeholder="0,00"
-                inputMode="decimal"
+                placeholder="R$ 0,00"
+                inputMode="numeric"
                 className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground placeholder:text-text-faint focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand/30"
               />
             </div>
