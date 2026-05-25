@@ -5,15 +5,11 @@
  * - Request: injeta `Authorization: Bearer <accessToken>` lendo do localStorage.
  * - Response: em 401, tenta refresh uma vez e refaz a request original.
  *   Se o refresh também falhar, limpa as credenciais e propaga o erro.
- *
- * Helpers de mock (`mockResponse`, `mockError`) seguem disponíveis até todos
- * os domínios estarem migrados para a API real.
  */
 
 import axios, {
   AxiosError,
   type AxiosInstance,
-  type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from "axios";
 import { translateApiError } from "@/utils/api-errors";
@@ -165,46 +161,3 @@ api.interceptors.response.use(
   },
 );
 
-// ─── Helpers de mock (mantidos enquanto migração não terminou) ────────────────
-
-const MIN_DELAY_MS = 200;
-const MAX_DELAY_MS = 600;
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-const simulatedDelay = () =>
-  MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS);
-
-interface MockOptions {
-  delayMs?: number;
-  failRate?: number;
-}
-
-export async function mockResponse<T>(
-  value: T,
-  options?: MockOptions,
-): Promise<T> {
-  await sleep(options?.delayMs ?? simulatedDelay());
-  if (options?.failRate && Math.random() < options.failRate) {
-    throw new ApiError("Falha simulada", 500, "MOCK_FAILURE");
-  }
-  return value;
-}
-
-export async function mockError(
-  message: string,
-  status = 500,
-  delayMs?: number,
-): Promise<never> {
-  await sleep(delayMs ?? simulatedDelay());
-  throw new ApiError(message, status);
-}
-
-// Auxiliar para usos pontuais onde só interessa o payload sem o envelope Axios.
-export async function unwrap<T>(
-  promise: Promise<AxiosResponse<T>>,
-): Promise<T> {
-  const res = await promise;
-  return res.data;
-}

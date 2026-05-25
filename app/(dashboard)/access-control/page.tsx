@@ -1,403 +1,301 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Plus,
-  Trash2,
   Shield,
-  ChevronDown,
-  ChevronRight,
-  Check,
+  Users,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  Info,
+  Search,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import { useAuth } from "@/hooks/useAuth";
+import { useBranches } from "@/hooks/useBranches";
+import { useEmployees } from "@/hooks/useEmployees";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/shared";
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-interface Permissao {
-  key: string;
-  label: string;
-}
-
-interface ModuloPermissao {
-  key: string;
-  label: string;
-  permissoes: Permissao[];
-}
-
-interface Grupo {
-  id: string;
-  nome: string;
-  permissoes: Set<string>;
-}
-
-// ─── Módulos ──────────────────────────────────────────────────────────────────
-
-const MODULOS: ModuloPermissao[] = [
-  {
-    key: "dashboard",
-    label: "Dashboard",
-    permissoes: [{ key: "dashboard.ver", label: "Visualizar dashboard" }],
-  },
-  {
-    key: "agenda",
-    label: "Agenda",
-    permissoes: [
-      { key: "agenda.ver", label: "Visualizar agenda" },
-      { key: "agenda.criar", label: "Criar agendamentos" },
-      { key: "agenda.editar", label: "Editar agendamentos" },
-      { key: "agenda.excluir", label: "Excluir agendamentos" },
-    ],
-  },
-  {
-    key: "clientes",
-    label: "Clientes",
-    permissoes: [
-      { key: "clientes.ver", label: "Visualizar clientes" },
-      { key: "clientes.criar", label: "Cadastrar clientes" },
-      { key: "clientes.editar", label: "Editar clientes" },
-      { key: "clientes.excluir", label: "Excluir clientes" },
-    ],
-  },
-  {
-    key: "financeiro",
-    label: "Financeiro",
-    permissoes: [
-      { key: "financeiro.ver", label: "Visualizar financeiro" },
-      { key: "financeiro.criar", label: "Criar lançamentos" },
-      { key: "financeiro.editar", label: "Editar lançamentos" },
-    ],
-  },
-  {
-    key: "caixa",
-    label: "Caixa",
-    permissoes: [
-      { key: "caixa.ver", label: "Visualizar caixa" },
-      { key: "caixa.abrir", label: "Abrir caixa" },
-      { key: "caixa.fechar", label: "Fechar caixa" },
-      { key: "caixa.movimentar", label: "Registrar movimentações" },
-    ],
-  },
-  {
-    key: "estoque",
-    label: "Estoque",
-    permissoes: [
-      { key: "estoque.ver", label: "Visualizar estoque" },
-      { key: "estoque.movimentar", label: "Registrar movimentações" },
-    ],
-  },
-  {
-    key: "assinaturas",
-    label: "Assinaturas",
-    permissoes: [
-      { key: "assinaturas.ver", label: "Visualizar assinaturas" },
-      { key: "assinaturas.gerenciar", label: "Gerenciar assinaturas" },
-    ],
-  },
-  {
-    key: "relatorios",
-    label: "Relatórios",
-    permissoes: [
-      { key: "relatorios.ver", label: "Visualizar relatórios" },
-      { key: "relatorios.exportar", label: "Exportar relatórios" },
-    ],
-  },
-  {
-    key: "configuracoes",
-    label: "Configurações",
-    permissoes: [
-      { key: "config.empresa", label: "Editar dados da empresa" },
-      { key: "config.filiais", label: "Gerenciar filiais" },
-      { key: "config.profissionais", label: "Gerenciar profissionais" },
-      { key: "config.servicos", label: "Gerenciar serviços" },
-    ],
-  },
-];
-
-// ─── Mock ─────────────────────────────────────────────────────────────────────
-
-const GRUPOS_MOCK: Grupo[] = [
-  {
-    id: "g1",
-    nome: "Administrador",
-    permissoes: new Set(MODULOS.flatMap((m) => m.permissoes.map((p) => p.key))),
-  },
-  {
-    id: "g2",
-    nome: "Recepcionista",
-    permissoes: new Set([
-      "dashboard.ver",
-      "agenda.ver",
-      "agenda.criar",
-      "agenda.editar",
-      "clientes.ver",
-      "clientes.criar",
-      "clientes.editar",
-    ]),
-  },
-  { id: "g3", nome: "teste", permissoes: new Set() },
-];
-
-// ─── ModuloRow ────────────────────────────────────────────────────────────────
-
-interface ModuloRowProps {
-  modulo: ModuloPermissao;
-  permissoes: Set<string>;
-  onChange: (key: string, val: boolean) => void;
-}
-
-function ModuloRow({ modulo, permissoes, onChange }: ModuloRowProps) {
-  const [expanded, setExpanded] = useState(true);
-  const total = modulo.permissoes.length;
-  const marcados = modulo.permissoes.filter((p) =>
-    permissoes.has(p.key),
-  ).length;
-  const allChecked = marcados === total;
-  const someChecked = marcados > 0 && marcados < total;
-
-  const toggleAll = () => {
-    const newVal = !allChecked;
-    modulo.permissoes.forEach((p) => onChange(p.key, newVal));
-  };
-
-  return (
-    <div className="border border-border-subtle rounded-lg overflow-hidden">
-      <div
-        className="flex items-center justify-between px-4 py-3 bg-surface-base cursor-pointer hover:bg-surface-elevated/40 transition-colors"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleAll();
-            }}
-            className={cn(
-              "size-5 rounded border flex items-center justify-center transition-colors shrink-0",
-              allChecked
-                ? "bg-brand border-brand"
-                : someChecked
-                  ? "bg-brand/30 border-brand/50"
-                  : "border-border bg-transparent hover:border-brand/40",
-            )}
-          >
-            {allChecked && (
-              <Check className="size-3 text-brand-foreground" />
-            )}
-            {someChecked && !allChecked && (
-              <div className="size-2 rounded-sm bg-brand" />
-            )}
-          </button>
-          <span className="text-sm font-semibold text-foreground">
-            {modulo.label}
-          </span>
-          <span className="text-[10px] text-text-subtle">
-            {marcados}/{total}
-          </span>
-        </div>
-        {expanded ? (
-          <ChevronDown className="size-3.5 text-text-subtle" />
-        ) : (
-          <ChevronRight className="size-3.5 text-text-subtle" />
-        )}
-      </div>
-
-      {expanded && (
-        <div className="px-4 py-3 space-y-2.5 bg-surface-raised">
-          {modulo.permissoes.map((perm) => (
-            <div key={perm.key} className="flex items-center gap-3">
-              <Checkbox
-                id={perm.key}
-                checked={permissoes.has(perm.key)}
-                onCheckedChange={(v) => onChange(perm.key, !!v)}
-                className="border-border data-[state=checked]:bg-brand data-[state=checked]:border-brand data-[state=checked]:text-brand-foreground"
-              />
-              <label
-                htmlFor={perm.key}
-                className="text-xs text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
-              >
-                {perm.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Página ───────────────────────────────────────────────────────────────────
+import type { Employee } from "@/types/employee.types";
 
 export default function ControleAcessoPage() {
-  const [grupos, setGrupos] = useState<Grupo[]>(GRUPOS_MOCK);
-  const [grupoAtivo, setGrupoAtivo] = useState<string | null>(null);
-  const [novoNome, setNovoNome] = useState("");
+  const { barbershop } = useAuth();
+  const { employees, isLoading, update } = useEmployees(barbershop?.id);
+  const { branches } = useBranches(barbershop?.id);
 
-  const grupoSelecionado = grupos.find((g) => g.id === grupoAtivo) ?? null;
+  const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<string>("todos");
+  const [branchFilter, setBranchFilter] = useState<string>("todas");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const handleCriarGrupo = () => {
-    if (!novoNome.trim()) return;
-    const novo: Grupo = {
-      id: `g_${Date.now()}`,
-      nome: novoNome.trim(),
-      permissoes: new Set(),
+  const branchById = useMemo(
+    () => new Map(branches.map((b) => [b.id, b.name])),
+    [branches],
+  );
+
+  const groups = useMemo(() => {
+    const set = new Set<string>();
+    employees.forEach((e) => set.add(e.group));
+    return Array.from(set).sort();
+  }, [employees]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return employees.filter((e) => {
+      if (groupFilter !== "todos" && e.group !== groupFilter) return false;
+      if (branchFilter !== "todas" && e.branchId !== branchFilter) return false;
+      if (q) {
+        const match =
+          e.name.toLowerCase().includes(q) ||
+          e.appName.toLowerCase().includes(q) ||
+          e.email.toLowerCase().includes(q) ||
+          e.group.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [employees, search, groupFilter, branchFilter]);
+
+  const summary = useMemo(() => {
+    const withAccess = employees.filter((e) => e.hasBranchAccess).length;
+    return {
+      total: employees.length,
+      withAccess,
+      withoutAccess: employees.length - withAccess,
+      groups: groups.length,
     };
-    setGrupos((prev) => [...prev, novo]);
-    setNovoNome("");
-    setGrupoAtivo(novo.id);
-    toast.success(`Grupo "${novo.nome}" criado.`);
-  };
+  }, [employees, groups.length]);
 
-  const handleDeletarGrupo = (id: string) => {
-    setGrupos((prev) => prev.filter((g) => g.id !== id));
-    if (grupoAtivo === id) setGrupoAtivo(null);
-    toast.success("Grupo removido.");
-  };
-
-  const handleTogglePermissao = (key: string, val: boolean) => {
-    if (!grupoAtivo) return;
-    setGrupos((prev) =>
-      prev.map((g) => {
-        if (g.id !== grupoAtivo) return g;
-        const novas = new Set(g.permissoes);
-        if (val) novas.add(key);
-        else novas.delete(key);
-        return { ...g, permissoes: novas };
-      }),
-    );
-  };
-
-  const handleSalvar = () => {
-    toast.success(`Permissões de "${grupoSelecionado?.nome}" salvas.`);
-  };
+  async function toggleAccess(e: Employee) {
+    if (busyId) return;
+    setBusyId(e.id);
+    try {
+      const updated = await update(e.id, {
+        hasBranchAccess: !e.hasBranchAccess,
+      });
+      if (updated) {
+        toast.success(
+          updated.hasBranchAccess
+            ? `Acesso liberado para ${updated.name}.`
+            : `Acesso removido de ${updated.name}.`,
+        );
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Controle de Acesso"
-        subtitle="Gerencie grupos e permissões por área do sistema"
+        subtitle="Permissões dos profissionais por filial e função"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Painel de grupos */}
-        <Card className="bg-surface-raised border-border lg:col-span-1">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Shield className="size-4 text-brand" />
-              <h2 className="text-sm font-bold text-foreground">Grupos</h2>
-            </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryCard
+          label="Profissionais"
+          value={isLoading ? "…" : String(summary.total)}
+          icon={<Users className="size-3.5" />}
+          tone="brand"
+          emphasized
+        />
+        <SummaryCard
+          label="Com Acesso"
+          value={String(summary.withAccess)}
+          icon={<CheckCircle2 className="size-3.5" />}
+          tone="success"
+        />
+        <SummaryCard
+          label="Sem Acesso"
+          value={String(summary.withoutAccess)}
+          icon={<XCircle className="size-3.5" />}
+          tone="neutral"
+        />
+        <SummaryCard
+          label="Funções"
+          value={String(summary.groups)}
+          icon={<Shield className="size-3.5" />}
+          tone="info"
+        />
+      </div>
 
-            <div className="flex gap-2">
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-info-bg border border-info/30 text-xs text-info-foreground">
+        <Info className="size-3.5 shrink-0 mt-0.5" />
+        <p>
+          O backend hoje suporta apenas o flag <code className="font-mono">hasBranchAccess</code>{" "}
+          por funcionário. Quando houver model de roles e permissões granulares,
+          esta página passará a ter mais controles.
+        </p>
+      </div>
+
+      <Card className="bg-surface-raised border-border">
+        <CardContent className="p-0">
+          <div className="px-4 py-4 border-b border-border-subtle flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-50">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCriarGrupo()}
-                placeholder="Nome do grupo"
-                className="bg-surface-base border-border text-foreground placeholder:text-text-subtle focus-visible:ring-brand/30 h-9 text-sm"
+                placeholder="Buscar por nome, função ou e-mail..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-surface-base border-border text-foreground placeholder:text-muted-foreground h-9 text-sm focus-visible:ring-brand/40"
               />
-              <button
-                type="button"
-                onClick={handleCriarGrupo}
-                className="size-9 rounded-md bg-brand text-brand-foreground flex items-center justify-center hover:bg-brand-hover transition-colors shrink-0"
-              >
-                <Plus className="size-4" />
-              </button>
             </div>
 
-            <div className="space-y-1">
-              {grupos.map((g) => (
-                <div
-                  key={g.id}
-                  className={cn(
-                    "flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition-colors group",
-                    grupoAtivo === g.id
-                      ? "bg-brand/10 border border-brand/30"
-                      : "hover:bg-surface-elevated border border-transparent",
-                  )}
-                  onClick={() => setGrupoAtivo(g.id)}
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <button
+                  type="button"
+                  className="h-9 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors"
                 >
-                  <span
+                  <Shield className="size-3.5 text-muted-foreground" />
+                  {groupFilter === "todos" ? "Todas funções" : groupFilter}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
+                <DropdownMenuItem
+                  onClick={() => setGroupFilter("todos")}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    groupFilter === "todos" && "text-brand",
+                  )}
+                >
+                  Todas funções
+                </DropdownMenuItem>
+                {groups.map((g) => (
+                  <DropdownMenuItem
+                    key={g}
+                    onClick={() => setGroupFilter(g)}
                     className={cn(
-                      "text-sm font-medium transition-colors",
-                      grupoAtivo === g.id ? "text-brand" : "text-foreground",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      groupFilter === g && "text-brand",
                     )}
                   >
-                    {g.nome}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletarGrupo(g.id);
-                    }}
-                    className="size-6 rounded flex items-center justify-center text-text-subtle hover:text-danger-foreground hover:bg-danger/10 transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
-              ))}
-              {grupos.length === 0 && (
-                <p className="text-xs text-text-subtle text-center py-4">
-                  Nenhum grupo criado.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    {g}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-        {/* Painel de permissões */}
-        <Card className="bg-surface-raised border-border lg:col-span-2">
-          <CardContent className="p-4">
-            {!grupoSelecionado ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 text-text-subtle">
-                <Shield className="size-10 opacity-30" />
-                <p className="text-sm">
-                  Selecione um grupo à esquerda para configurar permissões
-                </p>
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <button
+                  type="button"
+                  className="h-9 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors"
+                >
+                  <Building2 className="size-3.5 text-muted-foreground" />
+                  {branchFilter === "todas"
+                    ? "Todas filiais"
+                    : branchById.get(branchFilter) ?? "Filial"}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
+                <DropdownMenuItem
+                  onClick={() => setBranchFilter("todas")}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    branchFilter === "todas" && "text-brand",
+                  )}
+                >
+                  Todas filiais
+                </DropdownMenuItem>
+                {branches.map((b) => (
+                  <DropdownMenuItem
+                    key={b.id}
+                    onClick={() => setBranchFilter(b.id)}
+                    className={cn(
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      branchFilter === b.id && "text-brand",
+                    )}
+                  >
+                    {b.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="divide-y divide-border-subtle">
+            {isLoading ? (
+              <div className="px-5 py-12 text-center text-sm text-text-faint">
+                Carregando…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="px-5 py-12">
+                <EmptyState
+                  message={
+                    employees.length === 0
+                      ? "Nenhum profissional cadastrado. Adicione em Configurações."
+                      : "Nenhum profissional corresponde aos filtros."
+                  }
+                />
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-sm font-bold text-foreground">
-                      {grupoSelecionado.nome}
-                    </h2>
-                    <p className="text-[11px] text-text-subtle mt-0.5">
-                      {grupoSelecionado.permissoes.size} permissão(ões)
-                      ativa(s)
+              filtered.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between px-5 py-4 hover:bg-surface-elevated/40 transition-colors gap-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-foreground">
+                        {e.name}
+                      </p>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-surface-elevated text-muted-foreground px-2 py-0.5 rounded">
+                        {e.group}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      @{e.appName} · {e.email}
+                    </p>
+                    <p className="text-xs text-text-faint mt-0.5 flex items-center gap-1.5">
+                      <Building2 className="size-3" />
+                      {branchById.get(e.branchId) ?? "Sem filial"}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleSalvar}
-                    className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all"
-                  >
-                    Salvar permissões
-                  </button>
-                </div>
 
-                <div
-                  className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin"
-                >
-                  {MODULOS.map((modulo) => (
-                    <ModuloRow
-                      key={modulo.key}
-                      modulo={modulo}
-                      permissoes={grupoSelecionado.permissoes}
-                      onChange={handleTogglePermissao}
-                    />
-                  ))}
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      disabled={busyId === e.id}
+                      onClick={() => toggleAccess(e)}
+                      className={cn(
+                        "h-8 px-3 rounded-md border text-xs font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-50",
+                        e.hasBranchAccess
+                          ? "border-success/40 bg-success/10 text-success-foreground hover:bg-success/20"
+                          : "border-border bg-surface-base text-muted-foreground hover:border-brand/40",
+                      )}
+                    >
+                      {e.hasBranchAccess ? (
+                        <>
+                          <CheckCircle2 className="size-3" />
+                          Acesso liberado
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="size-3" />
+                          Sem acesso
+                        </>
+                      )}
+                    </button>
+                    <span className="text-[10px] text-text-faint">
+                      Clique para alternar
+                    </span>
+                  </div>
                 </div>
-              </div>
+              ))
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

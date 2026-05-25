@@ -1,7 +1,14 @@
 "use client";
 
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { useMemo } from "react";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  CalendarCheck,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -12,30 +19,36 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader, SummaryCard } from "@/components/shared";
-import { FATURAMENTO_MENSAL_MOCK } from "@/mock/reports";
+import { useAuth } from "@/hooks/useAuth";
+import { useReports } from "@/hooks/useReports";
 import { formatBRL } from "@/utils/format";
 
 export default function FaturamentoReportPage() {
-  const dados = FATURAMENTO_MENSAL_MOCK;
-  const ultimo = dados[dados.length - 1];
-  const penultimo = dados[dados.length - 2];
+  const { barbershop } = useAuth();
+  const { isLoading, faturamentoMensal, totalAtendimentos } = useReports(
+    barbershop?.id,
+  );
 
-  const totalAcumulado = dados.reduce((acc, m) => acc + m.total, 0);
-  const totalServicos = dados.reduce((acc, m) => acc + m.servicos, 0);
-  const totalProdutos = dados.reduce((acc, m) => acc + m.produtos, 0);
-  const totalAssinaturas = dados.reduce((acc, m) => acc + m.assinaturas, 0);
+  const ultimo = faturamentoMensal[faturamentoMensal.length - 1];
+  const penultimo = faturamentoMensal[faturamentoMensal.length - 2];
 
-  const variacao = penultimo
-    ? ((ultimo.total - penultimo.total) / penultimo.total) * 100
-    : 0;
+  const totalAcumulado = useMemo(
+    () => faturamentoMensal.reduce((acc, m) => acc + m.total, 0),
+    [faturamentoMensal],
+  );
 
-  const maxTotal = Math.max(...dados.map((d) => d.total));
+  const variacao =
+    penultimo && penultimo.total > 0
+      ? ((ultimo.total - penultimo.total) / penultimo.total) * 100
+      : 0;
+
+  const maxTotal = Math.max(...faturamentoMensal.map((d) => d.total), 1);
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
-        title="Relatório de Faturamento"
-        subtitle="Visão consolidada por mês — últimos 6 meses"
+        title="Faturamento Mensal"
+        subtitle="Faturamento por mês nos últimos 6 meses (atendimentos concluídos)"
         actions={
           <Link href="/reports">
             <button
@@ -49,32 +62,28 @@ export default function FaturamentoReportPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <SummaryCard
           label="Total Acumulado"
-          value={formatBRL(totalAcumulado)}
+          value={isLoading ? "…" : formatBRL(totalAcumulado)}
           icon={<DollarSign className="size-3.5" />}
           tone="brand"
           emphasized
         />
         <SummaryCard
-          label="Serviços"
-          value={formatBRL(totalServicos)}
+          label="Mês Atual"
+          value={isLoading || !ultimo ? "—" : formatBRL(ultimo.total)}
+          subtitle={ultimo?.mesLabel}
           tone="success"
         />
         <SummaryCard
-          label="Produtos"
-          value={formatBRL(totalProdutos)}
+          label="Atendimentos"
+          value={isLoading ? "…" : String(totalAtendimentos)}
+          icon={<CalendarCheck className="size-3.5" />}
           tone="info"
-        />
-        <SummaryCard
-          label="Assinaturas"
-          value={formatBRL(totalAssinaturas)}
-          tone="warning"
         />
       </div>
 
-      {/* Gráfico de barras simples (CSS) */}
       <Card className="bg-surface-raised border-border">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -82,7 +91,9 @@ export default function FaturamentoReportPage() {
               Curva de Faturamento
             </h2>
             <div
-              className={`flex items-center gap-1 text-xs font-bold ${variacao >= 0 ? "text-success-foreground" : "text-danger-foreground"}`}
+              className={`flex items-center gap-1 text-xs font-bold ${
+                variacao >= 0 ? "text-success-foreground" : "text-danger-foreground"
+              }`}
             >
               {variacao >= 0 ? (
                 <TrendingUp className="size-3.5" />
@@ -95,7 +106,7 @@ export default function FaturamentoReportPage() {
           </div>
 
           <div className="grid grid-cols-6 gap-3 items-end h-40">
-            {dados.map((m) => {
+            {faturamentoMensal.map((m) => {
               const altura = (m.total / maxTotal) * 100;
               return (
                 <div
@@ -103,7 +114,7 @@ export default function FaturamentoReportPage() {
                   className="flex flex-col items-center gap-1.5 h-full"
                 >
                   <div className="text-[10px] font-bold text-foreground">
-                    {formatBRL(m.total).replace("R$ ", "")}
+                    {m.total > 0 ? formatBRL(m.total).replace("R$ ", "") : "—"}
                   </div>
                   <div className="w-full flex-1 flex items-end">
                     <div
@@ -121,7 +132,6 @@ export default function FaturamentoReportPage() {
         </CardContent>
       </Card>
 
-      {/* Tabela detalhada */}
       <Card className="bg-surface-raised border-border">
         <CardContent className="p-0">
           <div className="px-4 py-4 border-b border-border-subtle">
@@ -133,13 +143,7 @@ export default function FaturamentoReportPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  {[
-                    "Mês",
-                    "Serviços",
-                    "Produtos",
-                    "Assinaturas",
-                    "Total",
-                  ].map((col) => (
+                  {["Mês", "Atendimentos", "Faturamento"].map((col) => (
                     <TableHead
                       key={col}
                       className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
@@ -150,7 +154,7 @@ export default function FaturamentoReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dados.map((m) => (
+                {faturamentoMensal.map((m) => (
                   <TableRow
                     key={m.mes}
                     className="border-border hover:bg-surface-elevated/50 transition-colors"
@@ -159,13 +163,7 @@ export default function FaturamentoReportPage() {
                       {m.mesLabel}
                     </TableCell>
                     <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                      {formatBRL(m.servicos)}
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                      {formatBRL(m.produtos)}
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                      {formatBRL(m.assinaturas)}
+                      {m.atendimentos}
                     </TableCell>
                     <TableCell className="px-4 py-4 text-brand font-bold text-sm">
                       {formatBRL(m.total)}
@@ -176,14 +174,8 @@ export default function FaturamentoReportPage() {
                   <TableCell className="px-4 py-4 font-bold text-brand text-sm">
                     Total
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-foreground font-semibold text-sm">
-                    {formatBRL(totalServicos)}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-foreground font-semibold text-sm">
-                    {formatBRL(totalProdutos)}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-foreground font-semibold text-sm">
-                    {formatBRL(totalAssinaturas)}
+                  <TableCell className="px-4 py-4 font-semibold text-foreground text-sm">
+                    {totalAtendimentos}
                   </TableCell>
                   <TableCell className="px-4 py-4 text-brand font-bold text-base">
                     {formatBRL(totalAcumulado)}

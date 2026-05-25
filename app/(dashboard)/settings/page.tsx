@@ -12,7 +12,6 @@ import {
   Users,
   Scissors,
   MapPin,
-  CreditCard,
   Eye,
   EyeOff,
   AlertTriangle,
@@ -45,7 +44,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useEmployees } from "@/hooks/useEmployees";
-import { usePaymentData } from "@/hooks/usePaymentData";
 import { useServices } from "@/hooks/useServices";
 import { barbershopsService } from "@/services/barbershops.service";
 import type { Branch, CreateBranchPayload } from "@/types/branch.types";
@@ -66,12 +64,7 @@ import {
 } from "@/utils/format";
 import { fetchAddressByCep } from "@/utils/cep";
 
-type TabKey =
-  | "empresa"
-  | "filiais"
-  | "profissionais"
-  | "servicos"
-  | "pagamento";
+type TabKey = "empresa" | "filiais" | "profissionais" | "servicos";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "empresa", label: "Empresa", icon: <Building2 className="size-3.5" /> },
@@ -82,11 +75,6 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     icon: <Users className="size-3.5" />,
   },
   { key: "servicos", label: "Serviços", icon: <Scissors className="size-3.5" /> },
-  {
-    key: "pagamento",
-    label: "Pagamento",
-    icon: <CreditCard className="size-3.5" />,
-  },
 ];
 
 const DEFAULT_HEX = "#f5b82e";
@@ -1787,162 +1775,6 @@ function TabServicos() {
   );
 }
 
-// ─── Tab: Pagamento (GalaxPay) ────────────────────────────────────────────────
-
-function TabPagamento() {
-  const { barbershop } = useAuth();
-  const { data, isLoading, save, remove } = usePaymentData(barbershop?.id);
-
-  const [galaxPayId, setGalaxPayId] = useState("");
-  const [galaxPayHash, setGalaxPayHash] = useState("");
-  const [galaxPaySecurityToken, setGalaxPaySecurityToken] = useState("");
-  const [galaxPayPublicToken, setGalaxPayPublicToken] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [showSecrets, setShowSecrets] = useState(false);
-
-  useEffect(() => {
-    setGalaxPayId(data?.galaxPayId ?? "");
-    setGalaxPayHash(data?.galaxPayHash ?? "");
-    setGalaxPaySecurityToken(data?.galaxPaySecurityToken ?? "");
-    setGalaxPayPublicToken(data?.galaxPayPublicToken ?? "");
-  }, [data]);
-
-  async function handleSave() {
-    if (
-      !galaxPayId.trim() ||
-      !galaxPayHash.trim() ||
-      !galaxPaySecurityToken.trim() ||
-      !galaxPayPublicToken.trim()
-    ) {
-      toast.error("Preencha todas as credenciais.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await save({
-        galaxPayId: galaxPayId.trim(),
-        galaxPayHash: galaxPayHash.trim(),
-        galaxPaySecurityToken: galaxPaySecurityToken.trim(),
-        galaxPayPublicToken: galaxPayPublicToken.trim(),
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleRemove() {
-    if (!confirm("Remover as credenciais de pagamento?")) return;
-    await remove();
-  }
-
-  const inputType = showSecrets ? "text" : "password";
-
-  return (
-    <div className="max-w-lg space-y-5">
-      <Card className="bg-surface-raised border-border">
-        <CardContent className="p-5 space-y-5">
-          <div>
-            <h2 className="text-sm font-bold text-white">
-              Credenciais GalaxPay
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Conecte sua conta GalaxPay para processar pagamentos.
-            </p>
-          </div>
-
-          {isLoading ? (
-            <p className="text-sm text-text-faint">Carregando…</p>
-          ) : (
-            <>
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowSecrets((v) => !v)}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  {showSecrets ? (
-                    <>
-                      <EyeOff className="size-3" />
-                      Ocultar segredos
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="size-3" />
-                      Mostrar segredos
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <FormLabel required>GalaxPay ID</FormLabel>
-                  <Input
-                    value={galaxPayId}
-                    onChange={(e) => setGalaxPayId(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FormLabel required>Hash</FormLabel>
-                  <Input
-                    type={inputType}
-                    value={galaxPayHash}
-                    onChange={(e) => setGalaxPayHash(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FormLabel required>Security Token</FormLabel>
-                  <Input
-                    type={inputType}
-                    value={galaxPaySecurityToken}
-                    onChange={(e) => setGalaxPaySecurityToken(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FormLabel required>Public Token</FormLabel>
-                  <Input
-                    type={inputType}
-                    value={galaxPayPublicToken}
-                    onChange={(e) => setGalaxPayPublicToken(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 pt-2">
-                {data && (
-                  <button
-                    type="button"
-                    onClick={handleRemove}
-                    className="h-9 px-4 rounded-md border border-red-500/30 bg-transparent text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1.5"
-                  >
-                    <Trash2 className="size-3.5" />
-                    Remover
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={handleSave}
-                  className="ml-auto h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all disabled:opacity-60"
-                >
-                  {saving
-                    ? "Salvando…"
-                    : data
-                      ? "Atualizar Credenciais"
-                      : "Salvar Credenciais"}
-                </button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
@@ -1956,7 +1788,7 @@ export default function ConfiguracoesPage() {
           Configurações
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Dados da empresa, filiais, profissionais, serviços e pagamento
+          Dados da empresa, filiais, profissionais e serviços
         </p>
       </div>
 
@@ -1986,7 +1818,6 @@ export default function ConfiguracoesPage() {
             {activeTab === "filiais" && <TabFiliais />}
             {activeTab === "profissionais" && <TabProfissionais />}
             {activeTab === "servicos" && <TabServicos />}
-            {activeTab === "pagamento" && <TabPagamento />}
           </div>
         </CardContent>
       </Card>

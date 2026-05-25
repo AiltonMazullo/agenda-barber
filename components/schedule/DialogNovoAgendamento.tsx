@@ -1,15 +1,8 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
+import { X, ChevronDown, Timer } from "lucide-react";
 import { toast } from "sonner";
-import {
-  X,
-  ChevronDown,
-  Timer,
-  UserCheck,
-  Wifi,
-} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,76 +16,102 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  SERVICOS,
-  PROFISSIONAIS,
-  type Agendamento,
-} from "@/mock/schedule";
-import { DropdownButton } from "@/components/schedule/DropdownButton";
+import type {
+  Appointment,
+  CreateAppointmentPayload,
+} from "@/types/appointment.types";
+import type { Service } from "@/types/service.types";
+
+function toLocalDateInput(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+interface FormState {
+  serviceId: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  clientId: string;
+}
 
 interface DialogNovoAgendamentoProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onConfirm: (ag: Omit<Agendamento, "id">) => void;
-  prefilledHora?: string;
-  prefilledProfId?: string;
+  services: Service[];
+  prefilledServiceId?: string;
+  onCreate: (payload: CreateAppointmentPayload) => Promise<Appointment | null>;
 }
 
 export function DialogNovoAgendamento({
   open,
   onOpenChange,
-  onConfirm,
-  prefilledHora,
-  prefilledProfId,
+  services,
+  prefilledServiceId,
+  onCreate,
 }: DialogNovoAgendamentoProps) {
-  const [cliente, setCliente] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [servicoId, setServicoId] = useState(SERVICOS[0].id);
-  const [profissionalId, setProfissionalId] = useState(
-    prefilledProfId ?? PROFISSIONAIS[0].id,
-  );
-  const [hora, setHora] = useState(prefilledHora ?? "09:00");
-  const [observacao, setObservacao] = useState("");
-  const [origem, setOrigem] = useState<"online" | "recepcao">("recepcao");
+  const [form, setForm] = useState<FormState>({
+    serviceId: "",
+    scheduledDate: toLocalDateInput(new Date()),
+    scheduledTime: "09:00",
+    clientId: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      if (prefilledHora) setHora(prefilledHora);
-      if (prefilledProfId) setProfissionalId(prefilledProfId);
-    }
-  }, [open, prefilledHora, prefilledProfId]);
+    if (!open) return;
+    setForm({
+      serviceId: prefilledServiceId ?? services[0]?.id ?? "",
+      scheduledDate: toLocalDateInput(new Date()),
+      scheduledTime: "09:00",
+      clientId: "",
+    });
+  }, [open, services, prefilledServiceId]);
 
-  const servico = SERVICOS.find((s) => s.id === servicoId)!;
-  const prof = PROFISSIONAIS.find((p) => p.id === profissionalId)!;
-  const duracao = prof.tempos[servicoId] ?? servico.tempoPadrao;
+  const selectedService = services.find((s) => s.id === form.serviceId);
 
-  const handleConfirm = () => {
-    if (!cliente.trim()) {
-      toast.error("Informe o nome do cliente.");
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!form.serviceId) {
+      toast.error("Selecione um serviço.");
       return;
     }
-    const [h, m] = hora.split(":").map(Number);
-    onConfirm({
-      cliente,
-      telefone,
-      servicoId,
-      profissionalId,
-      inicioMin: h * 60 + (m || 0),
-      observacao,
-      origem,
-    });
-    onOpenChange(false);
-    setCliente("");
-    setTelefone("");
-    setObservacao("");
-    setHora("09:00");
-  };
+    if (!form.scheduledDate || !form.scheduledTime) {
+      toast.error("Informe data e hora.");
+      return;
+    }
+
+    const [hh, mm] = form.scheduledTime.split(":").map(Number);
+    const [yyyy, MM, dd] = form.scheduledDate.split("-").map(Number);
+    const scheduledAt = new Date(yyyy, MM - 1, dd, hh, mm).toISOString();
+
+    const payload: CreateAppointmentPayload = {
+      serviceId: form.serviceId,
+      scheduledAt,
+    };
+    if (form.clientId.trim()) {
+      payload.clientId = form.clientId.trim();
+    }
+
+    setSaving(true);
+    try {
+      const created = await onCreate(payload);
+      if (created) {
+        onOpenChange(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-white max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -101,7 +120,7 @@ export function DialogNovoAgendamento({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -111,172 +130,131 @@ export function DialogNovoAgendamento({
         <div className="px-6 py-5 space-y-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Cliente
+              Serviço
             </label>
-            <Input
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-              placeholder="Nome do cliente"
-              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Telefone
-            </label>
-            <Input
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              placeholder="(81) 99999-0000"
-              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 h-10"
-            />
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-full">
+                <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors cursor-pointer">
+                  {selectedService ? (
+                    <div className="flex items-center gap-2 truncate">
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: selectedService.hex ?? "#f5b82e",
+                        }}
+                      />
+                      <span className="truncate text-sm">
+                        {selectedService.name}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-text-faint">
+                      Selecione um serviço
+                    </span>
+                  )}
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-60 overflow-y-auto">
+                {services.length === 0 ? (
+                  <DropdownMenuItem disabled className="text-xs text-text-faint">
+                    Cadastre serviços em Configurações primeiro
+                  </DropdownMenuItem>
+                ) : (
+                  services.map((s) => (
+                    <DropdownMenuItem
+                      key={s.id}
+                      onClick={() => update("serviceId", s.id)}
+                      className={cn(
+                        "text-xs hover:bg-surface-elevated cursor-pointer",
+                        form.serviceId === s.id && "text-brand",
+                      )}
+                    >
+                      <span
+                        className="size-2 rounded-full mr-2 shrink-0"
+                        style={{ backgroundColor: s.hex ?? "#f5b82e" }}
+                      />
+                      {s.name}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Serviço
+                Data
               </label>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="w-full">
-                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-2 truncate">
-                      <span
-                        className={cn(
-                          "size-2 rounded-full shrink-0",
-                          servico.cor,
-                        )}
-                      />
-                      <span className="truncate text-sm">{servico.nome}</span>
-                    </div>
-                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-                  </DropdownButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-surface-raised border-border text-white w-48">
-                  {SERVICOS.map((s) => (
-                    <DropdownMenuItem
-                      key={s.id}
-                      onClick={() => setServicoId(s.id)}
-                      className="text-xs hover:bg-surface-elevated cursor-pointer"
-                    >
-                      <span
-                        className={cn(
-                          "size-2 rounded-full mr-2 shrink-0",
-                          s.cor,
-                        )}
-                      />
-                      {s.nome}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Input
+                type="date"
+                value={form.scheduledDate}
+                onChange={(e) => update("scheduledDate", e.target.value)}
+                className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+              />
             </div>
-
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Profissional
+                Hora
               </label>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="w-full">
-                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                    <span className="truncate text-sm">{prof.nome}</span>
-                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-                  </DropdownButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-surface-raised border-border text-white">
-                  {PROFISSIONAIS.filter((p) => p.ativo).map((p) => (
-                    <DropdownMenuItem
-                      key={p.id}
-                      onClick={() => setProfissionalId(p.id)}
-                      className="text-xs hover:bg-surface-elevated cursor-pointer"
-                    >
-                      {p.nome}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Input
+                type="time"
+                value={form.scheduledTime}
+                onChange={(e) => update("scheduledTime", e.target.value)}
+                className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+              />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Horário
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              ID do Cliente (opcional)
             </label>
             <Input
-              type="time"
-              value={hora}
-              onChange={(e) => setHora(e.target.value)}
-              className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
+              value={form.clientId}
+              onChange={(e) => update("clientId", e.target.value)}
+              placeholder="Deixe em branco se a API não exigir"
+              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 font-mono text-xs"
             />
+            <p className="text-[10px] text-text-faint">
+              O backend ainda não expõe cadastro de clientes. Cole o CUID de um
+              cliente existente se necessário.
+            </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Origem
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["recepcao", "online"] as const).map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => setOrigem(o)}
-                  className={cn(
-                    "h-9 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
-                    origem === o
-                      ? "bg-[#f5b82e]/15 border-[#f5b82e]/60 text-brand"
-                      : "border-border bg-surface-base text-muted-foreground hover:border-[#f5b82e]/30",
-                  )}
-                >
-                  {o === "recepcao" ? (
-                    <UserCheck className="size-3.5" />
-                  ) : (
-                    <Wifi className="size-3.5" />
-                  )}
-                  {o === "recepcao" ? "Recepção" : "Online"}
-                </button>
-              ))}
+          {selectedService && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-surface-base border border-border-subtle">
+              <Timer className="size-3.5 text-brand" />
+              <span className="text-xs text-muted-foreground">Duração:</span>
+              <span className="text-xs font-bold text-foreground">
+                {selectedService.durationMin} min
+              </span>
+              <span className="text-xs text-text-subtle ml-auto">
+                {(selectedService.priceInCents / 100).toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-surface-base border border-border-subtle">
-            <Timer className="size-3.5 text-brand" />
-            <span className="text-xs text-muted-foreground">
-              Duração estimada:
-            </span>
-            <span className="text-xs font-bold text-white">{duracao} min</span>
-            <span className="text-xs text-text-subtle ml-auto">
-              R$ {servico.preco.toFixed(2).replace(".", ",")}
-            </span>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Observação
-            </label>
-            <Textarea
-              value={observacao}
-              onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Opcional"
-              className="bg-surface-base border-border text-white placeholder:text-text-subtle focus-visible:ring-[#f5b82e]/30 resize-none min-h-[70px]"
-            />
-          </div>
+          )}
         </div>
 
         <div className="px-6 pb-6 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] transition-colors"
+            disabled={saving}
+            onClick={handleSave}
+            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
           >
-            Agendar
+            {saving ? "Criando…" : "Agendar"}
           </button>
         </div>
       </DialogContent>

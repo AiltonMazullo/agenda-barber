@@ -44,7 +44,7 @@ const navOperacional = [
 ];
 
 const navGestao = [
-  { title: "Assinaturas", href: "/subscriptions", icon: CreditCard },
+  { title: "Pagamentos", href: "/subscriptions", icon: CreditCard },
   { title: "Comissões", href: "/commissions", icon: TrendingUp },
   { title: "Estoque", href: "/inventory", icon: Package },
   { title: "Financeiro", href: "/financial", icon: DollarSign },
