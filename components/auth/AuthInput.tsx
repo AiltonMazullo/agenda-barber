@@ -17,12 +17,11 @@ interface AuthInputProps
   label: string;
   icon: ReactNode;
   type?: "text" | "email" | "password";
-  error?: string;
 }
 
 export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
   function AuthInput(
-    { id, label, icon, type = "text", className, error, ...rest },
+    { id, label, icon, type = "text", className, ...rest },
     ref,
   ) {
     const [showPassword, setShowPassword] = useState(false);
@@ -45,12 +44,8 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
             id={id}
             ref={ref}
             type={effectiveType}
-            aria-invalid={!!error}
             className={cn(
-              "bg-black border-none shadow-xl text-foreground h-11 pl-10 rounded-md focus-visible:ring-1 placeholder:text-text-faint",
-              error
-                ? "ring-1 ring-danger/60 focus-visible:ring-danger"
-                : "focus-visible:ring-brand",
+              "bg-black border-none shadow-xl text-foreground h-11 pl-10 rounded-md focus-visible:ring-1 focus-visible:ring-brand placeholder:text-text-faint",
               isPassword && "pr-10",
               className,
             )}
@@ -71,11 +66,6 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
             </button>
           )}
         </div>
-        {error && (
-          <p className="text-xs text-danger-foreground font-medium" role="alert">
-            {error}
-          </p>
-        )}
       </div>
     );
   },

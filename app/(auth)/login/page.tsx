@@ -4,34 +4,25 @@ import { Suspense, useState } from "react";
 import { Mail, Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { useAuth } from "@/hooks/useAuth";
-import { loginSchema, type LoginFormData } from "@/schemas/auth.schema";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
-  });
-
-  async function onSubmit(data: LoginFormData) {
+  async function handleSubmit() {
     setSubmitting(true);
     try {
-      await login(data);
+      await login({ email, password });
       const from = searchParams.get("from");
       router.push(from && from.startsWith("/") ? from : "/dashboard");
     } catch (err) {
@@ -43,9 +34,11 @@ function LoginForm() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSubmit();
+      }}
       className="flex flex-col gap-4"
-      noValidate
     >
       <AuthInput
         id="email"
@@ -53,9 +46,10 @@ function LoginForm() {
         type="email"
         icon={<Mail className="size-4" />}
         placeholder="seu@email.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
         autoComplete="email"
-        error={errors.email?.message}
-        {...register("email")}
       />
 
       <div className="flex flex-col gap-1">
@@ -65,9 +59,11 @@ function LoginForm() {
           type="password"
           icon={<Lock className="size-4" />}
           placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
           autoComplete="current-password"
-          error={errors.password?.message}
-          {...register("password")}
         />
         <div className="flex justify-end mt-1">
           <Link

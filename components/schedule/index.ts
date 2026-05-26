@@ -1,6 +1,6 @@
 export { InfoRow } from "./InfoRow";
 export { AppointmentCard } from "./AppointmentCard";
-export { ServicoColuna } from "./ServicoColuna";
+export { ProfissionalColuna } from "./ProfissionalColuna";
 export { ResumoDia } from "./ResumoDia";
 export { ModoLista } from "./ModoLista";
 export { DialogDetalhe } from "./DialogDetalhe";

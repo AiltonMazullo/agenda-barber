@@ -1,14 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Users,
   CalendarCheck,
   Mail,
+  Phone,
   Clock,
   Trophy,
-  Info,
+  Pencil,
+  Trash2,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,48 +25,334 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { useDerivedClients } from "@/hooks/useDerivedClients";
-import { formatBRL, formatDate } from "@/utils/format";
+import { useClients } from "@/hooks/useClients";
+import { useAppointments } from "@/hooks/useAppointments";
+import { formatBRL, formatDate, maskPhone } from "@/utils/format";
+import type { Client, UpdateClientPayload } from "@/types/client.types";
+
+interface ClientStats {
+  totalAppointments: number;
+  completedAppointments: number;
+  totalSpent: number;
+  lastVisit: string | null;
+  upcomingVisit: string | null;
+}
+
+interface EnrichedClient extends Client {
+  stats: ClientStats;
+}
+
+const EMPTY_STATS: ClientStats = {
+  totalAppointments: 0,
+  completedAppointments: 0,
+  totalSpent: 0,
+  lastVisit: null,
+  upcomingVisit: null,
+};
+
+// ─── Dialog de edição ─────────────────────────────────────────────────────────
+
+function FormLabel({
+  children,
+  required,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+      {children}
+      {required && <span className="text-brand">*</span>}
+    </label>
+  );
+}
+
+interface EditFormState {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+function DialogEditarCliente({
+  open,
+  onOpenChange,
+  client,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  client: Client | null;
+  onSave: (id: string, payload: UpdateClientPayload) => Promise<void>;
+}) {
+  const [form, setForm] = useState<EditFormState>({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !client) return;
+    setForm({
+      name: client.name,
+      email: client.email,
+      phone: client.phone ?? "",
+      password: "",
+    });
+    setShowPassword(false);
+  }, [open, client]);
+
+  async function handleSave() {
+    if (!client) return;
+    if (form.name.trim().length < 2) {
+      toast.error("Informe um nome válido.");
+      return;
+    }
+    if (!form.email.trim()) {
+      toast.error("Informe o e-mail.");
+      return;
+    }
+
+    const payload: UpdateClientPayload = {
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+      phone: form.phone.trim() || undefined,
+    };
+    if (form.password.trim()) {
+      if (form.password.length < 6) {
+        toast.error("A senha deve ter pelo menos 6 caracteres.");
+        return;
+      }
+      payload.password = form.password;
+    }
+
+    setSaving(true);
+    try {
+      await onSave(client.id, payload);
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!client) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-base font-bold">
+              Editar Cliente
+            </DialogTitle>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </DialogHeader>
+
+        <div className="px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            <FormLabel required>Nome</FormLabel>
+            <Input
+              value={form.name}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, name: e.target.value }))
+              }
+              className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <FormLabel required>E-mail</FormLabel>
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, email: e.target.value }))
+              }
+              className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <FormLabel>Telefone</FormLabel>
+            <Input
+              value={form.phone}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, phone: maskPhone(e.target.value) }))
+              }
+              inputMode="numeric"
+              maxLength={15}
+              placeholder="(81) 99999-0000"
+              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <FormLabel>Nova senha (opcional)</FormLabel>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, password: e.target.value }))
+                }
+                placeholder="Deixe em branco para manter"
+                className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-faint hover:text-foreground transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 pb-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleSave}
+            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+          >
+            {saving ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Página ──────────────────────────────────────────────────────────────────
 
 export default function ClientesPage() {
   const { barbershop } = useAuth();
-  const { clients, isLoading } = useDerivedClients(barbershop?.id);
+  const { clients, isLoading, update, remove } = useClients(barbershop?.id);
+  const { appointments } = useAppointments(barbershop?.id);
+
   const [search, setSearch] = useState("");
+  const [editDialog, setEditDialog] = useState(false);
+  const [editing, setEditing] = useState<Client | null>(null);
+
+  // Enriquece clientes com estatísticas de appointments
+  const enriched = useMemo<EnrichedClient[]>(() => {
+    const statsMap = new Map<string, ClientStats>();
+    for (const a of appointments) {
+      const prev = statsMap.get(a.clientId) ?? { ...EMPTY_STATS };
+      prev.totalAppointments += 1;
+      if (a.status === "COMPLETED") {
+        prev.completedAppointments += 1;
+        prev.totalSpent += a.service.priceInCents / 100;
+      }
+      const dt = new Date(a.scheduledAt);
+      const now = new Date();
+      if (dt < now) {
+        if (!prev.lastVisit || dt > new Date(prev.lastVisit)) {
+          prev.lastVisit = a.scheduledAt;
+        }
+      } else if (a.status !== "CANCELLED") {
+        if (!prev.upcomingVisit || dt < new Date(prev.upcomingVisit)) {
+          prev.upcomingVisit = a.scheduledAt;
+        }
+      }
+      statsMap.set(a.clientId, prev);
+    }
+
+    return clients.map((c) => ({
+      ...c,
+      stats: statsMap.get(c.id) ?? EMPTY_STATS,
+    }));
+  }, [clients, appointments]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return clients;
-    return clients.filter(
+    if (!q) return enriched;
+    return enriched.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q),
+        c.email.toLowerCase().includes(q) ||
+        (c.phone?.toLowerCase().includes(q) ?? false),
     );
-  }, [clients, search]);
+  }, [enriched, search]);
 
   const summary = useMemo(() => {
-    const totalClients = clients.length;
-    const totalSpent = clients.reduce((acc, c) => acc + c.totalSpent, 0);
-    const totalAppts = clients.reduce(
-      (acc, c) => acc + c.totalAppointments,
+    const total = enriched.length;
+    const totalSpent = enriched.reduce(
+      (acc, c) => acc + c.stats.totalSpent,
       0,
     );
-    const topClient = clients[0];
-    return { totalClients, totalSpent, totalAppts, topClient };
-  }, [clients]);
+    const totalAppts = enriched.reduce(
+      (acc, c) => acc + c.stats.totalAppointments,
+      0,
+    );
+    const topClient = [...enriched].sort(
+      (a, b) => b.stats.completedAppointments - a.stats.completedAppointments,
+    )[0];
+    return { total, totalSpent, totalAppts, topClient };
+  }, [enriched]);
+
+  function openEdit(c: Client) {
+    setEditing(c);
+    setEditDialog(true);
+  }
+
+  async function handleSaveEdit(id: string, payload: UpdateClientPayload) {
+    await update(id, payload);
+  }
+
+  async function handleDelete(c: Client) {
+    if (
+      !confirm(
+        `Remover o cliente "${c.name}"? Essa ação não pode ser desfeita.`,
+      )
+    ) {
+      return;
+    }
+    await remove(c.id);
+  }
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Clientes"
-        subtitle="Lista de clientes derivada dos agendamentos"
+        subtitle="Base de clientes da barbearia"
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard
           label="Clientes"
-          value={isLoading ? "…" : String(summary.totalClients)}
+          value={isLoading ? "…" : String(summary.total)}
           icon={<Users className="size-3.5" />}
           tone="brand"
           emphasized
@@ -82,20 +373,11 @@ export default function ClientesPage() {
           value={summary.topClient?.name ?? "—"}
           subtitle={
             summary.topClient
-              ? `${summary.topClient.completedAppointments} atendimentos`
+              ? `${summary.topClient.stats.completedAppointments} atendimentos`
               : "Sem dados"
           }
           icon={<Trophy className="size-3.5" />}
         />
-      </div>
-
-      <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-info-bg border border-info/30 text-xs text-info-foreground">
-        <Info className="size-3.5 shrink-0 mt-0.5" />
-        <p>
-          A lista é montada automaticamente a partir dos agendamentos. O
-          backend ainda não expõe rotas de cadastro de clientes — quando
-          isso acontecer, esta página passará a ter CRUD completo.
-        </p>
       </div>
 
       <Card className="bg-surface-raised border-border">
@@ -104,7 +386,7 @@ export default function ClientesPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou e-mail..."
+                placeholder="Buscar por nome, e-mail ou telefone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 bg-surface-base border-border text-foreground placeholder:text-muted-foreground h-9 text-sm focus-visible:ring-brand/40"
@@ -122,7 +404,8 @@ export default function ClientesPage() {
                     "Atendimentos",
                     "Total gasto",
                     "Última visita",
-                    "Próxima visita",
+                    "Próxima",
+                    "",
                   ].map((col) => (
                     <TableHead
                       key={col}
@@ -137,7 +420,7 @@ export default function ClientesPage() {
                 {isLoading ? (
                   <TableRow className="border-border hover:bg-transparent">
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-12 text-center text-sm text-text-faint"
                     >
                       Carregando…
@@ -145,11 +428,11 @@ export default function ClientesPage() {
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={6} className="py-4">
+                    <TableCell colSpan={7} className="py-4">
                       <EmptyState
                         message={
                           clients.length === 0
-                            ? "Nenhum cliente. Crie agendamentos para popular a lista."
+                            ? "Nenhum cliente cadastrado ainda."
                             : "Nenhum cliente corresponde à busca."
                         }
                       />
@@ -164,35 +447,59 @@ export default function ClientesPage() {
                       <TableCell className="px-4 py-4 font-semibold text-foreground text-sm">
                         {c.name}
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-muted-foreground text-xs">
+                      <TableCell className="px-4 py-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <Mail className="size-3" />
                           {c.email}
                         </div>
+                        {c.phone && (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Phone className="size-3" />
+                            {c.phone}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-muted-foreground text-sm">
                         <span className="font-semibold text-foreground">
-                          {c.completedAppointments}
+                          {c.stats.completedAppointments}
                         </span>
                         <span className="text-text-faint">
-                          {" "}/ {c.totalAppointments}
+                          {" "}/ {c.stats.totalAppointments}
                         </span>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-success-foreground font-semibold text-sm">
-                        {formatBRL(c.totalSpent)}
+                        {formatBRL(c.stats.totalSpent)}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                        {c.lastVisit ? formatDate(c.lastVisit) : "—"}
+                        {c.stats.lastVisit ? formatDate(c.stats.lastVisit) : "—"}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-sm">
-                        {c.upcomingVisit ? (
+                        {c.stats.upcomingVisit ? (
                           <span className="flex items-center gap-1.5 text-info-foreground">
                             <Clock className="size-3" />
-                            {formatDate(c.upcomingVisit)}
+                            {formatDate(c.stats.upcomingVisit)}
                           </span>
                         ) : (
                           <span className="text-text-faint">—</span>
                         )}
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(c)}
+                            className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                          >
+                            <Pencil className="size-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(c)}
+                            className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -202,6 +509,13 @@ export default function ClientesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <DialogEditarCliente
+        open={editDialog}
+        onOpenChange={setEditDialog}
+        client={editing}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 }

@@ -6,23 +6,40 @@ import {
   LayoutGrid,
   LayoutList,
   Calendar as CalendarIcon,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared";
 import {
   DialogDetalhe,
   DialogNovoAgendamento,
   ModoLista,
+  ProfissionalColuna,
   ResumoDia,
-  ServicoColuna,
 } from "@/components/schedule";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useEmployees } from "@/hooks/useEmployees";
 import { useServices } from "@/hooks/useServices";
-import type { Appointment } from "@/types/appointment.types";
+import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import type {
+  Appointment,
+  CreateAppointmentPayload,
+} from "@/types/appointment.types";
 import type { ScheduleViewMode } from "@/types/schedule.types";
+
+const UNASSIGNED = "__unassigned__";
 
 export default function SchedulePage() {
   const { barbershop } = useAuth();
@@ -33,31 +50,48 @@ export default function SchedulePage() {
     updateStatus,
     cancel,
   } = useAppointments(barbershop?.id);
+  const { employees, isLoading: loadingEmployees } = useEmployees(
+    barbershop?.id,
+  );
   const { services, isLoading: loadingServices } = useServices(barbershop?.id);
+  const { map: employeeMap, setEmployee, removeEmployee } =
+    useAppointmentEmployeeMap();
 
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("kanban");
   const [novoDialog, setNovoDialog] = useState(false);
+  const [prefilledEmployeeId, setPrefilledEmployeeId] = useState<
+    string | undefined
+  >(undefined);
   const [detalheDialog, setDetalheDialog] = useState(false);
   const [selected, setSelected] = useState<Appointment | null>(null);
 
-  const activeServices = useMemo(
-    () => services.filter((s) => s.barbershopId),
-    [services],
-  );
-
-  const apptsByService = useMemo(() => {
-    const map = new Map<string, Appointment[]>();
-    for (const s of activeServices) map.set(s.id, []);
+  // Mapeia appointments para colunas: { [employeeId | __unassigned__]: Appointment[] }
+  const apptsByEmployee = useMemo(() => {
+    const result = new Map<string, Appointment[]>();
+    for (const e of employees) result.set(e.id, []);
+    result.set(UNASSIGNED, []);
     for (const a of appointments) {
-      const list = map.get(a.serviceId);
-      if (list) list.push(a);
+      const empId = employeeMap[a.id];
+      const target = empId && result.has(empId) ? empId : UNASSIGNED;
+      result.get(target)?.push(a);
     }
-    return map;
-  }, [activeServices, appointments]);
+    return result;
+  }, [appointments, employees, employeeMap]);
 
   function handleCardClick(a: Appointment) {
     setSelected(a);
     setDetalheDialog(true);
+  }
+
+  async function handleCreate(
+    payload: CreateAppointmentPayload,
+    employeeId: string,
+  ) {
+    const created = await create(payload);
+    if (created) {
+      setEmployee(created.id, employeeId);
+    }
+    return created;
   }
 
   async function handleUpdateStatus(
@@ -69,6 +103,36 @@ export default function SchedulePage() {
 
   async function handleDelete(id: string) {
     await cancel(id);
+    removeEmployee(id);
+  }
+
+  // ─── Drag-and-drop entre colunas ────────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const data = active.data.current as
+      | { appointmentId: string }
+      | undefined;
+    if (!data?.appointmentId) return;
+
+    const overId = String(over.id);
+    if (overId === "emp-unassigned") {
+      removeEmployee(data.appointmentId);
+      toast("Agendamento movido para 'Sem profissional'.");
+      return;
+    }
+    if (overId.startsWith("emp-")) {
+      const employeeId = overId.slice("emp-".length);
+      setEmployee(data.appointmentId, employeeId);
+      const emp = employees.find((e) => e.id === employeeId);
+      toast.success(
+        `Movido para ${emp ? emp.appName || emp.name : "profissional"}.`,
+      );
+    }
   }
 
   const dataFormatada = format(new Date(), "EEEE, dd MMM yyyy", {
@@ -76,6 +140,8 @@ export default function SchedulePage() {
   });
   const dataCapitalizada =
     dataFormatada.charAt(0).toUpperCase() + dataFormatada.slice(1);
+
+  const isLoading = loadingAppts || loadingEmployees || loadingServices;
 
   return (
     <>
@@ -124,7 +190,10 @@ export default function SchedulePage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setNovoDialog(true)}
+                  onClick={() => {
+                    setPrefilledEmployeeId(undefined);
+                    setNovoDialog(true);
+                  }}
                   className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
                 >
                   <Plus className="size-3.5" />
@@ -140,32 +209,57 @@ export default function SchedulePage() {
         <div className="flex-1 overflow-hidden">
           {viewMode === "kanban" ? (
             <div className="h-full p-4 md:p-6 overflow-x-auto schedule-scroll">
-              {loadingServices || loadingAppts ? (
+              {isLoading ? (
                 <div className="text-center py-20 text-text-faint text-sm">
                   Carregando…
                 </div>
-              ) : activeServices.length === 0 ? (
+              ) : employees.length === 0 ? (
+                <div className="max-w-md mx-auto text-center py-20">
+                  <Users className="size-12 text-text-faint mx-auto mb-4" />
+                  <p className="text-sm text-foreground font-semibold">
+                    Cadastre profissionais primeiro
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O kanban organiza os agendamentos por profissional. Vá em
+                    Configurações → Profissionais para adicionar.
+                  </p>
+                </div>
+              ) : services.length === 0 ? (
                 <div className="max-w-md mx-auto text-center py-20">
                   <CalendarIcon className="size-12 text-text-faint mx-auto mb-4" />
                   <p className="text-sm text-foreground font-semibold">
                     Cadastre serviços primeiro
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    O kanban organiza os agendamentos por serviço. Vá em
-                    Configurações → Serviços para adicionar.
+                    Para criar agendamentos, você precisa ter ao menos um
+                    serviço cadastrado. Vá em Configurações → Serviços.
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 h-full">
-                  {activeServices.map((service) => (
-                    <ServicoColuna
-                      key={service.id}
-                      service={service}
-                      appointments={apptsByService.get(service.id) ?? []}
-                      onCardClick={handleCardClick}
-                    />
-                  ))}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className="flex gap-3 h-full">
+                    {employees.map((emp) => (
+                      <ProfissionalColuna
+                        key={emp.id}
+                        employee={emp}
+                        appointments={apptsByEmployee.get(emp.id) ?? []}
+                        onCardClick={handleCardClick}
+                      />
+                    ))}
+                    {/* Coluna "Sem profissional" — só aparece se houver appointments lá */}
+                    {(apptsByEmployee.get(UNASSIGNED)?.length ?? 0) > 0 && (
+                      <ProfissionalColuna
+                        employee={null}
+                        appointments={apptsByEmployee.get(UNASSIGNED) ?? []}
+                        onCardClick={handleCardClick}
+                      />
+                    )}
+                  </div>
+                </DndContext>
               )}
             </div>
           ) : (
@@ -180,8 +274,10 @@ export default function SchedulePage() {
         <DialogNovoAgendamento
           open={novoDialog}
           onOpenChange={setNovoDialog}
-          services={activeServices}
-          onCreate={create}
+          services={services}
+          employees={employees}
+          prefilledEmployeeId={prefilledEmployeeId}
+          onCreate={handleCreate}
         />
 
         <DialogDetalhe

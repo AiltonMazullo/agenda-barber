@@ -22,6 +22,7 @@ import type {
   CreateAppointmentPayload,
 } from "@/types/appointment.types";
 import type { Service } from "@/types/service.types";
+import type { Employee } from "@/types/employee.types";
 
 function toLocalDateInput(d: Date): string {
   const y = d.getFullYear();
@@ -32,6 +33,7 @@ function toLocalDateInput(d: Date): string {
 
 interface FormState {
   serviceId: string;
+  employeeId: string;
   scheduledDate: string;
   scheduledTime: string;
   clientId: string;
@@ -41,19 +43,27 @@ interface DialogNovoAgendamentoProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   services: Service[];
+  employees: Employee[];
   prefilledServiceId?: string;
-  onCreate: (payload: CreateAppointmentPayload) => Promise<Appointment | null>;
+  prefilledEmployeeId?: string;
+  onCreate: (
+    payload: CreateAppointmentPayload,
+    employeeId: string,
+  ) => Promise<Appointment | null>;
 }
 
 export function DialogNovoAgendamento({
   open,
   onOpenChange,
   services,
+  employees,
   prefilledServiceId,
+  prefilledEmployeeId,
   onCreate,
 }: DialogNovoAgendamentoProps) {
   const [form, setForm] = useState<FormState>({
     serviceId: "",
+    employeeId: "",
     scheduledDate: toLocalDateInput(new Date()),
     scheduledTime: "09:00",
     clientId: "",
@@ -64,13 +74,15 @@ export function DialogNovoAgendamento({
     if (!open) return;
     setForm({
       serviceId: prefilledServiceId ?? services[0]?.id ?? "",
+      employeeId: prefilledEmployeeId ?? employees[0]?.id ?? "",
       scheduledDate: toLocalDateInput(new Date()),
       scheduledTime: "09:00",
       clientId: "",
     });
-  }, [open, services, prefilledServiceId]);
+  }, [open, services, employees, prefilledServiceId, prefilledEmployeeId]);
 
   const selectedService = services.find((s) => s.id === form.serviceId);
+  const selectedEmployee = employees.find((e) => e.id === form.employeeId);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -79,6 +91,10 @@ export function DialogNovoAgendamento({
   async function handleSave() {
     if (!form.serviceId) {
       toast.error("Selecione um serviço.");
+      return;
+    }
+    if (!form.employeeId) {
+      toast.error("Selecione um profissional.");
       return;
     }
     if (!form.scheduledDate || !form.scheduledTime) {
@@ -100,7 +116,7 @@ export function DialogNovoAgendamento({
 
     setSaving(true);
     try {
-      const created = await onCreate(payload);
+      const created = await onCreate(payload, form.employeeId);
       if (created) {
         onOpenChange(false);
       }
@@ -157,7 +173,10 @@ export function DialogNovoAgendamento({
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-60 overflow-y-auto">
                 {services.length === 0 ? (
-                  <DropdownMenuItem disabled className="text-xs text-text-faint">
+                  <DropdownMenuItem
+                    disabled
+                    className="text-xs text-text-faint"
+                  >
                     Cadastre serviços em Configurações primeiro
                   </DropdownMenuItem>
                 ) : (
@@ -175,6 +194,56 @@ export function DialogNovoAgendamento({
                         style={{ backgroundColor: s.hex ?? "#f5b82e" }}
                       />
                       {s.name}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+              Profissional
+            </label>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-full">
+                <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors cursor-pointer">
+                  {selectedEmployee ? (
+                    <span className="truncate text-sm">
+                      {selectedEmployee.appName || selectedEmployee.name}
+                    </span>
+                  ) : (
+                    <span className="text-text-faint">
+                      Selecione um profissional
+                    </span>
+                  )}
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-60 overflow-y-auto">
+                {employees.length === 0 ? (
+                  <DropdownMenuItem
+                    disabled
+                    className="text-xs text-text-faint"
+                  >
+                    Cadastre profissionais em Configurações primeiro
+                  </DropdownMenuItem>
+                ) : (
+                  employees.map((e) => (
+                    <DropdownMenuItem
+                      key={e.id}
+                      onClick={() => update("employeeId", e.id)}
+                      className={cn(
+                        "text-xs hover:bg-surface-elevated cursor-pointer",
+                        form.employeeId === e.id && "text-brand",
+                      )}
+                    >
+                      <div className="flex flex-col">
+                        <span>{e.appName || e.name}</span>
+                        <span className="text-[10px] text-text-faint">
+                          {e.group}
+                        </span>
+                      </div>
                     </DropdownMenuItem>
                   ))
                 )}
@@ -214,13 +283,9 @@ export function DialogNovoAgendamento({
             <Input
               value={form.clientId}
               onChange={(e) => update("clientId", e.target.value)}
-              placeholder="Deixe em branco se a API não exigir"
+              placeholder="ID do cliente"
               className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 font-mono text-xs"
             />
-            <p className="text-[10px] text-text-faint">
-              O backend ainda não expõe cadastro de clientes. Cole o CUID de um
-              cliente existente se necessário.
-            </p>
           </div>
 
           {selectedService && (

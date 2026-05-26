@@ -1,16 +1,21 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import {
   Users,
+  UserPlus,
+  ClipboardList,
   Calendar,
+  Target,
+  Monitor,
+  Cake,
+  AlertTriangle,
+  Wallet,
+  ArrowUpRight,
+  ChevronDown,
   Package,
   TrendingUp,
-  DollarSign,
-  AlertTriangle,
   CheckCircle2,
-  ArrowUpRight,
   Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,12 +23,8 @@ import { Button } from "@/components/ui/button";
 import { PageHeader, SummaryCard, StatusBadge } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppointments } from "@/hooks/useAppointments";
-import { useEmployees } from "@/hooks/useEmployees";
-import { useProducts, type ProductWithStock } from "@/hooks/useProducts";
-import { useReports } from "@/hooks/useReports";
 import type { AppointmentStatus } from "@/types/appointment.types";
 import type { Tone } from "@/types/common.types";
-import { formatBRL } from "@/utils/format";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
@@ -47,25 +48,9 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
-function isLowStock(p: ProductWithStock): boolean {
-  if (p.totalMin === 0) return false;
-  return p.totalCurrent < p.totalMin;
-}
-
 export default function DashboardPage() {
   const { barbershop } = useAuth();
-  const { appointments, isLoading: loadingAppts } = useAppointments(
-    barbershop?.id,
-  );
-  const { employees, isLoading: loadingEmployees } = useEmployees(
-    barbershop?.id,
-  );
-  const { products, isLoading: loadingProducts } = useProducts(barbershop?.id);
-  const {
-    faturamentoMensal,
-    faturamentoTotal,
-    isLoading: loadingReports,
-  } = useReports(barbershop?.id);
+  const { appointments, isLoading } = useAppointments(barbershop?.id);
 
   const today = new Date();
 
@@ -74,13 +59,12 @@ export default function DashboardPage() {
       isSameDay(new Date(a.scheduledAt), today),
     );
     const future = appointments.filter(
-      (a) =>
-        new Date(a.scheduledAt) >= today && a.status !== "CANCELLED",
+      (a) => new Date(a.scheduledAt) >= today && a.status !== "CANCELLED",
     );
     return {
       todayCount: todayAppts.length,
-      futureCount: future.length,
       totalCount: appointments.length,
+      futureCount: future.length,
       todayList: todayAppts
         .sort(
           (a, b) =>
@@ -91,141 +75,189 @@ export default function DashboardPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments]);
-
-  const lowStockProducts = useMemo(
-    () => products.filter(isLowStock).slice(0, 5),
-    [products],
-  );
-  const lowStockCount = useMemo(
-    () => products.filter(isLowStock).length,
-    [products],
-  );
-
-  const faturamentoMesAtual =
-    faturamentoMensal[faturamentoMensal.length - 1]?.total ?? 0;
-
   return (
     <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Dashboard"
         subtitle="Visão geral do seu negócio"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9"
+            >
+              Todas filiais{" "}
+              <ChevronDown className="ml-2 size-4 text-muted-foreground" />
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9"
+            >
+              30 dias{" "}
+              <ChevronDown className="ml-2 size-4 text-muted-foreground" />
+            </Button>
+          </>
+        }
       />
 
-      {/* Cards principais — só com dados reais */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Grid de Cards Principais — 5 colunas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <SummaryCard
           label="Profissionais"
-          value={loadingEmployees ? "…" : String(employees.length)}
+          value="1"
           icon={<Users className="size-4" />}
           tone="brand"
         />
         <SummaryCard
+          label="Clientes Totais"
+          value="0"
+          icon={<UserPlus className="size-4" />}
+          tone="brand"
+        />
+        <SummaryCard
+          label="Comandas Abertas"
+          value="0"
+          icon={<ClipboardList className="size-4" />}
+          tone="brand"
+        />
+        <SummaryCard
           label="Agenda Hoje"
-          value={loadingAppts ? "…" : String(stats.todayCount)}
+          value={isLoading ? "…" : String(stats.todayCount)}
           icon={<Calendar className="size-4" />}
           tone="brand"
         />
         <SummaryCard
+          label="Taxa Ocupação"
+          value="0%"
+          icon={<Target className="size-4" />}
+          tone="brand"
+        />
+        <SummaryCard
           label="Agendamentos"
-          value={loadingAppts ? "…" : String(stats.totalCount)}
+          value={isLoading ? "…" : String(stats.totalCount)}
           subtitle={`${stats.futureCount} futuros`}
           subtitleTone="success"
           icon={<Calendar className="size-4" />}
-          tone="info"
+          tone="brand"
+        />
+        <SummaryCard
+          label="Via Recepção"
+          value="0"
+          icon={<Users className="size-4" />}
+          tone="brand"
+        />
+        <SummaryCard
+          label="Via Online"
+          value="0"
+          icon={<Monitor className="size-4" />}
+          tone="brand"
+        />
+        <SummaryCard
+          label="Aniversariantes"
+          value="0"
+          icon={<Cake className="size-4" />}
+          tone="brand"
         />
         <SummaryCard
           label="Estoque Baixo"
-          value={loadingProducts ? "…" : String(lowStockCount)}
+          value="0"
           icon={<AlertTriangle className="size-4" />}
-          tone={lowStockCount > 0 ? "danger" : "brand"}
+          tone="brand"
         />
         <SummaryCard
-          label="Faturado no mês"
-          value={loadingReports ? "…" : formatBRL(faturamentoMesAtual)}
-          icon={<DollarSign className="size-4" />}
-          tone="success"
-          emphasized
+          label="Vendas (Mês)"
+          value="0"
+          subtitle="R$ 0,00"
+          subtitleTone="danger"
+          icon={<Wallet className="size-4" />}
+          tone="brand"
         />
       </div>
 
-      {/* Resumo financeiro do período */}
-      <div className="space-y-3">
+      {/* Resumo Financeiro */}
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-            <TrendingUp className="size-4 text-brand" />
-            Faturamento (últimos 6 meses)
-          </h2>
-          <Link
-            href="/reports"
-            className="text-brand text-xs flex items-center gap-1 hover:underline"
+          <div className="flex items-center gap-2">
+            <span className="text-brand text-xl font-bold">$</span>
+            <h2 className="text-xs font-bold uppercase tracking-widest">
+              Resumo Financeiro
+            </h2>
+          </div>
+          <Button
+            variant="link"
+            className="text-brand text-xs gap-1 p-0 h-auto font-medium"
           >
-            Ver relatórios <ArrowUpRight className="size-3" />
-          </Link>
+            Ver tudo <ArrowUpRight className="size-3" />
+          </Button>
         </div>
 
-        <Card className="bg-surface-raised border-border">
-          <CardContent className="p-5">
-            {loadingReports ? (
-              <p className="text-sm text-text-faint text-center py-4">
-                Carregando…
-              </p>
-            ) : (
-              <div className="grid grid-cols-6 gap-3 items-end h-32">
-                {faturamentoMensal.map((m) => {
-                  const max = Math.max(
-                    ...faturamentoMensal.map((d) => d.total),
-                    1,
-                  );
-                  const altura = (m.total / max) * 100;
-                  return (
-                    <div
-                      key={m.mes}
-                      className="flex flex-col items-center gap-1.5 h-full"
-                    >
-                      <div className="text-[10px] font-bold text-foreground">
-                        {m.total > 0
-                          ? formatBRL(m.total).replace("R$ ", "")
-                          : "—"}
-                      </div>
-                      <div className="w-full flex-1 flex items-end">
-                        <div
-                          className="w-full bg-brand/80 hover:bg-brand transition-colors rounded-t-md min-h-1"
-                          style={{ height: `${altura}%` }}
-                        />
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {m.mesLabel}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <p className="text-[10px] text-text-faint pt-3 border-t border-border-subtle mt-3">
-              Total acumulado:{" "}
-              <span className="text-brand font-bold">
-                {formatBRL(faturamentoTotal)}
-              </span>{" "}
-              · baseado em atendimentos concluídos
-            </p>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <SummaryCard label="Faturado" value="R$ 0,00" />
+          <SummaryCard
+            label="Recebido"
+            value="R$ 0,00"
+            tone="success"
+            emphasized
+          />
+          <SummaryCard
+            label="A Receber"
+            value="R$ 0,00"
+            tone="warning"
+            emphasized
+          />
+          <SummaryCard
+            label="Contas a Pagar"
+            value="R$ 0,00"
+            tone="danger"
+            emphasized
+          />
+          <SummaryCard
+            label="Saldo Atual"
+            value="R$ 0,00"
+            tone="warning"
+            emphasized
+          />
+        </div>
       </div>
 
-      {/* Agenda do dia + Estoque crítico */}
+      {/* Seção Inferior: Assinaturas, Agenda, Ranking, Estoque */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SectionCard
+          icon={<ClipboardList className="size-4" />}
+          title="Assinaturas"
+          actionLabel="Ver tudo"
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <MiniStat
+              label="Ativos"
+              value="0"
+              tone="success"
+            />
+            <MiniStat
+              label="Inadimplentes"
+              value="0"
+              tone="danger"
+            />
+            <MiniStat
+              label="Novos no período"
+              value="0"
+              tone="warning"
+            />
+            <MiniStat label="Cancelados" value="0" tone="neutral" />
+          </div>
+        </SectionCard>
+
         <SectionCard
           icon={<Calendar className="size-4" />}
           title="Agenda do Dia"
           actionLabel="Ver agenda"
-          actionHref="/schedule"
         >
-          {loadingAppts ? (
-            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
               <p className="text-sm">Carregando…</p>
             </div>
           ) : stats.todayList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
               <p className="text-sm">Nenhum agendamento para hoje.</p>
             </div>
           ) : (
@@ -263,45 +295,26 @@ export default function DashboardPage() {
         </SectionCard>
 
         <SectionCard
+          icon={<TrendingUp className="size-4" />}
+          title="Ranking de Profissionais"
+          actionLabel="Ver comissões"
+        >
+          <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
+            <p className="text-sm">Sem dados no período.</p>
+          </div>
+        </SectionCard>
+
+        <SectionCard
           icon={<Package className="size-4" />}
           title="Estoque Crítico"
           actionLabel="Ver estoque"
-          actionHref="/inventory"
         >
-          {loadingProducts ? (
-            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-              <p className="text-sm">Carregando…</p>
+          <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
+            <div className="flex items-center gap-2 text-success-foreground/80">
+              <CheckCircle2 className="size-4" />
+              <p className="text-sm">Nenhum alerta de estoque.</p>
             </div>
-          ) : lowStockProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 gap-2">
-              <CheckCircle2 className="size-5 text-success-foreground/80" />
-              <p className="text-sm text-success-foreground/80">
-                Nenhum alerta de estoque.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {lowStockProducts.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-md bg-surface-base border border-danger/30"
-                >
-                  <AlertTriangle className="size-3.5 text-danger-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {p.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {p.totalCurrent} de {p.totalMin} (mínimo)
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-bold text-danger-foreground bg-danger/10 px-2 py-0.5 rounded">
-                    Baixo
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
         </SectionCard>
       </div>
     </div>
@@ -314,17 +327,10 @@ interface SectionCardProps {
   icon: React.ReactNode;
   title: string;
   actionLabel: string;
-  actionHref: string;
   children: React.ReactNode;
 }
 
-function SectionCard({
-  icon,
-  title,
-  actionLabel,
-  actionHref,
-  children,
-}: SectionCardProps) {
+function SectionCard({ icon, title, actionLabel, children }: SectionCardProps) {
   return (
     <Card className="bg-surface-raised border-border">
       <CardHeader className="flex flex-row items-center justify-between py-4">
@@ -334,16 +340,49 @@ function SectionCard({
             {title}
           </CardTitle>
         </div>
-        <Link href={actionHref}>
-          <Button
-            variant="link"
-            className="text-brand text-xs gap-1 p-0 h-auto"
-          >
-            {actionLabel} <ArrowUpRight className="size-3" />
-          </Button>
-        </Link>
+        <Button
+          variant="link"
+          className="text-brand text-xs gap-1 p-0 h-auto"
+        >
+          {actionLabel} <ArrowUpRight className="size-3" />
+        </Button>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
+  );
+}
+
+interface MiniStatProps {
+  label: string;
+  value: string;
+  tone: "success" | "danger" | "warning" | "neutral";
+}
+
+const MINI_STAT_BG: Record<MiniStatProps["tone"], string> = {
+  success: "bg-success-bg",
+  danger: "bg-danger-bg",
+  warning: "bg-warning-bg",
+  neutral: "bg-surface-elevated",
+};
+
+const MINI_STAT_TEXT: Record<MiniStatProps["tone"], string> = {
+  success: "text-success-foreground",
+  danger: "text-danger-foreground",
+  warning: "text-warning-foreground",
+  neutral: "text-muted-foreground",
+};
+
+function MiniStat({ label, value, tone }: MiniStatProps) {
+  return (
+    <div
+      className={`${MINI_STAT_BG[tone]} rounded-md p-4 flex flex-col items-center justify-center text-center`}
+    >
+      <span className={`text-2xl font-bold ${MINI_STAT_TEXT[tone]}`}>
+        {value}
+      </span>
+      <span className="text-[10px] text-muted-foreground font-medium uppercase mt-1">
+        {label}
+      </span>
+    </div>
   );
 }
