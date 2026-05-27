@@ -1,22 +1,20 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { use, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
-  Building2,
   Mail,
   Phone,
   MapPin,
   Scissors,
   Clock,
   AlertCircle,
+  CalendarPlus,
 } from "lucide-react";
-import { barbershopsService } from "@/services/barbershops.service";
 import { servicesService } from "@/services/services.service";
-import { ApiError } from "@/lib/api";
-import type { Barbershop } from "@/types/barbershop.types";
+import { ClientHeader } from "@/components/client/ClientHeader";
+import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useClientAuth } from "@/hooks/useClientAuth";
 import type { Service } from "@/types/service.types";
 
 function formatBRLFromCents(cents: number): string {
@@ -32,76 +30,34 @@ interface PageProps {
 
 export default function BarbershopPublicPage({ params }: PageProps) {
   const { slug } = use(params);
+  const { barbershop, isLoading, error, notFound } = usePublicBarbershop();
+  const { isAuthenticated } = useClientAuth();
 
-  const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [needsAuth, setNeedsAuth] = useState(false);
 
   useEffect(() => {
+    if (!barbershop) return;
     let active = true;
-    setIsLoading(true);
-    setError(null);
-    setNeedsAuth(false);
-
-    barbershopsService
-      .getBySlug(slug)
-      .then(async (b) => {
-        if (!active) return;
-        setBarbershop(b);
-        // Tenta carregar serviços (rota pública)
-        try {
-          const list = await servicesService.list(b.id);
-          if (active) setServices(list);
-        } catch {
-          // Falha silenciosa em serviços não impede mostrar o perfil
-        }
+    servicesService
+      .list(barbershop.id)
+      .then((list) => {
+        if (active) setServices(list);
       })
-      .catch((err: unknown) => {
-        if (!active) return;
-        if (err instanceof ApiError && err.status === 401) {
-          setNeedsAuth(true);
-        } else if (err instanceof ApiError && err.status === 404) {
-          setError("Barbearia não encontrada.");
-        } else {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Não foi possível carregar a barbearia.",
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
+      .catch(() => {
+        /* silencioso — serviços são complemento */
       });
-
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [barbershop]);
+
+  const agendarHref = isAuthenticated
+    ? `/client/${slug}/agendar`
+    : `/client/${slug}/login?from=/client/${slug}/agendar`;
 
   return (
     <div className="min-h-screen bg-surface-base text-foreground">
-      {/* Top bar */}
-      <header className="border-b border-border-subtle bg-surface-raised">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Image
-            src="/Logo-Agendle-05.png"
-            alt="Agendle"
-            width={96}
-            height={28}
-            className="object-contain"
-            priority
-          />
-          <Link
-            href="/login"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Entrar →
-          </Link>
-        </div>
-      </header>
+      <ClientHeader slug={slug} barbershopName={barbershop?.name} />
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         {isLoading && (
@@ -110,22 +66,20 @@ export default function BarbershopPublicPage({ params }: PageProps) {
           </div>
         )}
 
-        {needsAuth && !isLoading && (
+        {notFound && !isLoading && (
           <div className="rounded-lg border border-warning/30 bg-warning/5 p-8 text-center space-y-3">
             <AlertCircle className="size-8 text-warning-foreground mx-auto" />
-            <p className="text-sm text-foreground">
-              Esta página exige autenticação para visualização.
-            </p>
+            <p className="text-sm text-foreground">Barbearia não encontrada.</p>
             <Link
-              href="/login"
+              href="/"
               className="inline-flex h-9 px-5 rounded-md bg-brand text-brand-foreground text-sm font-bold hover:bg-brand-hover transition-colors items-center"
             >
-              Fazer login
+              Voltar à listagem
             </Link>
           </div>
         )}
 
-        {error && !isLoading && !needsAuth && (
+        {error && !isLoading && !notFound && (
           <div className="rounded-lg border border-danger/30 bg-danger/5 p-8 text-center space-y-2">
             <AlertCircle className="size-8 text-danger-foreground mx-auto" />
             <p className="text-sm text-foreground">{error}</p>
@@ -134,7 +88,6 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
         {barbershop && !isLoading && (
           <>
-            {/* Header da barbearia */}
             <section className="space-y-3">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="size-2 rounded-full bg-brand" />
@@ -145,7 +98,27 @@ export default function BarbershopPublicPage({ params }: PageProps) {
               </h1>
             </section>
 
-            {/* Contato */}
+            <section className="rounded-xl border border-brand/40 bg-linear-to-br from-brand/10 to-brand/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <CalendarPlus className="size-6 text-brand shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-base font-bold text-foreground">
+                    Pronto para agendar?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Escolha o serviço, o profissional e o melhor horário em
+                    poucos cliques.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={agendarHref}
+                className="inline-flex h-10 px-5 rounded-md bg-brand text-brand-foreground text-sm font-bold hover:bg-brand-hover transition-colors items-center whitespace-nowrap"
+              >
+                Agendar agora →
+              </Link>
+            </section>
+
             <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
                 <Mail className="size-4 text-brand shrink-0 mt-0.5" />
@@ -184,7 +157,6 @@ export default function BarbershopPublicPage({ params }: PageProps) {
               </div>
             </section>
 
-            {/* Serviços */}
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <Scissors className="size-4 text-brand" />
@@ -233,22 +205,6 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                   ))}
                 </div>
               )}
-            </section>
-
-            {/* CTA agendamento (placeholder até o backend desbloquear /clients) */}
-            <section className="rounded-lg border border-border-subtle bg-surface-raised p-6 flex items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <Building2 className="size-5 text-brand shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-foreground">
-                    Quer agendar?
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Entre em contato pelo telefone ou e-mail acima. O
-                    agendamento online estará disponível em breve.
-                  </p>
-                </div>
-              </div>
             </section>
           </>
         )}
