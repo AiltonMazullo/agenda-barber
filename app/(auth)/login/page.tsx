@@ -89,6 +89,12 @@ function LoginForm() {
           Cadastre sua empresa
         </Link>
       </p>
+
+      <p className="text-center text-[11px] text-text-faint mt-1">
+        <Link href="/" className="hover:underline">
+          ← Sou cliente
+        </Link>
+      </p>
     </form>
   );
 }

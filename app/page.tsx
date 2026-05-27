@@ -4,11 +4,30 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, Building2, AlertCircle } from "lucide-react";
 import { barbershopsService } from "@/services/barbershops.service";
 import { BarbershopCard } from "@/components/client/BarbershopCard";
+import { BarbershopCardSkeleton } from "@/components/client/BarbershopCardSkeleton";
 import { Input } from "@/components/ui/input";
 import type { Barbershop } from "@/types/barbershop.types";
+
+const gridVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 320, damping: 26 },
+  },
+};
 
 export default function HomePage() {
   const [barbershops, setBarbershops] = useState<Barbershop[]>([]);
@@ -71,60 +90,109 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-10 space-y-10">
-        <section className="text-center space-y-3 max-w-2xl mx-auto">
+        <motion.section
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="text-center space-y-3 max-w-2xl mx-auto"
+        >
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
             Encontre sua barbearia.
             <br />
             <span className="text-brand">Agende em segundos.</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Escolha uma barbearia abaixo, faça login (ou crie sua conta) e
-            agende com o profissional de sua preferência.
+            Escolha uma barbearia, faça login ou crie sua conta e agende um
+            atendimento com o profissional de sua preferência.
           </p>
-        </section>
+        </motion.section>
 
-        <section className="max-w-xl mx-auto relative">
+        <motion.section
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
+          className="max-w-xl mx-auto relative"
+        >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nome ou slug…"
+            placeholder="Digite o nome da barbearia…"
             className="h-11 pl-10 bg-surface-raised border-border-subtle"
           />
-        </section>
+        </motion.section>
 
         <section>
-          {isLoading && (
-            <div className="text-center py-20 text-muted-foreground text-sm">
-              Carregando barbearias…
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {isLoading && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <BarbershopCardSkeleton key={i} />
+                ))}
+              </motion.div>
+            )}
 
-          {error && !isLoading && (
-            <div className="rounded-lg border border-danger/30 bg-danger/5 p-8 text-center space-y-2 max-w-md mx-auto">
-              <AlertCircle className="size-8 text-danger-foreground mx-auto" />
-              <p className="text-sm text-foreground">{error}</p>
-            </div>
-          )}
+            {error && !isLoading && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="rounded-lg border border-danger/30 bg-danger/5 p-8 text-center space-y-2 max-w-md mx-auto"
+              >
+                <AlertCircle className="size-8 text-danger-foreground mx-auto" />
+                <p className="text-sm text-foreground">{error}</p>
+              </motion.div>
+            )}
 
-          {!isLoading && !error && filtered.length === 0 && (
-            <div className="rounded-lg border border-border-subtle bg-surface-raised p-12 text-center max-w-md mx-auto space-y-3">
-              <Building2 className="size-8 text-text-faint mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                {query
-                  ? "Nenhuma barbearia encontrada para essa busca."
-                  : "Ainda não há barbearias cadastradas."}
-              </p>
-            </div>
-          )}
+            {!isLoading && !error && filtered.length === 0 && (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="rounded-lg border border-border-subtle bg-surface-raised p-12 text-center max-w-md mx-auto space-y-3"
+              >
+                <Building2 className="size-8 text-text-faint mx-auto" />
+                <p className="text-sm text-muted-foreground">
+                  {query
+                    ? "Nenhuma barbearia encontrada para essa busca."
+                    : "Ainda não há barbearias cadastradas."}
+                </p>
+              </motion.div>
+            )}
 
-          {!isLoading && !error && filtered.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((b) => (
-                <BarbershopCard key={b.id} barbershop={b} />
-              ))}
-            </div>
-          )}
+            {!isLoading && !error && filtered.length > 0 && (
+              <motion.div
+                key="grid"
+                variants={gridVariants}
+                initial="hidden"
+                animate="show"
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {filtered.map((b) => (
+                  <motion.div
+                    key={b.id}
+                    variants={itemVariants}
+                    whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                    layout
+                  >
+                    <BarbershopCard barbershop={b} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
       </main>
 
