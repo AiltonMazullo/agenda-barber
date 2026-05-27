@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import {
   X,
   User,
-  Mail,
+  Phone,
   Scissors,
   Clock,
-  CheckCircle2,
-  CheckSquare,
-  XCircle,
+  Wifi,
+  UserCheck,
+  FileText,
   Trash2,
+  Check,
+  CheckCheck,
+  Ban,
 } from "lucide-react";
 import {
   Dialog,
@@ -19,14 +21,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { StatusBadge } from "@/components/shared";
-import { InfoRow } from "@/components/schedule/InfoRow";
+import { InfoRow } from "./Primitives";
+import { minToTime } from "./helpers";
+import type { AgendamentoVM, ProfissionalVM, ServicoVM } from "./types";
 import type {
-  Appointment,
   AppointmentStatus,
   UpdatableAppointmentStatus,
 } from "@/types/appointment.types";
-import type { Tone } from "@/types/common.types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
@@ -35,196 +36,170 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
   CANCELLED: "Cancelado",
 };
 
-const STATUS_TONE: Record<AppointmentStatus, Tone> = {
-  PENDING: "warning",
-  CONFIRMED: "info",
-  COMPLETED: "success",
-  CANCELLED: "danger",
+const STATUS_TONE: Record<AppointmentStatus, string> = {
+  PENDING: "bg-amber-500/15 text-amber-400",
+  CONFIRMED: "bg-[#f5b82e]/15 text-[#f5b82e]",
+  COMPLETED: "bg-emerald-500/15 text-emerald-400",
+  CANCELLED: "bg-red-500/15 text-red-400",
 };
-
-interface DialogDetalheProps {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  appointment: Appointment | null;
-  onUpdateStatus: (
-    id: string,
-    status: UpdatableAppointmentStatus,
-  ) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}
 
 export function DialogDetalhe({
   open,
   onOpenChange,
-  appointment,
-  onUpdateStatus,
+  agendamento,
+  servico,
+  profissional,
   onDelete,
-}: DialogDetalheProps) {
-  const [busy, setBusy] = useState(false);
-
-  if (!appointment) return null;
-
-  const time = new Date(appointment.scheduledAt).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const date = new Date(appointment.scheduledAt).toLocaleDateString("pt-BR");
-
-  const isCancelled = appointment.status === "CANCELLED";
-  const isCompleted = appointment.status === "COMPLETED";
-  const isPending = appointment.status === "PENDING";
-
-  async function handleStatus(status: UpdatableAppointmentStatus) {
-    if (!appointment) return;
-    setBusy(true);
-    try {
-      await onUpdateStatus(appointment.id, status);
-      onOpenChange(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!appointment) return;
-    if (!confirm("Remover este agendamento? Essa ação não pode ser desfeita.")) {
-      return;
-    }
-    setBusy(true);
-    try {
-      await onDelete(appointment.id);
-      onOpenChange(false);
-    } finally {
-      setBusy(false);
-    }
-  }
+  onUpdateStatus,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  agendamento: AgendamentoVM | null;
+  servico: ServicoVM | null;
+  profissional: ProfissionalVM | null;
+  onDelete: (id: string) => void;
+  onUpdateStatus: (id: string, status: UpdatableAppointmentStatus) => void;
+}) {
+  if (!agendamento || !servico) return null;
+  const duracao = agendamento.duracao;
+  const status = agendamento.status;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-sm p-0 gap-0">
+      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-sm p-0 gap-0">
         <div
-          className={cn("h-1 w-full rounded-t-lg")}
-          style={{ backgroundColor: appointment.service.hex ?? "#f5b82e" }}
+          className="h-1 w-full rounded-t-lg"
+          style={{ backgroundColor: servico.cor }}
         />
-        <DialogHeader className="px-6 pt-4 pb-4 border-b border-border-subtle">
+        <DialogHeader className="px-6 pt-4 pb-4 border-b border-[#21262d]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
                 className="size-2 rounded-full"
-                style={{
-                  backgroundColor: appointment.service.hex ?? "#f5b82e",
-                }}
+                style={{ backgroundColor: servico.cor }}
               />
               <DialogTitle className="text-base font-bold">
-                {appointment.service.name}
+                {servico.nome}
               </DialogTitle>
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
           </div>
-          <div className="mt-2">
-            <StatusBadge tone={STATUS_TONE[appointment.status]}>
-              {STATUS_LABEL[appointment.status]}
-            </StatusBadge>
-          </div>
         </DialogHeader>
-
         <div className="px-6 py-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[#8b949e]">Status</span>
+            <span
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                STATUS_TONE[status],
+              )}
+            >
+              {STATUS_LABEL[status]}
+            </span>
+          </div>
           <InfoRow
             icon={<User className="size-3.5" />}
             label="Cliente"
-            value={appointment.client.name}
+            value={agendamento.cliente}
           />
           <InfoRow
-            icon={<Mail className="size-3.5" />}
-            label="E-mail"
-            value={appointment.client.email}
+            icon={<Phone className="size-3.5" />}
+            label="Telefone"
+            value={agendamento.telefone || "—"}
           />
           <InfoRow
             icon={<Scissors className="size-3.5" />}
-            label="Serviço"
-            value={`${appointment.service.name} · ${appointment.service.durationMin} min`}
+            label="Profissional"
+            value={profissional?.nome ?? "—"}
           />
           <InfoRow
             icon={<Clock className="size-3.5" />}
-            label="Data / Hora"
-            value={`${date} às ${time}`}
+            label="Horário"
+            value={`${minToTime(agendamento.inicioMin)} – ${minToTime(agendamento.inicioMin + duracao)} (${duracao}min)`}
           />
+          <InfoRow
+            icon={
+              agendamento.origem === "online" ? (
+                <Wifi className="size-3.5" />
+              ) : (
+                <UserCheck className="size-3.5" />
+              )
+            }
+            label="Origem"
+            value={agendamento.origem === "online" ? "Online" : "Recepção"}
+          />
+          {agendamento.observacao && (
+            <InfoRow
+              icon={<FileText className="size-3.5" />}
+              label="Obs."
+              value={agendamento.observacao}
+            />
+          )}
           <div className="pt-1 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Valor do serviço</span>
+            <span className="text-xs text-[#8b949e]">Valor do serviço</span>
             <span className="text-sm font-bold text-emerald-400">
-              {(appointment.service.priceInCents / 100).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
+              R$ {servico.preco.toFixed(2).replace(".", ",")}
             </span>
           </div>
-        </div>
 
-        {!isCancelled && (
-          <div className="px-6 pb-6 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              {isPending && (
+          {/* Ações de status */}
+          {(status === "PENDING" || status === "CONFIRMED") && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {status === "PENDING" && (
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={() => handleStatus("CONFIRMED")}
-                  className="h-9 px-4 rounded-md border border-info/40 bg-info/10 text-xs font-semibold text-info-foreground hover:bg-info/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  onClick={() => onUpdateStatus(agendamento.id, "CONFIRMED")}
+                  className="h-8 px-3 rounded-md border border-[#f5b82e]/40 bg-[#f5b82e]/10 text-xs text-[#f5b82e] hover:bg-[#f5b82e]/20 transition-colors flex items-center gap-1.5"
                 >
-                  <CheckCircle2 className="size-3.5" />
+                  <Check className="size-3.5" />
                   Confirmar
-                </button>
-              )}
-              {!isCompleted && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handleStatus("COMPLETED")}
-                  className="h-9 px-4 rounded-md border border-success/40 bg-success/10 text-xs font-semibold text-success-foreground hover:bg-success/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  <CheckSquare className="size-3.5" />
-                  Concluir
                 </button>
               )}
               <button
                 type="button"
-                disabled={busy}
-                onClick={() => handleStatus("CANCELLED")}
-                className="h-9 px-4 rounded-md border border-warning/40 bg-warning/10 text-xs font-semibold text-warning-foreground hover:bg-warning/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                onClick={() => onUpdateStatus(agendamento.id, "COMPLETED")}
+                className="h-8 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5"
               >
-                <XCircle className="size-3.5" />
+                <CheckCheck className="size-3.5" />
+                Concluir
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateStatus(agendamento.id, "CANCELLED")}
+                className="h-8 px-3 rounded-md border border-red-500/30 bg-red-500/10 text-xs text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+              >
+                <Ban className="size-3.5" />
                 Cancelar
               </button>
             </div>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleDelete}
-              className="w-full h-9 px-4 rounded-md border border-danger/30 bg-transparent text-xs font-semibold text-danger-foreground hover:bg-danger/10 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <Trash2 className="size-3.5" />
-              Remover
-            </button>
-          </div>
-        )}
-        {isCancelled && (
-          <div className="px-6 pb-6">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleDelete}
-              className="w-full h-9 px-4 rounded-md border border-danger/30 bg-transparent text-xs font-semibold text-danger-foreground hover:bg-danger/10 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <Trash2 className="size-3.5" />
-              Remover definitivamente
-            </button>
-          </div>
-        )}
+          )}
+        </div>
+        <div className="px-6 pb-6 flex justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              onDelete(agendamento.id);
+              onOpenChange(false);
+            }}
+            className="h-9 px-4 rounded-md border border-red-500/30 bg-red-500/10 text-sm text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+          >
+            <Trash2 className="size-3.5" />
+            Remover
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

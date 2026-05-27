@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MD
+ROTAS.md
+PROMPT.md
+ACTIVITIES.md
+cash-registers-integration.md

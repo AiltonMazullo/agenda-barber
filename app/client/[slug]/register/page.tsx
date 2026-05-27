@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { Mail, Lock, User, Phone } from "lucide-react";
+import { Mail, Lock, User, Phone, IdCard, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
@@ -10,13 +10,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthInput } from "@/components/auth/AuthInput";
+import { SelectField, DatePickerField } from "@/components/shared";
 import {
-  clientRegisterSchema,
-  type ClientRegisterFormValues,
-} from "@/schemas/client-auth.schema";
+  clientFormSchema,
+  toCreateClientPayload,
+  type ClientFormValues,
+} from "@/schemas/client.schema";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
-import { maskPhone } from "@/utils/format";
+import { maskPhone, maskCpf, maskCep } from "@/utils/format";
+import { fetchAddressByCep } from "@/utils/cep";
+import { HOW_MET_OPTIONS, UF_OPTIONS } from "@/utils/constants";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -31,23 +35,45 @@ function ClientRegisterForm({ slug }: { slug: string }) {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<ClientRegisterFormValues>({
-    resolver: zodResolver(clientRegisterSchema),
-    defaultValues: { name: "", email: "", password: "", phone: "" },
+  } = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      phone: "",
+      howMet: "",
+      cpf: "",
+      cep: "",
+      street: "",
+      neighborhood: "",
+      city: "",
+      uf: "",
+      number: "",
+      complement: "",
+    },
   });
 
-  async function onSubmit(values: ClientRegisterFormValues) {
+  async function handleCepBlur(cep: string) {
+    if (cep.replace(/\D/g, "").length !== 8) return;
+    const addr = await fetchAddressByCep(cep);
+    if (!addr) return;
+    if (addr.street) setValue("street", addr.street);
+    if (addr.neighborhood) setValue("neighborhood", addr.neighborhood);
+    if (addr.city) setValue("city", addr.city);
+    if (addr.uf) setValue("uf", addr.uf as ClientFormValues["uf"]);
+  }
+
+  async function onSubmit(values: ClientFormValues) {
     if (!barbershop) {
       toast.error("Aguarde — ainda carregando a barbearia.");
       return;
     }
     try {
       await registerClient({
-        name: values.name,
-        email: values.email,
-        password: values.password,
-        phone: values.phone || undefined,
+        ...toCreateClientPayload(values),
         barbershopId: barbershop.id,
       });
       toast.success("Conta criada! Vamos agendar.");
@@ -96,13 +122,56 @@ function ClientRegisterForm({ slug }: { slug: string }) {
             placeholder="(11) 99999-0000"
             autoComplete="tel"
             error={errors.phone?.message}
-            value={field.value ?? ""}
+            value={field.value}
             onChange={(e) => field.onChange(maskPhone(e.target.value))}
             onBlur={field.onBlur}
             ref={field.ref}
           />
         )}
       />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Controller
+          control={control}
+          name="birthDate"
+          render={({ field }) => (
+            <div className="flex flex-col gap-1">
+              <DatePickerField
+                id="birthDate"
+                label="Nascimento"
+                date={field.value}
+                onChange={field.onChange}
+              />
+              {errors.birthDate && (
+                <p className="text-[11px] text-danger-foreground">
+                  {errors.birthDate.message}
+                </p>
+              )}
+            </div>
+          )}
+        />
+        <Controller
+          control={control}
+          name="howMet"
+          render={({ field }) => (
+            <div className="flex flex-col gap-1">
+              <SelectField
+                id="howMet"
+                label="Como conheceu"
+                value={field.value}
+                options={HOW_MET_OPTIONS}
+                onChange={field.onChange}
+                placeholder="Selecione"
+              />
+              {errors.howMet && (
+                <p className="text-[11px] text-danger-foreground">
+                  {errors.howMet.message}
+                </p>
+              )}
+            </div>
+          )}
+        />
+      </div>
 
       <AuthInput
         id="password"
@@ -114,6 +183,108 @@ function ClientRegisterForm({ slug }: { slug: string }) {
         error={errors.password?.message}
         {...register("password")}
       />
+
+      <Controller
+        control={control}
+        name="cpf"
+        render={({ field }) => (
+          <AuthInput
+            id="cpf"
+            label="CPF (opcional)"
+            icon={<IdCard className="size-4" />}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+            maxLength={14}
+            value={field.value ?? ""}
+            onChange={(e) => field.onChange(maskCpf(e.target.value))}
+            ref={field.ref}
+          />
+        )}
+      />
+
+      {/* Endereço (opcional) */}
+      <div className="pt-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-brand mb-2">
+          Endereço (opcional)
+        </p>
+        <div className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="cep"
+            render={({ field }) => (
+              <AuthInput
+                id="cep"
+                label="CEP"
+                icon={<MapPin className="size-4" />}
+                placeholder="00000-000"
+                inputMode="numeric"
+                maxLength={9}
+                value={field.value ?? ""}
+                onChange={(e) => field.onChange(maskCep(e.target.value))}
+                onBlur={() => void handleCepBlur(field.value ?? "")}
+                ref={field.ref}
+              />
+            )}
+          />
+
+          <AuthInput
+            id="street"
+            label="Logradouro"
+            icon={<MapPin className="size-4" />}
+            placeholder="Rua / Avenida"
+            {...register("street")}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <AuthInput
+              id="neighborhood"
+              label="Bairro"
+              icon={<MapPin className="size-4" />}
+              placeholder="Bairro"
+              {...register("neighborhood")}
+            />
+            <AuthInput
+              id="city"
+              label="Cidade"
+              icon={<MapPin className="size-4" />}
+              placeholder="Cidade"
+              {...register("city")}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Controller
+              control={control}
+              name="uf"
+              render={({ field }) => (
+                <SelectField
+                  id="uf"
+                  label="UF"
+                  value={field.value ?? ""}
+                  options={UF_OPTIONS}
+                  onChange={field.onChange}
+                  placeholder="UF"
+                />
+              )}
+            />
+            <AuthInput
+              id="number"
+              label="Número"
+              icon={<MapPin className="size-4" />}
+              placeholder="Nº"
+              {...register("number")}
+            />
+          </div>
+
+          <AuthInput
+            id="complement"
+            label="Complemento"
+            icon={<MapPin className="size-4" />}
+            placeholder="Apto, bloco…"
+            {...register("complement")}
+          />
+        </div>
+      </div>
 
       <Button
         type="submit"

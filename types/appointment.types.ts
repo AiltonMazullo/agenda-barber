@@ -15,6 +15,14 @@ export interface AppointmentClient {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
+}
+
+/** Profissional como vem populado no `GET /appointments` (campos parciais). */
+export interface AppointmentEmployee {
+  id: string;
+  name: string;
+  appName: string;
 }
 
 /** Appointment crú (sem includes). */
@@ -24,6 +32,7 @@ export interface AppointmentRaw {
   status: AppointmentStatus;
   clientId: string;
   serviceId: string;
+  employeeId: string | null;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
@@ -33,16 +42,18 @@ export interface AppointmentRaw {
 export interface Appointment extends AppointmentRaw {
   client: AppointmentClient;
   service: Service;
+  employee?: AppointmentEmployee | null;
 }
 
 export interface CreateAppointmentPayload {
   /**
-   * Conforme ROTAS.md, apenas `serviceId` e `scheduledAt` são obrigatórios.
-   * O backend pode exigir `clientId` adicionalmente (Prisma NOT NULL) —
-   * enviar opcionalmente quando disponível.
+   * Obrigatório quando o dono cria o agendamento (escolhe o cliente da lista).
+   * No fluxo público do cliente é omitido — o backend usa `req.user.sub`.
    */
   clientId?: string;
   serviceId: string;
+  /** Profissional que vai atender. */
+  employeeId?: string;
   /** ISO datetime string (UTC). */
   scheduledAt: string;
 }

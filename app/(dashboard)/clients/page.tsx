@@ -14,6 +14,7 @@ import {
   X,
   Eye,
   EyeOff,
+  UserPlus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,12 +33,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import { DialogNovoCliente } from "@/components/clients/DialogNovoCliente";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
 import { formatBRL, formatDate, maskPhone } from "@/utils/format";
-import type { Client, UpdateClientPayload } from "@/types/client.types";
+import type {
+  Client,
+  CreateClientPayload,
+  UpdateClientPayload,
+} from "@/types/client.types";
 
 interface ClientStats {
   totalAppointments: number;
@@ -258,12 +264,15 @@ function DialogEditarCliente({
 
 export default function ClientesPage() {
   const { barbershop } = useAuth();
-  const { clients, isLoading, update, remove } = useClients(barbershop?.id);
+  const { clients, isLoading, create, update, remove } = useClients(
+    barbershop?.id,
+  );
   const { appointments } = useAppointments(barbershop?.id);
 
   const [search, setSearch] = useState("");
   const [editDialog, setEditDialog] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [novoDialog, setNovoDialog] = useState(false);
 
   // Enriquece clientes com estatísticas de appointments
   const enriched = useMemo<EnrichedClient[]>(() => {
@@ -331,6 +340,10 @@ export default function ClientesPage() {
     await update(id, payload);
   }
 
+  async function handleCreate(payload: CreateClientPayload) {
+    return create(payload);
+  }
+
   async function handleDelete(c: Client) {
     if (
       !confirm(
@@ -347,6 +360,16 @@ export default function ClientesPage() {
       <PageHeader
         title="Clientes"
         subtitle="Base de clientes da barbearia"
+        actions={
+          <button
+            type="button"
+            onClick={() => setNovoDialog(true)}
+            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+          >
+            <UserPlus className="size-3.5" />
+            Novo cliente
+          </button>
+        }
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -515,6 +538,12 @@ export default function ClientesPage() {
         onOpenChange={setEditDialog}
         client={editing}
         onSave={handleSaveEdit}
+      />
+
+      <DialogNovoCliente
+        open={novoDialog}
+        onOpenChange={setNovoDialog}
+        onCreate={handleCreate}
       />
     </div>
   );

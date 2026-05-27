@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Smart Man OS",
+  title: "Agendle Barber",
   description: "Sistema de Gestão para Barbearias",
 };
 

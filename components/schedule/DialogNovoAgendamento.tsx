@@ -1,8 +1,16 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, ChevronDown, Timer } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
+import {
+  X,
+  ChevronDown,
+  Timer,
+  UserCheck,
+  Wifi,
+  Search,
+  Check,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,119 +24,111 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { DropdownButton } from "./Primitives";
 import type {
-  Appointment,
-  CreateAppointmentPayload,
-} from "@/types/appointment.types";
-import type { Service } from "@/types/service.types";
-import type { Employee } from "@/types/employee.types";
-
-function toLocalDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-interface FormState {
-  serviceId: string;
-  employeeId: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  clientId: string;
-}
-
-interface DialogNovoAgendamentoProps {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  services: Service[];
-  employees: Employee[];
-  prefilledServiceId?: string;
-  prefilledEmployeeId?: string;
-  onCreate: (
-    payload: CreateAppointmentPayload,
-    employeeId: string,
-  ) => Promise<Appointment | null>;
-}
+  NovoAgendamentoInput,
+  Origem,
+  ProfissionalVM,
+  ServicoVM,
+} from "./types";
+import type { Client } from "@/types/client.types";
 
 export function DialogNovoAgendamento({
   open,
   onOpenChange,
-  services,
-  employees,
-  prefilledServiceId,
-  prefilledEmployeeId,
-  onCreate,
-}: DialogNovoAgendamentoProps) {
-  const [form, setForm] = useState<FormState>({
-    serviceId: "",
-    employeeId: "",
-    scheduledDate: toLocalDateInput(new Date()),
-    scheduledTime: "09:00",
-    clientId: "",
-  });
-  const [saving, setSaving] = useState(false);
+  onConfirm,
+  servicos,
+  profissionais,
+  clients,
+  prefilledHora,
+  prefilledProfId,
+  submitting,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onConfirm: (ag: NovoAgendamentoInput) => void;
+  servicos: ServicoVM[];
+  profissionais: ProfissionalVM[];
+  clients: Client[];
+  prefilledHora?: string;
+  prefilledProfId?: string;
+  submitting?: boolean;
+}) {
+  const [clientId, setClientId] = useState("");
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [servicoId, setServicoId] = useState("");
+  const [profissionalId, setProfissionalId] = useState("");
+  const [hora, setHora] = useState(prefilledHora ?? "09:00");
+  const [observacao, setObservacao] = useState("");
+  const [origem, setOrigem] = useState<Origem>("recepcao");
 
   useEffect(() => {
     if (!open) return;
-    setForm({
-      serviceId: prefilledServiceId ?? services[0]?.id ?? "",
-      employeeId: prefilledEmployeeId ?? employees[0]?.id ?? "",
-      scheduledDate: toLocalDateInput(new Date()),
-      scheduledTime: "09:00",
-      clientId: "",
+    setHora(prefilledHora ?? "09:00");
+    setProfissionalId(prefilledProfId ?? profissionais[0]?.id ?? "");
+    setServicoId((prev) => prev || servicos[0]?.id || "");
+  }, [open, prefilledHora, prefilledProfId, profissionais, servicos]);
+
+  const servico = useMemo(
+    () => servicos.find((s) => s.id === servicoId),
+    [servicos, servicoId],
+  );
+  const prof = useMemo(
+    () => profissionais.find((p) => p.id === profissionalId),
+    [profissionais, profissionalId],
+  );
+  const cliente = useMemo(
+    () => clients.find((c) => c.id === clientId),
+    [clients, clientId],
+  );
+  const duracao = servico?.tempoPadrao ?? 30;
+
+  const clientesFiltrados = useMemo(() => {
+    const q = buscaCliente.trim().toLowerCase();
+    const base = q
+      ? clients.filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.email.toLowerCase().includes(q),
+        )
+      : clients;
+    return base.slice(0, 50);
+  }, [clients, buscaCliente]);
+
+  const handleConfirm = () => {
+    if (!clientId) {
+      toast.error("Selecione o cliente.");
+      return;
+    }
+    if (!servicoId) {
+      toast.error("Selecione o serviço.");
+      return;
+    }
+    if (!profissionalId) {
+      toast.error("Selecione o profissional.");
+      return;
+    }
+    onConfirm({
+      clientId,
+      serviceId: servicoId,
+      employeeId: profissionalId,
+      hora,
+      observacao,
+      origem,
     });
-  }, [open, services, employees, prefilledServiceId, prefilledEmployeeId]);
-
-  const selectedService = services.find((s) => s.id === form.serviceId);
-  const selectedEmployee = employees.find((e) => e.id === form.employeeId);
-
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function handleSave() {
-    if (!form.serviceId) {
-      toast.error("Selecione um serviço.");
-      return;
-    }
-    if (!form.employeeId) {
-      toast.error("Selecione um profissional.");
-      return;
-    }
-    if (!form.scheduledDate || !form.scheduledTime) {
-      toast.error("Informe data e hora.");
-      return;
-    }
-
-    const [hh, mm] = form.scheduledTime.split(":").map(Number);
-    const [yyyy, MM, dd] = form.scheduledDate.split("-").map(Number);
-    const scheduledAt = new Date(yyyy, MM - 1, dd, hh, mm).toISOString();
-
-    const payload: CreateAppointmentPayload = {
-      serviceId: form.serviceId,
-      scheduledAt,
-    };
-    if (form.clientId.trim()) {
-      payload.clientId = form.clientId.trim();
-    }
-
-    setSaving(true);
-    try {
-      const created = await onCreate(payload, form.employeeId);
-      if (created) {
-        onOpenChange(false);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
+    setClientId("");
+    setBuscaCliente("");
+    setObservacao("");
+    setHora("09:00");
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
+      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#21262d]">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
               Novo Agendamento
@@ -136,190 +136,212 @@ export function DialogNovoAgendamento({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
             >
               <X className="size-4" />
             </button>
           </div>
         </DialogHeader>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto schedule-scroll">
+          {/* Cliente: busca + seleção da lista */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Serviço
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+              Cliente
             </label>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="w-full">
-                <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors cursor-pointer">
-                  {selectedService ? (
-                    <div className="flex items-center gap-2 truncate">
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{
-                          backgroundColor: selectedService.hex ?? "#f5b82e",
-                        }}
-                      />
-                      <span className="truncate text-sm">
-                        {selectedService.name}
-                      </span>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-[#4d5562]" />
+              <Input
+                value={buscaCliente}
+                onChange={(e) => setBuscaCliente(e.target.value)}
+                placeholder={
+                  cliente ? cliente.name : "Buscar cliente por nome ou e-mail"
+                }
+                className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 h-10 pl-9"
+              />
+            </div>
+            <div className="max-h-40 overflow-y-auto schedule-scroll rounded-md border border-[#21262d] divide-y divide-[#21262d]">
+              {clientesFiltrados.length === 0 ? (
+                <p className="text-xs text-[#4d5562] text-center py-4">
+                  {clients.length === 0
+                    ? "Nenhum cliente cadastrado."
+                    : "Nenhum cliente encontrado."}
+                </p>
+              ) : (
+                clientesFiltrados.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setClientId(c.id)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors",
+                      clientId === c.id
+                        ? "bg-[#f5b82e]/10"
+                        : "hover:bg-[#21262d]",
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm text-white truncate">{c.name}</p>
+                      <p className="text-[11px] text-[#4d5562] truncate">
+                        {c.email}
+                      </p>
                     </div>
-                  ) : (
-                    <span className="text-text-faint">
-                      Selecione um serviço
-                    </span>
-                  )}
-                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-60 overflow-y-auto">
-                {services.length === 0 ? (
-                  <DropdownMenuItem
-                    disabled
-                    className="text-xs text-text-faint"
-                  >
-                    Cadastre serviços em Configurações primeiro
-                  </DropdownMenuItem>
-                ) : (
-                  services.map((s) => (
-                    <DropdownMenuItem
-                      key={s.id}
-                      onClick={() => update("serviceId", s.id)}
-                      className={cn(
-                        "text-xs hover:bg-surface-elevated cursor-pointer",
-                        form.serviceId === s.id && "text-brand",
-                      )}
-                    >
-                      <span
-                        className="size-2 rounded-full mr-2 shrink-0"
-                        style={{ backgroundColor: s.hex ?? "#f5b82e" }}
-                      />
-                      {s.name}
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Profissional
-            </label>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="w-full">
-                <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors cursor-pointer">
-                  {selectedEmployee ? (
-                    <span className="truncate text-sm">
-                      {selectedEmployee.appName || selectedEmployee.name}
-                    </span>
-                  ) : (
-                    <span className="text-text-faint">
-                      Selecione um profissional
-                    </span>
-                  )}
-                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-60 overflow-y-auto">
-                {employees.length === 0 ? (
-                  <DropdownMenuItem
-                    disabled
-                    className="text-xs text-text-faint"
-                  >
-                    Cadastre profissionais em Configurações primeiro
-                  </DropdownMenuItem>
-                ) : (
-                  employees.map((e) => (
-                    <DropdownMenuItem
-                      key={e.id}
-                      onClick={() => update("employeeId", e.id)}
-                      className={cn(
-                        "text-xs hover:bg-surface-elevated cursor-pointer",
-                        form.employeeId === e.id && "text-brand",
-                      )}
-                    >
-                      <div className="flex flex-col">
-                        <span>{e.appName || e.name}</span>
-                        <span className="text-[10px] text-text-faint">
-                          {e.group}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    {clientId === c.id && (
+                      <Check className="size-3.5 text-[#f5b82e] shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Data
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+                Serviço
               </label>
-              <Input
-                type="date"
-                value={form.scheduledDate}
-                onChange={(e) => update("scheduledDate", e.target.value)}
-                className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full">
+                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-2 truncate">
+                      {servico && (
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: servico.cor }}
+                        />
+                      )}
+                      <span className="truncate text-sm">
+                        {servico?.nome ?? "Selecione"}
+                      </span>
+                    </div>
+                    <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+                  </DropdownButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white w-48">
+                  {servicos.map((s) => (
+                    <DropdownMenuItem
+                      key={s.id}
+                      onClick={() => setServicoId(s.id)}
+                      className="text-xs hover:bg-[#21262d] cursor-pointer"
+                    >
+                      <span
+                        className="size-2 rounded-full mr-2 shrink-0"
+                        style={{ backgroundColor: s.cor }}
+                      />
+                      {s.nome}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Hora
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+                Profissional
               </label>
-              <Input
-                type="time"
-                value={form.scheduledTime}
-                onChange={(e) => update("scheduledTime", e.target.value)}
-                className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full">
+                  <DropdownButton className="w-full h-10 px-3 rounded-md border border-[#30363d] bg-[#0d1117] text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                    <span className="truncate text-sm">
+                      {prof?.nome ?? "Selecione"}
+                    </span>
+                    <ChevronDown className="size-3.5 text-[#8b949e] shrink-0" />
+                  </DropdownButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+                  {profissionais.map((p) => (
+                    <DropdownMenuItem
+                      key={p.id}
+                      onClick={() => setProfissionalId(p.id)}
+                      className="text-xs hover:bg-[#21262d] cursor-pointer"
+                    >
+                      {p.nome}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              ID do Cliente (opcional)
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#f5b82e]">
+              Horário
             </label>
             <Input
-              value={form.clientId}
-              onChange={(e) => update("clientId", e.target.value)}
-              placeholder="ID do cliente"
-              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 font-mono text-xs"
+              type="time"
+              value={hora}
+              onChange={(e) => setHora(e.target.value)}
+              className="bg-[#0d1117] border-[#30363d] text-white focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
 
-          {selectedService && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-surface-base border border-border-subtle">
-              <Timer className="size-3.5 text-brand" />
-              <span className="text-xs text-muted-foreground">Duração:</span>
-              <span className="text-xs font-bold text-foreground">
-                {selectedService.durationMin} min
-              </span>
-              <span className="text-xs text-text-subtle ml-auto">
-                {(selectedService.priceInCents / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
-              </span>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+              Origem
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["recepcao", "online"] as const).map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => setOrigem(o)}
+                  className={cn(
+                    "h-9 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
+                    origem === o
+                      ? "bg-[#f5b82e]/15 border-[#f5b82e]/60 text-[#f5b82e]"
+                      : "border-[#30363d] bg-[#0d1117] text-[#8b949e] hover:border-[#f5b82e]/30",
+                  )}
+                >
+                  {o === "recepcao" ? (
+                    <UserCheck className="size-3.5" />
+                  ) : (
+                    <Wifi className="size-3.5" />
+                  )}
+                  {o === "recepcao" ? "Recepção" : "Online"}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-[#0d1117] border border-[#21262d]">
+            <Timer className="size-3.5 text-[#f5b82e]" />
+            <span className="text-xs text-[#8b949e]">Duração estimada:</span>
+            <span className="text-xs font-bold text-white">{duracao} min</span>
+            {servico && (
+              <span className="text-xs text-[#4d5562] ml-auto">
+                R$ {servico.preco.toFixed(2).replace(".", ",")}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8b949e]">
+              Observação
+            </label>
+            <Textarea
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Opcional"
+              className="bg-[#0d1117] border-[#30363d] text-white placeholder:text-[#4d5562] focus-visible:ring-[#f5b82e]/30 resize-none min-h-[70px]"
+            />
+          </div>
         </div>
 
-        <div className="px-6 pb-6 flex justify-end gap-3">
+        <div className="px-6 pb-6 pt-4 border-t border-[#21262d] flex justify-end gap-3">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
+            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+            onClick={handleConfirm}
+            disabled={submitting}
+            className="h-9 px-5 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] transition-colors disabled:opacity-60"
           >
-            {saving ? "Criando…" : "Agendar"}
+            {submitting ? "Agendando…" : "Agendar"}
           </button>
         </div>
       </DialogContent>

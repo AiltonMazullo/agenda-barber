@@ -20,6 +20,17 @@ export interface ClientRegisterPayload {
   name: string;
   email: string;
   password: string;
-  phone?: string;
+  phone: string;
+  /** ISO 8601. */
+  birthDate: string;
+  howMet: string;
+  cpf?: string;
+  cep?: string;
+  street?: string;
+  neighborhood?: string;
+  city?: string;
+  uf?: string;
+  number?: string;
+  complement?: string;
   barbershopId: string;
 }

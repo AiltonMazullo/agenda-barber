@@ -110,5 +110,19 @@ export function useAppointments(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { appointments, isLoading, create, updateStatus, cancel };
+  /**
+   * Atualização puramente local (otimista) usada pelo drag-drop do kanban.
+   * O backend ainda não expõe PATCH para mudar `scheduledAt`/`employeeId`,
+   * então a mudança não persiste no refresh — é apenas visual.
+   */
+  const replaceLocal = useCallback(
+    (id: string, partial: Partial<Appointment>) => {
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, ...partial } : a)),
+      );
+    },
+    [],
+  );
+
+  return { appointments, isLoading, create, updateStatus, cancel, replaceLocal };
 }

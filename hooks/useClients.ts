@@ -4,7 +4,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { clientsService } from "@/services/clients.service";
-import type { Client, UpdateClientPayload } from "@/types/client.types";
+import type {
+  Client,
+  CreateClientPayload,
+  UpdateClientPayload,
+} from "@/types/client.types";
 
 export function useClients(barbershopId: string | undefined) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -35,6 +39,24 @@ export function useClients(barbershopId: string | undefined) {
       active = false;
     };
   }, [barbershopId]);
+
+  const create = useCallback(
+    async (payload: CreateClientPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const created = await clientsService.create(barbershopId, payload);
+        setClients((prev) => [created, ...prev]);
+        toast.success("Cliente cadastrado.");
+        return created;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao cadastrar cliente.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
 
   const update = useCallback(
     async (id: string, payload: UpdateClientPayload) => {
@@ -72,5 +94,5 @@ export function useClients(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { clients, isLoading, update, remove };
+  return { clients, isLoading, create, update, remove };
 }

@@ -39,6 +39,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePickerField } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -1062,11 +1064,21 @@ function DialogProfissional({
             </div>
             <div className="space-y-1.5">
               <FormLabel>Data de Nascimento</FormLabel>
-              <Input
-                type="date"
-                value={form.birthDate}
-                onChange={(e) => update("birthDate", e.target.value)}
-                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
+              <DatePickerField
+                id="employee-birthDate"
+                date={
+                  form.birthDate
+                    ? new Date(`${form.birthDate}T00:00:00`)
+                    : undefined
+                }
+                onChange={(d) =>
+                  update(
+                    "birthDate",
+                    d
+                      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+                      : "",
+                  )
+                }
               />
             </div>
           </div>
@@ -1185,11 +1197,11 @@ function DialogProfissional({
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={form.hasBranchAccess}
-              onChange={(e) => update("hasBranchAccess", e.target.checked)}
-              className="size-4 rounded border-border accent-[#f5b82e]"
+              onCheckedChange={(checked) =>
+                update("hasBranchAccess", checked === true)
+              }
             />
             <span className="text-xs text-foreground">
               Tem acesso administrativo à filial
