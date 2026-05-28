@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { ptBR } from "date-fns/locale";
+import type { Matcher } from "react-day-picker";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Popover,
@@ -19,7 +20,33 @@ interface DatePickerFieldProps {
   onChange: (date: Date | undefined) => void;
   placeholder?: string;
   className?: string;
+  /** Datas desabilitadas (ex.: `{ before: hoje }` ou `{ after: hoje }`). */
+  disabled?: Matcher | Matcher[];
+  /** Limite inicial de navegação (controla o range do dropdown de ano). */
+  startMonth?: Date;
+  /** Limite final de navegação. */
+  endMonth?: Date;
+  /** Mês exibido ao abrir quando não há data selecionada. */
+  defaultMonth?: Date;
 }
+
+/** classNames que deixam os dropdowns de mês/ano com o tema escuro do app. */
+const calendarClassNames = {
+  months: "text-foreground",
+  month_caption: "flex items-center gap-2 mb-2 px-1",
+  caption_label: "hidden",
+  dropdowns: "flex items-center gap-2 flex-1",
+  dropdown_root: "relative",
+  dropdown:
+    "bg-surface-base border border-border text-foreground text-xs rounded-md px-2 py-1.5 font-medium outline-none focus:border-brand/60 cursor-pointer appearance-none hover:border-brand/40 transition-colors",
+  nav: "flex items-center gap-1",
+  weekdays: "flex mb-1",
+  weekday:
+    "flex-1 text-center text-[10px] font-bold uppercase text-text-faint py-1",
+  today: "text-brand font-bold",
+  outside: "opacity-30",
+  disabled: "opacity-25 cursor-not-allowed",
+} as const;
 
 export function DatePickerField({
   id,
@@ -28,6 +55,10 @@ export function DatePickerField({
   onChange,
   placeholder = "dd/mm/aaaa",
   className,
+  disabled,
+  startMonth,
+  endMonth,
+  defaultMonth,
 }: DatePickerFieldProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -87,9 +118,13 @@ export function DatePickerField({
             <Calendar
               mode="single"
               selected={date}
-              defaultMonth={date}
+              defaultMonth={date ?? defaultMonth}
               captionLayout="dropdown"
               locale={ptBR}
+              disabled={disabled}
+              startMonth={startMonth}
+              endMonth={endMonth}
+              classNames={calendarClassNames}
               onSelect={(d) => {
                 onChange(d);
                 setOpen(false);

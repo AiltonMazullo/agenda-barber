@@ -14,7 +14,13 @@ export const clientFormSchema = z.object({
   phone: z
     .string()
     .refine((v) => v.replace(/\D/g, "").length >= 10, "Telefone inválido"),
-  birthDate: z.date({ message: "Informe a data de nascimento" }),
+  birthDate: z
+    .date({ message: "Informe a data de nascimento" })
+    .refine((d) => {
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      return d <= end;
+    }, "Data de nascimento não pode estar no futuro"),
   howMet: z.string().min(1, "Selecione como conheceu"),
   cpf: z.string().optional(),
   cep: z.string().optional(),

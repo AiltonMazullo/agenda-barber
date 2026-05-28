@@ -233,21 +233,28 @@ export function DialogNovoCliente({
               <Controller
                 control={control}
                 name="birthDate"
-                render={({ field }) => (
-                  <div className="space-y-1.5">
-                    <DatePickerField
-                      id="birthDate"
-                      label="Data de nascimento *"
-                      date={field.value}
-                      onChange={field.onChange}
-                    />
-                    {errors.birthDate && (
-                      <p className="text-[11px] text-danger-foreground">
-                        {errors.birthDate.message}
-                      </p>
-                    )}
-                  </div>
-                )}
+                render={({ field }) => {
+                  const today = new Date();
+                  return (
+                    <div className="space-y-1.5">
+                      <DatePickerField
+                        id="birthDate"
+                        label="Data de nascimento *"
+                        date={field.value}
+                        onChange={field.onChange}
+                        disabled={{ after: today }}
+                        startMonth={new Date(1920, 0)}
+                        endMonth={today}
+                        defaultMonth={new Date(today.getFullYear() - 25, 0)}
+                      />
+                      {errors.birthDate && (
+                        <p className="text-[11px] text-danger-foreground">
+                          {errors.birthDate.message}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }}
               />
 
               <Controller

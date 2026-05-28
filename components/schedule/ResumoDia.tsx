@@ -32,27 +32,27 @@ export function ResumoDia({
     : "—";
 
   return (
-    <div className="flex items-center gap-3 px-4 md:px-6 py-2.5 border-b border-[#1c2128] shrink-0 overflow-x-auto">
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-[#161b22] border border-[#21262d]">
-        <Users className="size-3.5 text-[#f5b82e]" />
-        <span className="text-[10px] text-[#8b949e]">Atendimentos</span>
-        <span className="text-sm font-bold text-white">{total}</span>
+    <div className="flex items-center gap-3 px-4 md:px-6 py-2.5 border-b border-border-subtle shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
+        <Users className="size-3.5 text-brand" />
+        <span className="text-[10px] text-muted-foreground">Atendimentos</span>
+        <span className="text-sm font-bold text-foreground">{total}</span>
       </div>
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-[#161b22] border border-[#21262d]">
+      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
         <DollarSign className="size-3.5 text-emerald-400" />
-        <span className="text-[10px] text-[#8b949e]">Faturamento</span>
+        <span className="text-[10px] text-muted-foreground">Faturamento</span>
         <span className="text-sm font-bold text-emerald-400">
           R$ {faturamento.toFixed(2).replace(".", ",")}
         </span>
       </div>
-      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-[#161b22] border border-[#21262d]">
+      <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md bg-surface-raised border border-border-subtle">
         <TrendingUp className="size-3.5 text-blue-400" />
-        <span className="text-[10px] text-[#8b949e]">Mais realizado</span>
-        <span className="text-sm font-bold text-white truncate max-w-[120px]">
+        <span className="text-[10px] text-muted-foreground">Mais realizado</span>
+        <span className="text-sm font-bold text-foreground truncate max-w-[120px]">
           {topServicoNome}
         </span>
         {topServico && (
-          <span className="text-[10px] text-[#4d5562]">({topServico[1]}x)</span>
+          <span className="text-[10px] text-text-faint">({topServico[1]}x)</span>
         )}
       </div>
     </div>

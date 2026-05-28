@@ -37,9 +37,9 @@ export function DialogConflito({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
         <div className="h-1 w-full rounded-t-lg bg-red-500" />
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#21262d]">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-red-400" />
@@ -50,7 +50,7 @@ export function DialogConflito({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -58,9 +58,9 @@ export function DialogConflito({
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4">
-          <p className="text-sm text-[#8b949e]">
+          <p className="text-sm text-muted-foreground">
             O agendamento abaixo conflita com{" "}
-            <span className="text-white font-semibold">
+            <span className="text-foreground font-semibold">
               {dados.conflitantes.length} agendamento
               {dados.conflitantes.length > 1 ? "s" : ""}
             </span>{" "}
@@ -68,8 +68,8 @@ export function DialogConflito({
             mesmo assim?
           </p>
 
-          <div className="rounded-lg border border-[#f5b82e]/40 bg-[#f5b82e]/5 p-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[#f5b82e] mb-2">
+          <div className="rounded-lg border border-brand/40 bg-brand/5 p-3">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-brand mb-2">
               Movendo
             </p>
             <div className="flex items-center gap-2">
@@ -79,15 +79,15 @@ export function DialogConflito({
                   style={{ backgroundColor: servMovendo.cor }}
                 />
               )}
-              <span className="text-sm font-semibold text-white">
+              <span className="text-sm font-semibold text-foreground">
                 {dados.agMovendo.cliente}
               </span>
-              <span className="text-xs text-[#8b949e] ml-auto">
+              <span className="text-xs text-muted-foreground ml-auto">
                 {minToTime(dados.novoInicio)} –{" "}
                 {minToTime(dados.novoInicio + durMovendo)}
               </span>
             </div>
-            <p className="text-xs text-[#4d5562] mt-1">
+            <p className="text-xs text-text-faint mt-1">
               {servMovendo?.nome} · {durMovendo}min
             </p>
           </div>
@@ -110,14 +110,14 @@ export function DialogConflito({
                         style={{ backgroundColor: s.cor }}
                       />
                     )}
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-sm font-semibold text-foreground">
                       {c.cliente}
                     </span>
-                    <span className="text-xs text-[#8b949e] ml-auto">
+                    <span className="text-xs text-muted-foreground ml-auto">
                       {minToTime(c.inicioMin)} – {minToTime(c.inicioMin + c.duracao)}
                     </span>
                   </div>
-                  <p className="text-xs text-[#4d5562] mt-1">
+                  <p className="text-xs text-text-faint mt-1">
                     {s?.nome} · {c.duracao}min
                   </p>
                 </div>
@@ -137,7 +137,7 @@ export function DialogConflito({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Cancelar
           </button>
@@ -147,7 +147,7 @@ export function DialogConflito({
               onConfirm();
               onOpenChange(false);
             }}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-colors"
+            className="h-9 px-5 rounded-md text-sm font-bold bg-red-500 text-foreground hover:bg-red-600 transition-colors"
           >
             Sobrepor mesmo assim
           </button>

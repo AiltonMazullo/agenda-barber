@@ -1079,6 +1079,10 @@ function DialogProfissional({
                       : "",
                   )
                 }
+                disabled={{ after: new Date() }}
+                startMonth={new Date(1920, 0)}
+                endMonth={new Date()}
+                defaultMonth={new Date(new Date().getFullYear() - 25, 0)}
               />
             </div>
           </div>

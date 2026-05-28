@@ -134,21 +134,28 @@ function ClientRegisterForm({ slug }: { slug: string }) {
         <Controller
           control={control}
           name="birthDate"
-          render={({ field }) => (
-            <div className="flex flex-col gap-1">
-              <DatePickerField
-                id="birthDate"
-                label="Nascimento"
-                date={field.value}
-                onChange={field.onChange}
-              />
-              {errors.birthDate && (
-                <p className="text-[11px] text-danger-foreground">
-                  {errors.birthDate.message}
-                </p>
-              )}
-            </div>
-          )}
+          render={({ field }) => {
+            const today = new Date();
+            return (
+              <div className="flex flex-col gap-1">
+                <DatePickerField
+                  id="birthDate"
+                  label="Nascimento"
+                  date={field.value}
+                  onChange={field.onChange}
+                  disabled={{ after: today }}
+                  startMonth={new Date(1920, 0)}
+                  endMonth={today}
+                  defaultMonth={new Date(today.getFullYear() - 25, 0)}
+                />
+                {errors.birthDate && (
+                  <p className="text-[11px] text-danger-foreground">
+                    {errors.birthDate.message}
+                  </p>
+                )}
+              </div>
+            );
+          }}
         />
         <Controller
           control={control}

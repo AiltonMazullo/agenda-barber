@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { PageHeader, SummaryCard, StatusBadge } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useClients } from "@/hooks/useClients";
+import { useEmployees } from "@/hooks/useEmployees";
 import type { AppointmentStatus } from "@/types/appointment.types";
 import type { Tone } from "@/types/common.types";
 
@@ -51,6 +53,8 @@ function isSameDay(a: Date, b: Date): boolean {
 export default function DashboardPage() {
   const { barbershop } = useAuth();
   const { appointments, isLoading } = useAppointments(barbershop?.id);
+  const { clients, isLoading: loadingClients } = useClients(barbershop?.id);
+  const { employees, isLoading: loadingEmployees } = useEmployees(barbershop?.id);
 
   const today = new Date();
 
@@ -75,6 +79,16 @@ export default function DashboardPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments]);
+
+  /** Aniversariantes do mês atual (a partir do birthDate dos clientes). */
+  const birthdaysThisMonth = useMemo(() => {
+    const m = today.getMonth();
+    return clients.filter((c) => {
+      if (!c.birthDate) return false;
+      return new Date(c.birthDate).getMonth() === m;
+    }).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients]);
   return (
     <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
@@ -104,13 +118,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <SummaryCard
           label="Profissionais"
-          value="1"
+          value={loadingEmployees ? "…" : String(employees.length)}
           icon={<Users className="size-4" />}
           tone="brand"
         />
         <SummaryCard
           label="Clientes Totais"
-          value="0"
+          value={loadingClients ? "…" : String(clients.length)}
           icon={<UserPlus className="size-4" />}
           tone="brand"
         />
@@ -154,7 +168,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           label="Aniversariantes"
-          value="0"
+          value={loadingClients ? "…" : String(birthdaysThisMonth)}
           icon={<Cake className="size-4" />}
           tone="brand"
         />

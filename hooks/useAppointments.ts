@@ -42,6 +42,17 @@ export function useAppointments(barbershopId: string | undefined) {
     };
   }, [barbershopId]);
 
+  /** Recarrega a lista do servidor (ex.: após criar). */
+  const refetch = useCallback(async () => {
+    if (!barbershopId) return;
+    try {
+      const data = await appointmentsService.list(barbershopId);
+      setAppointments(data as unknown as Appointment[]);
+    } catch {
+      // silencioso — o estado atual permanece
+    }
+  }, [barbershopId]);
+
   const create = useCallback(
     async (payload: CreateAppointmentPayload) => {
       if (!barbershopId) return null;
@@ -124,5 +135,13 @@ export function useAppointments(barbershopId: string | undefined) {
     [],
   );
 
-  return { appointments, isLoading, create, updateStatus, cancel, replaceLocal };
+  return {
+    appointments,
+    isLoading,
+    create,
+    updateStatus,
+    cancel,
+    replaceLocal,
+    refetch,
+  };
 }

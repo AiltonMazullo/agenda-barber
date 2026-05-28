@@ -46,6 +46,7 @@ export function useSchedule(
     create,
     updateStatus,
     cancel,
+    replaceLocal,
   } = useAppointments(barbershopId);
 
   const [overlay, setOverlay] = useState<Record<string, Overlay>>({});
@@ -83,6 +84,13 @@ export function useSchedule(
     [employees, branchId],
   );
 
+  /** Nome de qualquer profissional (independente da filial), para a lista. */
+  const employeeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    employees.forEach((e) => m.set(e.id, e.appName || e.name));
+    return m;
+  }, [employees]);
+
   // ─── Agendamentos VM (do dia, com overlay) ──────────────────────────────────
   const agendamentos = useMemo<AgendamentoVM[]>(() => {
     return appointments
@@ -91,10 +99,18 @@ export function useSchedule(
         const ov = overlay[a.id] ?? {};
         const servico = servicoById.get(a.serviceId);
         const baseDur = servico?.tempoPadrao ?? 30;
+        const profId =
+          ov.profissionalId ?? a.employeeId ?? a.employee?.id ?? "sem-prof";
+        const profNome =
+          employeeNameById.get(profId) ??
+          a.employee?.appName ??
+          a.employee?.name ??
+          "Sem profissional";
         return {
           id: a.id,
           servicoId: a.serviceId,
-          profissionalId: ov.profissionalId ?? a.employeeId ?? "sem-prof",
+          profissionalId: profId,
+          profissionalNome: profNome,
           cliente: a.client?.name ?? "Cliente",
           telefone: a.client?.phone ?? "",
           inicioMin: ov.inicioMin ?? isoToMin(a.scheduledAt),
@@ -103,22 +119,46 @@ export function useSchedule(
           origem: "recepcao",
         } satisfies AgendamentoVM;
       });
-  }, [appointments, selectedDate, overlay, servicoById]);
+  }, [appointments, selectedDate, overlay, servicoById, employeeNameById]);
 
   // ─── Ações ──────────────────────────────────────────────────────────────────
   const createAgendamento = useCallback(
     async (input: NovoAgendamentoInput): Promise<Appointment | null> => {
       const [h, m] = input.hora.split(":").map(Number);
-      const dt = new Date(selectedDate);
+      const dt = new Date(input.data);
       dt.setHours(h, m || 0, 0, 0);
-      return create({
+      const created = await create({
         clientId: input.clientId,
         serviceId: input.serviceId,
         employeeId: input.employeeId || undefined,
         scheduledAt: dt.toISOString(),
       });
+      if (created) {
+        // Enriquece localmente o que o backend pode não estar ecoando no POST
+        // (employeeId, employee, client) usando o que já temos em memória, pra
+        // o card aparecer imediatamente na coluna correta do kanban. Não fazemos
+        // refetch porque o GET pode não devolver `employeeId` ainda — e isso
+        // sobrescreveria a enriquecimento, escondendo o card do kanban.
+        const emp = employees.find((e) => e.id === input.employeeId);
+        const cli = clients.find((c) => c.id === input.clientId);
+        replaceLocal(created.id, {
+          employeeId: input.employeeId || null,
+          employee: emp
+            ? { id: emp.id, name: emp.name, appName: emp.appName }
+            : null,
+          client: cli
+            ? {
+                id: cli.id,
+                name: cli.name,
+                email: cli.email,
+                phone: cli.phone,
+              }
+            : created.client,
+        });
+      }
+      return created;
     },
-    [create, selectedDate],
+    [create, replaceLocal, employees, clients],
   );
 
   const moveLocal = useCallback(

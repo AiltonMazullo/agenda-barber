@@ -54,23 +54,23 @@ export function AgendamentoCard({
               className="size-1.5 rounded-full shrink-0"
               style={{ backgroundColor: servico.cor }}
             />
-            <span className="text-[9px] font-bold text-[#8b949e] uppercase tracking-wide truncate">
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide truncate">
               {servico.nome}
             </span>
             {agendamento.origem === "online" && (
-              <Wifi className="size-2.5 text-[#4d5562] ml-auto shrink-0" />
+              <Wifi className="size-2.5 text-text-faint ml-auto shrink-0" />
             )}
           </div>
           {heightPx >= 38 && (
-            <p className="text-[11px] font-semibold text-white truncate leading-tight">
+            <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
               {agendamento.cliente}
             </p>
           )}
         </div>
         {heightPx >= 54 && (
           <div className="flex items-center gap-1">
-            <Clock className="size-2.5 text-[#4d5562] shrink-0" />
-            <span className="text-[9px] text-[#4d5562]">
+            <Clock className="size-2.5 text-text-faint shrink-0" />
+            <span className="text-[9px] text-text-faint">
               {minToTime(agendamento.inicioMin)} · {duracao}min
             </span>
           </div>
@@ -85,7 +85,7 @@ export function AgendamentoCard({
           }}
           className="absolute bottom-0 left-0 right-0 h-3 flex items-center justify-center cursor-s-resize group"
         >
-          <GripVertical className="size-2.5 text-[#4d5562] group-hover:text-[#8b949e] rotate-90 transition-colors" />
+          <GripVertical className="size-2.5 text-text-faint group-hover:text-muted-foreground rotate-90 transition-colors" />
         </div>
       )}
     </div>

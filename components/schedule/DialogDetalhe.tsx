@@ -38,7 +38,7 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 
 const STATUS_TONE: Record<AppointmentStatus, string> = {
   PENDING: "bg-amber-500/15 text-amber-400",
-  CONFIRMED: "bg-[#f5b82e]/15 text-[#f5b82e]",
+  CONFIRMED: "bg-brand/15 text-brand",
   COMPLETED: "bg-emerald-500/15 text-emerald-400",
   CANCELLED: "bg-red-500/15 text-red-400",
 };
@@ -66,12 +66,12 @@ export function DialogDetalhe({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#161b22] border border-[#30363d] text-white max-w-sm p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-sm p-0 gap-0">
         <div
           className="h-1 w-full rounded-t-lg"
           style={{ backgroundColor: servico.cor }}
         />
-        <DialogHeader className="px-6 pt-4 pb-4 border-b border-[#21262d]">
+        <DialogHeader className="px-6 pt-4 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
@@ -85,7 +85,7 @@ export function DialogDetalhe({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -93,7 +93,7 @@ export function DialogDetalhe({
         </DialogHeader>
         <div className="px-6 py-5 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#8b949e]">Status</span>
+            <span className="text-xs text-muted-foreground">Status</span>
             <span
               className={cn(
                 "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
@@ -142,7 +142,7 @@ export function DialogDetalhe({
             />
           )}
           <div className="pt-1 flex items-center justify-between">
-            <span className="text-xs text-[#8b949e]">Valor do serviço</span>
+            <span className="text-xs text-muted-foreground">Valor do serviço</span>
             <span className="text-sm font-bold text-emerald-400">
               R$ {servico.preco.toFixed(2).replace(".", ",")}
             </span>
@@ -155,7 +155,7 @@ export function DialogDetalhe({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(agendamento.id, "CONFIRMED")}
-                  className="h-8 px-3 rounded-md border border-[#f5b82e]/40 bg-[#f5b82e]/10 text-xs text-[#f5b82e] hover:bg-[#f5b82e]/20 transition-colors flex items-center gap-1.5"
+                  className="h-8 px-3 rounded-md border border-brand/40 bg-brand/10 text-xs text-brand hover:bg-brand/20 transition-colors flex items-center gap-1.5"
                 >
                   <Check className="size-3.5" />
                   Confirmar
@@ -195,7 +195,7 @@ export function DialogDetalhe({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-[#30363d] bg-transparent text-sm text-white hover:bg-[#21262d] transition-colors"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Fechar
           </button>

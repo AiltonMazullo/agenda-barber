@@ -31,6 +31,8 @@ export interface AgendamentoVM {
   id: string;
   servicoId: string;
   profissionalId: string;
+  /** Nome do profissional resolvido (mesmo se fora da filial filtrada). */
+  profissionalNome: string;
   cliente: string;
   telefone: string;
   inicioMin: number; // minutos desde meia-noite
@@ -45,6 +47,8 @@ export interface NovoAgendamentoInput {
   clientId: string;
   serviceId: string;
   employeeId: string;
+  /** Dia do agendamento. */
+  data: Date;
   /** "HH:mm" */
   hora: string;
   observacao?: string;

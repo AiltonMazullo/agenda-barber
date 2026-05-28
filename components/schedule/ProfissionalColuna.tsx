@@ -112,16 +112,16 @@ export function ProfissionalColuna({
 
   return (
     <div className="flex flex-col min-w-[180px] flex-1">
-      <div className="sticky top-0 z-20 bg-[#0d1117] border-b border-[#21262d] px-3 py-3 flex flex-col items-center gap-1.5">
-        <div className="size-9 rounded-full bg-[#f5b82e]/15 border border-[#f5b82e]/30 flex items-center justify-center">
-          <span className="text-xs font-bold text-[#f5b82e]">
+      <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle h-[92px] px-3 flex flex-col items-center justify-center gap-1">
+        <div className="size-8 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center">
+          <span className="text-[10px] font-bold text-brand">
             {profissional.avatar}
           </span>
         </div>
-        <span className="text-[11px] font-bold text-white">
+        <span className="text-[11px] font-bold text-foreground leading-none">
           {profissional.nome}
         </span>
-        <Badge className="bg-[#21262d] text-[#8b949e] border-none text-[9px] px-1.5 py-0">
+        <Badge className="bg-surface-elevated text-muted-foreground border-none text-[9px] px-1.5 py-0 leading-tight">
           {agendamentos.length} agend.
         </Badge>
       </div>
@@ -129,7 +129,7 @@ export function ProfissionalColuna({
         ref={setNodeRef}
         className={cn(
           "relative transition-colors",
-          isOver && !modoBloquear ? "bg-[#f5b82e]/5" : "",
+          isOver && !modoBloquear ? "bg-brand/5" : "",
           modoBloquear ? "cursor-crosshair" : "",
         )}
         style={{ height: totalSlots * slotHeightPx }}
@@ -157,15 +157,15 @@ export function ProfissionalColuna({
             <div
               key={i}
               className={cn(
-                "slot-row absolute left-0 right-0 border-t hover:bg-[#f5b82e]/3 transition-colors",
-                min % 60 === 0 ? "border-[#30363d]" : "border-[#1c2128]",
+                "slot-row absolute left-0 right-0 border-t hover:bg-brand/3 transition-colors",
+                min % 60 === 0 ? "border-border" : "border-border-subtle",
               )}
               style={{ top: i * slotHeightPx, height: slotHeightPx }}
             />
           );
         })}
         {isOver && !modoBloquear && (
-          <div className="absolute inset-0 border-2 border-[#f5b82e]/30 rounded-sm pointer-events-none" />
+          <div className="absolute inset-0 border-2 border-brand/30 rounded-sm pointer-events-none" />
         )}
 
         {bloqueioPreview && modoBloquear && (

@@ -251,7 +251,12 @@ export default function SchedulePage() {
       setSubmittingNovo(true);
       try {
         const created = await createAgendamento(dados);
-        if (created) setDialogNovo(false);
+        if (created) {
+          // Navega o kanban pro dia do agendamento criado — garante que o
+          // card apareça imediatamente mesmo se o usuário escolheu outro dia.
+          setSelectedDate(dados.data);
+          setDialogNovo(false);
+        }
       } finally {
         setSubmittingNovo(false);
       }
@@ -363,33 +368,33 @@ export default function SchedulePage() {
         .schedule-scroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
       `}</style>
 
-      <div className="flex flex-col h-screen bg-[#111418] text-white overflow-hidden">
+      <div className="flex flex-col h-screen bg-surface-base text-foreground overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[#21262d] shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               Agendamentos
             </h1>
-            <p className="text-[#8b949e] text-sm mt-0.5">{dataCapitalizada}</p>
+            <p className="text-muted-foreground text-sm mt-0.5">{dataCapitalizada}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filial */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <DropdownButton className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                  <Building2 className="size-3.5 text-[#8b949e]" />
+                <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors cursor-pointer">
+                  <Building2 className="size-3.5 text-muted-foreground" />
                   <span className="max-w-[120px] truncate text-sm">
                     {filialAtual?.name ?? "Filial"}
                   </span>
-                  <ChevronDown className="size-3.5 text-[#8b949e]" />
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
                 {branches.length === 0 && (
                   <DropdownMenuItem
                     disabled
-                    className="text-xs text-[#4d5562]"
+                    className="text-xs text-text-faint"
                   >
                     Nenhuma filial
                   </DropdownMenuItem>
@@ -399,49 +404,49 @@ export default function SchedulePage() {
                     key={f.id}
                     onClick={() => setFilialId(f.id)}
                     className={cn(
-                      "text-xs hover:bg-[#21262d] cursor-pointer",
-                      filialId === f.id && "text-[#f5b82e]",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      filialId === f.id && "text-brand",
                     )}
                   >
                     <Building2 className="size-3 mr-2" />
                     {f.name}
-                    <span className="text-[#4d5562] ml-1">· {f.city}</span>
+                    <span className="text-text-faint ml-1">· {f.city}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
 
             {/* Navegação de data */}
-            <div className="flex items-center bg-[#161b22] border border-[#30363d] rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
+            <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-border">
               <button
                 type="button"
                 onClick={() => shiftDate(-1)}
-                className="h-9 px-2.5 text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                className="h-9 px-2.5 text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
               >
                 <ChevronLeft className="size-4" />
               </button>
-              <span className="text-sm font-medium text-white px-3 min-w-[60px] text-center">
+              <span className="text-sm font-medium text-foreground px-3 min-w-[60px] text-center">
                 {isToday(selectedDate) ? "Hoje" : format(selectedDate, "dd/MM")}
               </span>
               <button
                 type="button"
                 onClick={() => shiftDate(1)}
-                className="h-9 px-2.5 text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                className="h-9 px-2.5 text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
               >
                 <ChevronRight className="size-4" />
               </button>
             </div>
 
             {/* View toggle */}
-            <div className="flex items-center bg-[#161b22] border border-[#30363d] rounded-md h-9 overflow-hidden divide-x divide-[#30363d]">
+            <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-border">
               <button
                 type="button"
                 onClick={() => setViewMode("kanban")}
                 className={cn(
                   "h-9 px-3 flex items-center gap-1.5 text-xs transition-colors",
                   viewMode === "kanban"
-                    ? "bg-[#21262d] text-white"
-                    : "text-[#8b949e] hover:text-white hover:bg-[#1c2128]",
+                    ? "bg-surface-elevated text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-elevated",
                 )}
               >
                 <LayoutGrid className="size-3.5" />
@@ -453,8 +458,8 @@ export default function SchedulePage() {
                 className={cn(
                   "h-9 px-3 flex items-center gap-1.5 text-xs transition-colors",
                   viewMode === "lista"
-                    ? "bg-[#21262d] text-white"
-                    : "text-[#8b949e] hover:text-white hover:bg-[#1c2128]",
+                    ? "bg-surface-elevated text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-elevated",
                 )}
               >
                 <LayoutList className="size-3.5" />
@@ -465,22 +470,22 @@ export default function SchedulePage() {
             {/* Filtro profissional */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <DropdownButton className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                  <User className="size-3.5 text-[#8b949e]" />
+                <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors cursor-pointer">
+                  <User className="size-3.5 text-muted-foreground" />
                   <span className="max-w-[90px] truncate text-xs">
                     {filtroProf === "todos"
                       ? "Todos"
                       : profById.get(filtroProf)?.nome}
                   </span>
-                  <ChevronDown className="size-3.5 text-[#8b949e]" />
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
                 <DropdownMenuItem
                   onClick={() => setFiltroProf("todos")}
                   className={cn(
-                    "text-xs hover:bg-[#21262d] cursor-pointer",
-                    filtroProf === "todos" && "text-[#f5b82e]",
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroProf === "todos" && "text-brand",
                   )}
                 >
                   Todos os profissionais
@@ -490,8 +495,8 @@ export default function SchedulePage() {
                     key={p.id}
                     onClick={() => setFiltroProf(p.id)}
                     className={cn(
-                      "text-xs hover:bg-[#21262d] cursor-pointer",
-                      filtroProf === p.id && "text-[#f5b82e]",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      filtroProf === p.id && "text-brand",
                     )}
                   >
                     {p.avatar} {p.nome}
@@ -503,20 +508,20 @@ export default function SchedulePage() {
             {/* Slot size */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <DropdownButton className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white flex items-center gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                  <Settings2 className="size-3.5 text-[#8b949e]" />
+                <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors cursor-pointer">
+                  <Settings2 className="size-3.5 text-muted-foreground" />
                   {slotSize}min
-                  <ChevronDown className="size-3.5 text-[#8b949e]" />
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#161b22] border-[#30363d] text-white">
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
                 {SLOT_OPTIONS.map((s) => (
                   <DropdownMenuItem
                     key={s}
                     onClick={() => setSlotSize(s)}
                     className={cn(
-                      "text-xs hover:bg-[#21262d] cursor-pointer",
-                      slotSize === s && "text-[#f5b82e]",
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      slotSize === s && "text-brand",
                     )}
                   >
                     {s} minutos {slotSize === s && "✓"}
@@ -537,7 +542,7 @@ export default function SchedulePage() {
                 "h-9 px-3 rounded-md border text-sm font-semibold flex items-center gap-1.5 transition-colors",
                 modoBloquear
                   ? "border-red-500/60 bg-red-500/15 text-red-400"
-                  : "border-[#30363d] bg-[#161b22] text-[#8b949e] hover:text-white hover:border-red-500/40",
+                  : "border-border bg-surface-raised text-muted-foreground hover:text-foreground hover:border-red-500/40",
               )}
             >
               <Ban className="size-3.5" />
@@ -548,9 +553,9 @@ export default function SchedulePage() {
             <button
               type="button"
               onClick={() => setDialogComanda(true)}
-              className="h-9 px-3 rounded-md border border-[#30363d] bg-[#161b22] text-sm text-white hover:border-[#f5b82e]/40 transition-colors flex items-center gap-1.5"
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5"
             >
-              <Receipt className="size-3.5 text-[#8b949e]" />
+              <Receipt className="size-3.5 text-muted-foreground" />
               Comanda
             </button>
 
@@ -562,7 +567,7 @@ export default function SchedulePage() {
                 setPrefilledProfId(undefined);
                 setDialogNovo(true);
               }}
-              className="h-9 px-4 rounded-md text-sm font-bold bg-[#f5b82e] text-black hover:bg-[#d9a326] hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5"
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5"
             >
               <Plus className="size-3.5" />
               Novo
@@ -575,18 +580,18 @@ export default function SchedulePage() {
 
         {/* ── Legenda ── */}
         {viewMode === "kanban" && (
-          <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-[#1c2128] shrink-0 overflow-x-auto schedule-scroll">
+          <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-border-subtle shrink-0 overflow-x-auto schedule-scroll">
             {servicos.map((s) => (
               <div key={s.id} className="flex items-center gap-1.5 shrink-0">
                 <span
                   className="size-2 rounded-full"
                   style={{ backgroundColor: s.cor }}
                 />
-                <span className="text-[10px] text-[#8b949e]">{s.nome}</span>
-                <span className="text-[9px] text-[#4d5562]">R$ {s.preco}</span>
+                <span className="text-[10px] text-muted-foreground">{s.nome}</span>
+                <span className="text-[9px] text-text-faint">R$ {s.preco}</span>
               </div>
             ))}
-            <div className="ml-auto text-[9px] text-[#4d5562] flex items-center gap-1 shrink-0">
+            <div className="ml-auto text-[9px] text-text-faint flex items-center gap-1 shrink-0">
               {modoBloquear ? (
                 <span className="text-red-400 font-semibold animate-pulse">
                   🔴 Modo bloqueio ativo — clique e arraste para bloquear
@@ -604,11 +609,11 @@ export default function SchedulePage() {
 
         {/* ── Conteúdo ── */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center text-[#8b949e] text-sm">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
             Carregando agenda…
           </div>
         ) : profissionais.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-[#4d5562] gap-2 px-6 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center text-text-faint gap-2 px-6 text-center">
             <User className="size-8 opacity-40" />
             <p className="text-sm">
               Nenhum profissional cadastrado nesta filial. Cadastre profissionais
@@ -629,8 +634,8 @@ export default function SchedulePage() {
                   slotHeightPx={SLOT_HEIGHT_PX}
                   totalSlots={totalSlots}
                 />
-                <div className="w-px bg-[#21262d] shrink-0" />
-                <div className="flex flex-1 divide-x divide-[#1c2128]">
+                <div className="w-px bg-surface-elevated shrink-0" />
+                <div className="flex flex-1 divide-x divide-border-subtle">
                   {profissionaisVisiveis.map((prof) => (
                     <div
                       key={prof.id}
@@ -705,6 +710,7 @@ export default function SchedulePage() {
           servicos={servicos}
           profissionais={profissionais}
           clients={clients}
+          defaultDate={selectedDate}
           prefilledHora={prefilledHora}
           prefilledProfId={prefilledProfId}
           submitting={submittingNovo}
