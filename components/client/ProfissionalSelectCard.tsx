@@ -19,7 +19,7 @@ export function ProfissionalSelectCard({
   const displayName = isAny ? "Sem preferência" : employee.appName || employee.name;
   const subline = isAny
     ? "O sistema escolhe o próximo disponível"
-    : employee.group || "Profissional";
+    : "Profissional";
 
   const initials = isAny
     ? "?"

@@ -47,3 +47,22 @@ export const HOW_MET_OPTIONS = [
 ] as const;
 
 export type HowMet = (typeof HOW_MET_OPTIONS)[number];
+
+/**
+ * Módulos do sistema usados nas permissões dos grupos de acesso.
+ * A `key` é enviada ao backend no campo `module`; o `label` é exibido na UI.
+ */
+export const ACCESS_MODULES = [
+  { key: "appointments", label: "Agenda" },
+  { key: "clients", label: "Clientes" },
+  { key: "employees", label: "Profissionais" },
+  { key: "services", label: "Serviços" },
+  { key: "branches", label: "Filiais" },
+  { key: "products", label: "Estoque" },
+  { key: "cash-registers", label: "Caixa" },
+  { key: "reports", label: "Relatórios" },
+  { key: "access-groups", label: "Grupos de acesso" },
+  { key: "payment-data", label: "Pagamento" },
+] as const;
+
+export type AccessModuleKey = (typeof ACCESS_MODULES)[number]["key"];

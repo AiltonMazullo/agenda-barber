@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { PublicBarbershopProvider } from "@/contexts/PublicBarbershopContext";
+import { ClientAuthProvider } from "@/contexts/ClientAuthContext";
 
 interface ClientSlugLayoutProps {
   children: ReactNode;
@@ -12,6 +13,8 @@ export default async function ClientSlugLayout({
 }: ClientSlugLayoutProps) {
   const { slug } = await params;
   return (
-    <PublicBarbershopProvider slug={slug}>{children}</PublicBarbershopProvider>
+    <PublicBarbershopProvider slug={slug}>
+      <ClientAuthProvider>{children}</ClientAuthProvider>
+    </PublicBarbershopProvider>
   );
 }

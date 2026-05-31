@@ -15,14 +15,17 @@ import { toast } from "sonner";
 import { servicesService } from "@/services/services.service";
 import { employeesService } from "@/services/employees.service";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
+import { availabilityService } from "@/services/availability.service";
 import { ClientHeader } from "@/components/client/ClientHeader";
 import { ServicoSelectCard } from "@/components/client/ServicoSelectCard";
 import { ProfissionalSelectCard } from "@/components/client/ProfissionalSelectCard";
 import { HoraGrid } from "@/components/client/HoraGrid";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePickerField } from "@/components/shared";
+import { getClientIdFromToken } from "@/lib/client-api";
 import type { Service } from "@/types/service.types";
 import type { Employee } from "@/types/employee.types";
 
@@ -55,18 +58,36 @@ function formatBRLFromCents(cents: number): string {
   });
 }
 
-function todayISO(): string {
+function startOfToday(): Date {
   const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function slotToMinutes(slot: string): number {
+  const [h, m] = slot.split(":").map((n) => parseInt(n, 10));
+  return h * 60 + m;
+}
+
+function dateToISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
 }
 
 export default function AgendarPage({ params }: PageProps) {
   const { slug } = use(params);
   const router = useRouter();
   const { barbershop, isLoading: loadingBarbershop } = usePublicBarbershop();
+  const { client, isLoading: loadingAuth } = useClientAuth();
   const { setEmployee: setLocalEmployee } = useAppointmentEmployeeMap();
 
   const [step, setStep] = useState<Step>(1);
@@ -80,7 +101,7 @@ export default function AgendarPage({ params }: PageProps) {
   );
   const [anyEmployee, setAnyEmployee] = useState(false);
 
-  const [date, setDate] = useState<string>(todayISO());
+  const [date, setDate] = useState<Date | undefined>(() => new Date());
   const [time, setTime] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -104,10 +125,47 @@ export default function AgendarPage({ params }: PageProps) {
     };
   }, [barbershop]);
 
-  const slots = useMemo(generateSlots, []);
-  // Sem endpoint de disponibilidade público, o front não sabe quais slots
-  // estão ocupados. Mantém todos disponíveis (gap conhecido, ver plano).
-  const busy = useMemo(() => new Set<string>(), []);
+  // Horários livres vindos da API (por profissional + serviço + dia).
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (step !== 3 || !barbershop || !selectedService || !date) return;
+    let active = true;
+    setLoadingSlots(true);
+    availabilityService
+      .getAvailableSlots(barbershop.id, {
+        employeeId: anyEmployee ? undefined : selectedEmployee?.id,
+        serviceId: selectedService.id,
+        date: dateToISODate(date),
+      })
+      .then((s) => {
+        if (active) setAvailableSlots(s);
+      })
+      .catch(() => {
+        // Fallback: grade fixa local se a rota falhar (ex.: ainda não publicada).
+        if (active) setAvailableSlots(generateSlots());
+      })
+      .finally(() => {
+        if (active) setLoadingSlots(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [step, barbershop, selectedService, selectedEmployee, anyEmployee, date]);
+
+  // Salvaguarda: se a data é hoje, desabilita horários que já passaram.
+  const busy = useMemo(() => {
+    const s = new Set<string>();
+    if (date && isSameDay(date, new Date())) {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      for (const slot of availableSlots) {
+        if (slotToMinutes(slot) <= nowMin) s.add(slot);
+      }
+    }
+    return s;
+  }, [availableSlots, date]);
 
   function nextStep() {
     setStep((s) => (s < 4 ? ((s + 1) as Step) : s));
@@ -118,27 +176,36 @@ export default function AgendarPage({ params }: PageProps) {
 
   async function handleConfirm() {
     if (!barbershop || !selectedService || !date || !time) return;
+
+    // Tenta obter o clientId do contexto (caso normal) ou do JWT (fallback
+    // quando o contexto ainda não hidratou mas o token existe no localStorage).
+    const clientId = client?.id ?? getClientIdFromToken();
+    if (!clientId) {
+      toast.error("Sua sessão expirou. Faça login novamente.");
+      router.push(`/client/${slug}/login`);
+      return;
+    }
+
+    const [hh, mm] = time.split(":").map((n) => parseInt(n, 10));
+    const scheduledAtDate = new Date(date);
+    scheduledAtDate.setHours(hh, mm, 0, 0);
+
+    if (scheduledAtDate.getTime() < Date.now()) {
+      toast.error("Não é possível agendar em um horário que já passou.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const [hh, mm] = time.split(":").map((n) => parseInt(n, 10));
-      const [yyyy, mo, dd] = date.split("-").map((n) => parseInt(n, 10));
-      const scheduledAt = new Date(
-        yyyy,
-        mo - 1,
-        dd,
-        hh,
-        mm,
-        0,
-        0,
-      ).toISOString();
-
       const appt = await clientAppointmentsService.create(barbershop.id, {
+        clientId,
         serviceId: selectedService.id,
-        scheduledAt,
+        employeeId: anyEmployee ? undefined : selectedEmployee?.id,
+        scheduledAt: scheduledAtDate.toISOString(),
       });
 
-      // Gambiarra: vincula o profissional escolhido localmente (backend
-      // ainda não tem employeeId em Appointment).
+      // Vincula o profissional escolhido localmente (fallback enquanto o
+      // backend não persiste employeeId em Appointment).
       if (!anyEmployee && selectedEmployee) {
         setLocalEmployee(appt.id, selectedEmployee.id);
       }
@@ -157,7 +224,7 @@ export default function AgendarPage({ params }: PageProps) {
   const canAdvance =
     (step === 1 && selectedService !== null) ||
     (step === 2 && (anyEmployee || selectedEmployee !== null)) ||
-    (step === 3 && date !== "" && time !== null) ||
+    (step === 3 && date !== undefined && time !== null) ||
     step === 4;
 
   return (
@@ -237,18 +304,16 @@ export default function AgendarPage({ params }: PageProps) {
               >
                 <div className="space-y-4">
                   <div className="max-w-xs">
-                    <label className="text-xs text-muted-foreground block mb-1.5">
-                      Data
-                    </label>
-                    <Input
-                      type="date"
-                      value={date}
-                      min={todayISO()}
-                      onChange={(e) => {
-                        setDate(e.target.value);
+                    <DatePickerField
+                      id="agendar-data"
+                      label="Data"
+                      date={date}
+                      onChange={(d) => {
+                        setDate(d);
                         setTime(null);
                       }}
-                      className="bg-surface-raised border-border-subtle"
+                      disabled={{ before: startOfToday() }}
+                      defaultMonth={date}
                     />
                   </div>
 
@@ -256,12 +321,18 @@ export default function AgendarPage({ params }: PageProps) {
                     <label className="text-xs text-muted-foreground block mb-2">
                       Horário
                     </label>
-                    <HoraGrid
-                      slots={slots}
-                      busy={busy}
-                      selected={time}
-                      onSelect={setTime}
-                    />
+                    {loadingSlots ? (
+                      <div className="rounded-lg border border-border-subtle bg-surface-raised p-8 text-center text-sm text-muted-foreground">
+                        Buscando horários…
+                      </div>
+                    ) : (
+                      <HoraGrid
+                        slots={availableSlots}
+                        busy={busy}
+                        selected={time}
+                        onSelect={setTime}
+                      />
+                    )}
                   </div>
                 </div>
               </StepWrapper>
@@ -287,10 +358,15 @@ export default function AgendarPage({ params }: PageProps) {
                   />
                   <ResumoLine
                     label="Data"
-                    value={new Date(`${date}T00:00:00`).toLocaleDateString(
-                      "pt-BR",
-                      { weekday: "long", day: "2-digit", month: "long" },
-                    )}
+                    value={
+                      date
+                        ? date.toLocaleDateString("pt-BR", {
+                            weekday: "long",
+                            day: "2-digit",
+                            month: "long",
+                          })
+                        : "—"
+                    }
                   />
                   <ResumoLine label="Horário" value={time ?? "—"} />
                   <ResumoLine
@@ -333,10 +409,14 @@ export default function AgendarPage({ params }: PageProps) {
                 <Button
                   type="button"
                   onClick={() => void handleConfirm()}
-                  disabled={submitting}
+                  disabled={submitting || loadingAuth}
                   className="bg-brand hover:bg-brand-hover text-brand-foreground font-bold cursor-pointer disabled:opacity-50"
                 >
-                  {submitting ? "Confirmando…" : "Confirmar agendamento"}
+                  {loadingAuth
+                    ? "Carregando..."
+                    : submitting
+                      ? "Confirmando…"
+                      : "Confirmar agendamento"}
                 </Button>
               )}
             </div>

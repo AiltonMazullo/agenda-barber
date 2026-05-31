@@ -1,25 +1,145 @@
 "use client";
 
-import { Shield } from "lucide-react";
-import { PageHeader, ComingSoon } from "@/components/shared";
+import { useState } from "react";
+import { Shield, Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import { DialogGrupoAcesso } from "@/components/access-control/DialogGrupoAcesso";
+import { useAuth } from "@/hooks/useAuth";
+import { useAccessGroups } from "@/hooks/useAccessGroups";
+import { ACCESS_MODULES } from "@/utils/constants";
+import type {
+  AccessGroup,
+  CreateAccessGroupPayload,
+} from "@/types/access-group.types";
+
+const MODULE_LABEL = new Map<string, string>(
+  ACCESS_MODULES.map((m) => [m.key, m.label]),
+);
+
+function modulesSummary(group: AccessGroup): string {
+  const active = group.modules.filter(
+    (m) => m.create || m.read || m.update || m.delete,
+  );
+  if (active.length === 0) return "Sem permissões";
+  return active
+    .map((m) => MODULE_LABEL.get(m.module) ?? m.module)
+    .join(", ");
+}
 
 export default function ControleAcessoPage() {
+  const { barbershop } = useAuth();
+  const { groups, isLoading, create, update, remove } = useAccessGroups(
+    barbershop?.id,
+  );
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<AccessGroup | null>(null);
+
+  function openCreate() {
+    setEditing(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(group: AccessGroup) {
+    setEditing(group);
+    setDialogOpen(true);
+  }
+
+  async function handleSave(payload: CreateAccessGroupPayload) {
+    if (editing) {
+      return update(editing.id, payload);
+    }
+    return create(payload);
+  }
+
+  async function handleDelete(group: AccessGroup) {
+    if (
+      !confirm(
+        `Remover o grupo "${group.name}"? Funcionários vinculados ficarão sem grupo.`,
+      )
+    ) {
+      return;
+    }
+    await remove(group.id);
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Controle de Acesso"
-        subtitle="Perfis, permissões e usuários do sistema"
+        subtitle="Grupos de acesso e permissões por módulo"
+        actions={
+          <button
+            type="button"
+            onClick={openCreate}
+            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+          >
+            <Plus className="size-3.5" />
+            Novo grupo
+          </button>
+        }
       />
-      <ComingSoon
-        icon={<Shield className="size-6" />}
-        title="Perfis e permissões"
-        description="Em desenvolvimento. Em breve você definirá quem pode acessar o quê — por usuário, função ou filial."
-        features={[
-          "Perfis pré-definidos (Admin, Recepção, Profissional)",
-          "Permissões granulares por módulo",
-          "Acesso restrito por filial",
-          "Auditoria de ações sensíveis",
-        ]}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <SummaryCard
+          label="Grupos"
+          value={isLoading ? "…" : String(groups.length)}
+          icon={<Shield className="size-3.5" />}
+          tone="brand"
+          emphasized
+        />
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Carregando grupos…
+        </p>
+      ) : groups.length === 0 ? (
+        <EmptyState message="Nenhum grupo de acesso. Crie um para definir permissões dos profissionais." />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {groups.map((g) => (
+            <Card key={g.id} className="bg-surface-raised border-border">
+              <CardContent className="p-4 flex items-start gap-3">
+                <div className="size-10 rounded-lg bg-brand/15 text-brand grid place-items-center shrink-0">
+                  <Users className="size-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">
+                    {g.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                    {modulesSummary(g)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(g)}
+                    className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(g)}
+                    className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <DialogGrupoAcesso
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        group={editing}
+        onSave={handleSave}
       />
     </div>
   );

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
 import { ClientHeader } from "@/components/client/ClientHeader";
+import { BarbershopHero } from "@/components/client/BarbershopHero";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import type { Service } from "@/types/service.types";
@@ -88,15 +89,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
         {barbershop && !isLoading && (
           <>
-            <section className="space-y-3">
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="size-2 rounded-full bg-brand" />
-                <span className="font-mono">/{barbershop.slug}</span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                {barbershop.name}
-              </h1>
-            </section>
+            <BarbershopHero barbershop={barbershop} />
 
             <section className="rounded-xl border border-brand/40 bg-linear-to-br from-brand/10 to-brand/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">

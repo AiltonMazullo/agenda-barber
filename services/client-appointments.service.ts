@@ -7,7 +7,8 @@ import type {
 /**
  * Operações de agendamento feitas pelo cliente final (autenticado como Client).
  *
- * O backend usa `req.user.sub` como `clientId` — o front não envia mais o id.
+ * O `clientId` é enviado explicitamente no payload (vem do contexto de auth do
+ * cliente — `client.id`).
  */
 export const clientAppointmentsService = {
   async listMine(barbershopId: string): Promise<Appointment[]> {

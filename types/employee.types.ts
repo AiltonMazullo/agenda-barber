@@ -8,7 +8,7 @@ export interface Employee {
   appName: string;
   email: string;
   phone: string;
-  group: string;
+  accessGroupId: string | null;
   branchId: string;
   pixKey: string;
   cpf: string | null;
@@ -33,7 +33,7 @@ export interface CreateEmployeePayload {
   email: string;
   password: string;
   phone: string;
-  group: string;
+  accessGroupId?: string;
   branchId: string;
   pixKey: string;
   cpf?: string;
@@ -55,7 +55,7 @@ export interface UpdateEmployeePayload {
   email?: string;
   password?: string;
   phone?: string;
-  group?: string;
+  accessGroupId?: string;
   branchId?: string;
   pixKey?: string;
   cpf?: string;

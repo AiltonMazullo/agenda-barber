@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { usePaymentData } from "@/hooks/usePaymentData";
 import { useServices } from "@/hooks/useServices";
 import { barbershopsService } from "@/services/barbershops.service";
@@ -55,6 +57,7 @@ import type {
   CreateEmployeePayload,
   Employee,
 } from "@/types/employee.types";
+import type { AccessGroup } from "@/types/access-group.types";
 import type {
   CreateServicePayload,
   Service,
@@ -142,12 +145,17 @@ function parseBRLToCents(input: string): number {
 function TabEmpresa() {
   const router = useRouter();
   const { barbershop, updateBarbershop, logout } = useAuth();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(barbershop?.name ?? "");
   const [phone, setPhone] = useState(barbershop?.phone ?? "");
   const [address, setAddress] = useState(barbershop?.address ?? "");
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState(barbershop?.logoUrl ?? "");
+  const [title, setTitle] = useState(barbershop?.title ?? "");
+  const [subtitle, setSubtitle] = useState(barbershop?.subtitle ?? "");
+  const [description, setDescription] = useState(barbershop?.description ?? "");
+  const [bannerUrls, setBannerUrls] = useState<string[]>(
+    barbershop?.bannerUrls ?? [],
+  );
   const [saving, setSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -157,14 +165,15 @@ function TabEmpresa() {
     setName(barbershop?.name ?? "");
     setPhone(barbershop?.phone ?? "");
     setAddress(barbershop?.address ?? "");
-  }, [barbershop?.id, barbershop?.name, barbershop?.phone, barbershop?.address]);
+    setLogoUrl(barbershop?.logoUrl ?? "");
+    setTitle(barbershop?.title ?? "");
+    setSubtitle(barbershop?.subtitle ?? "");
+    setDescription(barbershop?.description ?? "");
+    setBannerUrls(barbershop?.bannerUrls ?? []);
+  }, [barbershop]);
 
-  function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+  function removeBanner(i: number) {
+    setBannerUrls((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   async function handleSave() {
@@ -179,6 +188,11 @@ function TabEmpresa() {
         name: name.trim(),
         phone: phone.trim(),
         address: address.trim(),
+        logoUrl: logoUrl.trim(),
+        title: title.trim(),
+        subtitle: subtitle.trim(),
+        description: description.trim(),
+        bannerUrls: bannerUrls.map((b) => b.trim()).filter(Boolean),
       });
       updateBarbershop(updated);
       toast.success("Dados atualizados.");
@@ -227,15 +241,11 @@ function TabEmpresa() {
       <Card className="bg-surface-raised border-border">
         <CardContent className="p-5 space-y-5">
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="size-16 rounded-xl bg-[#f5b82e]/20 border-2 border-dashed border-[#f5b82e]/30 flex items-center justify-center hover:border-[#f5b82e]/60 transition-colors overflow-hidden shrink-0"
-            >
-              {logoPreview ? (
+            <div className="size-16 rounded-xl bg-[#f5b82e]/20 border-2 border-dashed border-[#f5b82e]/30 flex items-center justify-center overflow-hidden shrink-0">
+              {logoUrl.trim() ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={logoPreview}
+                  src={logoUrl}
                   alt="logo"
                   className="size-16 object-cover rounded-xl"
                 />
@@ -248,23 +258,15 @@ function TabEmpresa() {
                   className="object-contain"
                 />
               )}
-            </button>
-            <div>
-              <p className="text-base font-bold text-white">{barbershop.name}</p>
-              <p
-                className="text-xs text-muted-foreground mt-0.5 cursor-pointer hover:text-brand transition-colors"
-                onClick={() => fileRef.current?.click()}
-              >
-                Clique no logo para alterar
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold text-white truncate">
+                {barbershop.name}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                A logo aparece na vitrine pública da barbearia.
               </p>
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleLogo}
-            />
           </div>
 
           <div className="space-y-4">
@@ -316,6 +318,155 @@ function TabEmpresa() {
                 onChange={(e) => setAddress(e.target.value)}
                 className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
               />
+            </div>
+          </div>
+
+          {/* ─── Vitrine pública (branding) ─── */}
+          <div className="pt-2 border-t border-border-subtle space-y-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
+                Vitrine pública
+              </h3>
+              <p className="text-[11px] text-text-faint mt-1">
+                Esses dados aparecem na página da barbearia que o cliente
+                acessa. O upload será salvo quando o backend disponibilizar a
+                rota.
+              </p>
+            </div>
+
+            {/* Logo */}
+            <div className="space-y-1.5">
+              <FormLabel>Logo</FormLabel>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="size-16 rounded-xl bg-surface-base border-2 border-dashed border-border group-hover:border-brand/50 flex items-center justify-center overflow-hidden shrink-0 transition-colors">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt="logo preview"
+                      className="size-16 object-cover rounded-xl"
+                    />
+                  ) : (
+                    <Plus className="size-5 text-text-faint group-hover:text-brand transition-colors" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-foreground font-medium">
+                    {logoUrl ? "Clique para substituir" : "Clique para selecionar"}
+                  </p>
+                  <p className="text-[11px] text-text-faint mt-0.5">
+                    PNG, JPG ou WebP · recomendado 400×400
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) =>
+                      setLogoUrl(ev.target?.result as string);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+              {logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLogoUrl("")}
+                  className="text-[11px] text-danger-foreground hover:underline"
+                >
+                  Remover logo
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel>Título</FormLabel>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex.: A melhor barbearia da cidade"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel>Subtítulo</FormLabel>
+              <Input
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                placeholder="Ex.: Cortes, barba e cuidados masculinos"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel>Descrição</FormLabel>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Conte um pouco sobre a barbearia…"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 resize-none min-h-[80px]"
+              />
+            </div>
+
+            {/* Carrossel */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FormLabel>Imagens do carrossel</FormLabel>
+                <label className="text-xs text-brand hover:underline font-semibold flex items-center gap-1 cursor-pointer">
+                  <Plus className="size-3" />
+                  Adicionar
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      files.forEach((file) => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) =>
+                          setBannerUrls((prev) => [
+                            ...prev,
+                            ev.target?.result as string,
+                          ]);
+                        reader.readAsDataURL(file);
+                      });
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+              {bannerUrls.length === 0 ? (
+                <p className="text-[11px] text-text-faint">
+                  Nenhuma imagem. Adicione fotos para exibir um carrossel na
+                  vitrine.
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {bannerUrls.map((url, i) => (
+                    <div key={i} className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`banner ${i + 1}`}
+                        className="w-full aspect-video object-cover rounded-md border border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeBanner(i)}
+                        className="absolute top-1 right-1 size-6 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -830,7 +981,7 @@ interface EmployeeFormState {
   email: string;
   password: string;
   phone: string;
-  group: string;
+  accessGroupId: string;
   branchId: string;
   pixKey: string;
   cpf: string;
@@ -852,7 +1003,7 @@ const EMPTY_EMPLOYEE_FORM: EmployeeFormState = {
   email: "",
   password: "",
   phone: "",
-  group: "",
+  accessGroupId: "",
   branchId: "",
   pixKey: "",
   cpf: "",
@@ -873,12 +1024,14 @@ function DialogProfissional({
   onOpenChange,
   employee,
   branches,
+  groups,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   employee: Employee | null;
   branches: Branch[];
+  groups: AccessGroup[];
   onSave: (payload: CreateEmployeePayload) => Promise<void>;
 }) {
   const [form, setForm] = useState<EmployeeFormState>(EMPTY_EMPLOYEE_FORM);
@@ -895,7 +1048,7 @@ function DialogProfissional({
         email: employee.email,
         password: "",
         phone: employee.phone,
-        group: employee.group,
+        accessGroupId: employee.accessGroupId ?? "",
         branchId: employee.branchId,
         pixKey: employee.pixKey,
         cpf: employee.cpf ?? "",
@@ -954,7 +1107,6 @@ function DialogProfissional({
       return toast.error("Senha deve ter pelo menos 6 caracteres.");
     if (form.phone.replace(/\D/g, "").length < 10)
       return toast.error("Telefone inválido.");
-    if (!form.group.trim()) return toast.error("Informe o grupo/função.");
     if (!form.branchId) return toast.error("Selecione uma filial.");
     if (!form.pixKey.trim()) return toast.error("Informe a chave Pix.");
     if (form.cep.replace(/\D/g, "").length < 8)
@@ -973,7 +1125,7 @@ function DialogProfissional({
         email: form.email.trim().toLowerCase(),
         password: form.password,
         phone: form.phone.trim(),
-        group: form.group.trim(),
+        accessGroupId: form.accessGroupId || undefined,
         branchId: form.branchId,
         pixKey: form.pixKey.trim(),
         cpf: form.cpf.trim() || undefined,
@@ -1154,13 +1306,41 @@ function DialogProfissional({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <FormLabel required>Grupo / Função</FormLabel>
-              <Input
-                value={form.group}
-                onChange={(e) => update("group", e.target.value)}
-                placeholder="Ex.: Barbeiro, Atendente"
-                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
-              />
+              <FormLabel>Grupo de acesso</FormLabel>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full">
+                  <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                    <span
+                      className={
+                        form.accessGroupId ? "text-white" : "text-text-faint"
+                      }
+                    >
+                      {groups.find((g) => g.id === form.accessGroupId)?.name ??
+                        "Sem grupo"}
+                    </span>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
+                  <DropdownMenuItem
+                    onClick={() => update("accessGroupId", "")}
+                    className="text-xs hover:bg-surface-elevated cursor-pointer"
+                  >
+                    Sem grupo
+                  </DropdownMenuItem>
+                  {groups.map((g) => (
+                    <DropdownMenuItem
+                      key={g.id}
+                      onClick={() => update("accessGroupId", g.id)}
+                      className={cn(
+                        "text-xs hover:bg-surface-elevated cursor-pointer",
+                        form.accessGroupId === g.id && "text-brand",
+                      )}
+                    >
+                      {g.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="space-y-1.5">
               <FormLabel required>Filial</FormLabel>
@@ -1330,6 +1510,7 @@ function TabProfissionais() {
     barbershop?.id,
   );
   const { branches } = useBranches(barbershop?.id);
+  const { groups } = useAccessGroups(barbershop?.id);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
 
@@ -1351,6 +1532,7 @@ function TabProfissionais() {
   }
 
   const branchById = new Map(branches.map((b) => [b.id, b.name]));
+  const groupById = new Map(groups.map((g) => [g.id, g.name]));
 
   return (
     <Card className="bg-surface-raised border-border">
@@ -1374,7 +1556,7 @@ function TabProfissionais() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {["Nome", "Função", "Filial", "Contato", ""].map((h) => (
+                {["Nome", "Grupo", "Filial", "Contato", ""].map((h) => (
                   <TableHead
                     key={h}
                     className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
@@ -1418,7 +1600,8 @@ function TabProfissionais() {
                       </p>
                     </TableCell>
                     <TableCell className="px-5 py-4 text-muted-foreground text-sm">
-                      {p.group}
+                      {(p.accessGroupId && groupById.get(p.accessGroupId)) ??
+                        "—"}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-muted-foreground text-sm">
                       {branchById.get(p.branchId) ?? "—"}
@@ -1462,6 +1645,7 @@ function TabProfissionais() {
         onOpenChange={setDialog}
         employee={editing}
         branches={branches}
+        groups={groups}
         onSave={handleSave}
       />
     </Card>

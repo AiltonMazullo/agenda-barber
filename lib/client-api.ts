@@ -81,6 +81,22 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+/** Extrai o `sub` (clientId) do access token JWT sem validar assinatura. */
+export function getClientIdFromToken(): string | null {
+  const token = getClientAccessToken();
+  if (!token) return null;
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const json = JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
+    ) as { sub?: string };
+    return json.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const clientApi: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -99,7 +115,11 @@ clientApi.interceptors.response.use(
   async (error: AxiosError<ApiErrorBody>) => {
     const originalConfig = error.config as RetriableConfig | undefined;
 
-    const isAuthEndpoint = originalConfig?.url?.startsWith("/auth/");
+    // Evita loop infinito em rotas de login/register de cliente
+    const isAuthEndpoint =
+      originalConfig?.url?.includes("/clients/login") ||
+      originalConfig?.url?.includes("/clients/register") ||
+      originalConfig?.url?.startsWith("/auth/");
     if (
       error.response?.status === 401 &&
       originalConfig &&

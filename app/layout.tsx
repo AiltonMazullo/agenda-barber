@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ClientAuthProvider } from "@/contexts/ClientAuthContext";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
@@ -25,9 +24,7 @@ export default function RootLayout({
       <body
         className={`${inter.className} min-h-full bg-background text-foreground`}
       >
-        <AuthProvider>
-          <ClientAuthProvider>{children}</ClientAuthProvider>
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
         <Toaster />
       </body>
     </html>
