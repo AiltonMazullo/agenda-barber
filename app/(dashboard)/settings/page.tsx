@@ -1107,6 +1107,8 @@ function DialogProfissional({
       return toast.error("Senha deve ter pelo menos 6 caracteres.");
     if (form.phone.replace(/\D/g, "").length < 10)
       return toast.error("Telefone inválido.");
+    if (!form.accessGroupId)
+      return toast.error("Selecione um grupo de acesso.");
     if (!form.branchId) return toast.error("Selecione uma filial.");
     if (!form.pixKey.trim()) return toast.error("Informe a chave Pix.");
     if (form.cep.replace(/\D/g, "").length < 8)
@@ -1306,27 +1308,28 @@ function DialogProfissional({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <FormLabel>Grupo de acesso</FormLabel>
+              <FormLabel required>Grupo de acesso</FormLabel>
               <DropdownMenu>
-                <DropdownMenuTrigger className="w-full">
-                  <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                <DropdownMenuTrigger className="w-full" disabled={groups.length === 0}>
+                  <div
+                    className={cn(
+                      "w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 transition-colors",
+                      groups.length === 0
+                        ? "opacity-60 cursor-not-allowed"
+                        : "hover:border-[#f5b82e]/40 cursor-pointer",
+                    )}
+                  >
                     <span
                       className={
                         form.accessGroupId ? "text-white" : "text-text-faint"
                       }
                     >
                       {groups.find((g) => g.id === form.accessGroupId)?.name ??
-                        "Sem grupo"}
+                        "Selecione um grupo"}
                     </span>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
-                  <DropdownMenuItem
-                    onClick={() => update("accessGroupId", "")}
-                    className="text-xs hover:bg-surface-elevated cursor-pointer"
-                  >
-                    Sem grupo
-                  </DropdownMenuItem>
                   {groups.map((g) => (
                     <DropdownMenuItem
                       key={g.id}
@@ -1341,6 +1344,12 @@ function DialogProfissional({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              {groups.length === 0 && (
+                <p className="text-[11px] text-warning-foreground">
+                  Crie um grupo de acesso em Controle de Acesso antes de cadastrar
+                  profissionais.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <FormLabel required>Filial</FormLabel>
@@ -1490,9 +1499,9 @@ function DialogProfissional({
           </button>
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || groups.length === 0}
             onClick={handleSave}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "Salvando…" : employee ? "Salvar" : "Criar Profissional"}
           </button>

@@ -91,6 +91,27 @@ export function DialogGrupoAcesso({
     }));
   }
 
+  function toggleAll(value: boolean) {
+    setPerms(() => {
+      const next: PermMap = {};
+      for (const m of ACCESS_MODULES) {
+        next[m.key] = {
+          module: m.key,
+          create: value,
+          read: value,
+          update: value,
+          delete: value,
+        };
+      }
+      return next;
+    });
+  }
+
+  const allSelected = ACCESS_MODULES.every((m) => {
+    const r = perms[m.key];
+    return r && r.create && r.read && r.update && r.delete;
+  });
+
   async function handleSave() {
     if (name.trim().length < 2) {
       toast.error("Informe o nome do grupo.");
@@ -141,9 +162,20 @@ export function DialogGrupoAcesso({
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Permissões por módulo
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Permissões por módulo
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <span className="text-[11px] text-muted-foreground">
+                  Selecionar tudo
+                </span>
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(c) => toggleAll(c === true)}
+                />
+              </label>
+            </div>
             <div className="rounded-lg border border-border-subtle overflow-hidden">
               {/* Cabeçalho */}
               <div className="grid grid-cols-[1.4fr_repeat(4,minmax(0,1fr))] gap-1 px-3 py-2 bg-surface-base border-b border-border-subtle">

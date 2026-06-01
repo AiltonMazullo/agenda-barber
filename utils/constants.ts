@@ -60,7 +60,6 @@ export const ACCESS_MODULES = [
   { key: "branches", label: "Filiais" },
   { key: "products", label: "Estoque" },
   { key: "cash-registers", label: "Caixa" },
-  { key: "reports", label: "Relatórios" },
   { key: "access-groups", label: "Grupos de acesso" },
   { key: "payment-data", label: "Pagamento" },
 ] as const;

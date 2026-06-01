@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { clientApi } from "@/lib/client-api";
 import type { AvailabilityQuery } from "@/types/availability.types";
 
 /**
@@ -73,7 +73,7 @@ export const availabilityService = {
     barbershopId: string,
     query: AvailabilityQuery,
   ): Promise<string[]> {
-    const { data } = await api.get(
+    const { data } = await clientApi.get(
       `/barbershops/${barbershopId}/availability`,
       {
         params: {

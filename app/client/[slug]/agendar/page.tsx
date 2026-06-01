@@ -12,8 +12,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { servicesService } from "@/services/services.service";
-import { employeesService } from "@/services/employees.service";
+import { clientCatalogService } from "@/services/client-catalog.service";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
 import { availabilityService } from "@/services/availability.service";
 import { ClientHeader } from "@/components/client/ClientHeader";
@@ -99,7 +98,6 @@ export default function AgendarPage({ params }: PageProps) {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null,
   );
-  const [anyEmployee, setAnyEmployee] = useState(false);
 
   const [date, setDate] = useState<Date | undefined>(() => new Date());
   const [time, setTime] = useState<string | null>(null);
@@ -111,8 +109,8 @@ export default function AgendarPage({ params }: PageProps) {
     setLoadingCatalog(true);
 
     Promise.allSettled([
-      servicesService.list(barbershop.id),
-      employeesService.list(barbershop.id),
+      clientCatalogService.listServices(barbershop.id),
+      clientCatalogService.listEmployees(barbershop.id),
     ]).then(([sRes, eRes]) => {
       if (!active) return;
       if (sRes.status === "fulfilled") setServices(sRes.value);
@@ -135,7 +133,7 @@ export default function AgendarPage({ params }: PageProps) {
     setLoadingSlots(true);
     availabilityService
       .getAvailableSlots(barbershop.id, {
-        employeeId: anyEmployee ? undefined : selectedEmployee?.id,
+        employeeId: selectedEmployee?.id,
         serviceId: selectedService.id,
         date: dateToISODate(date),
       })
@@ -152,7 +150,7 @@ export default function AgendarPage({ params }: PageProps) {
     return () => {
       active = false;
     };
-  }, [step, barbershop, selectedService, selectedEmployee, anyEmployee, date]);
+  }, [step, barbershop, selectedService, selectedEmployee, date]);
 
   // Salvaguarda: se a data é hoje, desabilita horários que já passaram.
   const busy = useMemo(() => {
@@ -175,7 +173,8 @@ export default function AgendarPage({ params }: PageProps) {
   }
 
   async function handleConfirm() {
-    if (!barbershop || !selectedService || !date || !time) return;
+    if (!barbershop || !selectedService || !selectedEmployee || !date || !time)
+      return;
 
     // Tenta obter o clientId do contexto (caso normal) ou do JWT (fallback
     // quando o contexto ainda não hidratou mas o token existe no localStorage).
@@ -200,15 +199,13 @@ export default function AgendarPage({ params }: PageProps) {
       const appt = await clientAppointmentsService.create(barbershop.id, {
         clientId,
         serviceId: selectedService.id,
-        employeeId: anyEmployee ? undefined : selectedEmployee?.id,
+        employeeId: selectedEmployee.id,
         scheduledAt: scheduledAtDate.toISOString(),
       });
 
       // Vincula o profissional escolhido localmente (fallback enquanto o
       // backend não persiste employeeId em Appointment).
-      if (!anyEmployee && selectedEmployee) {
-        setLocalEmployee(appt.id, selectedEmployee.id);
-      }
+      setLocalEmployee(appt.id, selectedEmployee.id);
 
       toast.success("Agendamento confirmado!");
       router.push(`/client/${slug}/me`);
@@ -223,7 +220,7 @@ export default function AgendarPage({ params }: PageProps) {
 
   const canAdvance =
     (step === 1 && selectedService !== null) ||
-    (step === 2 && (anyEmployee || selectedEmployee !== null)) ||
+    (step === 2 && selectedEmployee !== null) ||
     (step === 3 && date !== undefined && time !== null) ||
     step === 4;
 
@@ -267,32 +264,19 @@ export default function AgendarPage({ params }: PageProps) {
                 icon={<Users className="size-4" />}
                 title="Escolha o profissional"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <ProfissionalSelectCard
-                    employee={null}
-                    selected={anyEmployee}
-                    onSelect={() => {
-                      setAnyEmployee(true);
-                      setSelectedEmployee(null);
-                    }}
-                  />
-                  {employees.map((e) => (
-                    <ProfissionalSelectCard
-                      key={e.id}
-                      employee={e}
-                      selected={!anyEmployee && selectedEmployee?.id === e.id}
-                      onSelect={() => {
-                        setAnyEmployee(false);
-                        setSelectedEmployee(e);
-                      }}
-                    />
-                  ))}
-                </div>
-                {employees.length === 0 && !anyEmployee && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Esta barbearia ainda não cadastrou profissionais — selecione
-                    “Sem preferência” para continuar.
-                  </p>
+                {employees.length === 0 ? (
+                  <EmptyState message="Esta barbearia ainda não cadastrou profissionais." />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {employees.map((e) => (
+                      <ProfissionalSelectCard
+                        key={e.id}
+                        employee={e}
+                        selected={selectedEmployee?.id === e.id}
+                        onSelect={() => setSelectedEmployee(e)}
+                      />
+                    ))}
+                  </div>
                 )}
               </StepWrapper>
             )}
@@ -349,11 +333,9 @@ export default function AgendarPage({ params }: PageProps) {
                   <ResumoLine
                     label="Profissional"
                     value={
-                      anyEmployee
-                        ? "Sem preferência"
-                        : selectedEmployee?.appName ??
-                          selectedEmployee?.name ??
-                          "—"
+                      selectedEmployee?.appName ??
+                      selectedEmployee?.name ??
+                      "—"
                     }
                   />
                   <ResumoLine

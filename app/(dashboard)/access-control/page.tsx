@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Shield, Plus, Pencil, Trash2, Users, X, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
 import { DialogGrupoAcesso } from "@/components/access-control/DialogGrupoAcesso";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +41,8 @@ export default function ControleAcessoPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AccessGroup | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AccessGroup | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function openCreate() {
     setEditing(null);
@@ -53,15 +61,15 @@ export default function ControleAcessoPage() {
     return create(payload);
   }
 
-  async function handleDelete(group: AccessGroup) {
-    if (
-      !confirm(
-        `Remover o grupo "${group.name}"? Funcionários vinculados ficarão sem grupo.`,
-      )
-    ) {
-      return;
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const ok = await remove(deleteTarget.id);
+      if (ok) setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
-    await remove(group.id);
   }
 
   return (
@@ -123,7 +131,7 @@ export default function ControleAcessoPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(g)}
+                    onClick={() => setDeleteTarget(g)}
                     className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
                   >
                     <Trash2 className="size-3" />
@@ -141,6 +149,60 @@ export default function ControleAcessoPage() {
         group={editing}
         onSave={handleSave}
       />
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+      >
+        <DialogContent className="bg-surface-raised border border-danger/40 text-foreground max-w-md p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="size-4 text-danger-foreground" />
+                <DialogTitle className="text-base font-bold">
+                  Remover grupo
+                </DialogTitle>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="px-6 py-5">
+            <p className="text-sm text-muted-foreground">
+              Remover o grupo{" "}
+              <span className="text-foreground font-bold">
+                {deleteTarget?.name}
+              </span>
+              ? Funcionários vinculados ficarão sem grupo. Essa ação não pode ser
+              desfeita.
+            </p>
+          </div>
+
+          <div className="px-6 pb-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void confirmDelete()}
+              className="h-9 px-5 rounded-md text-sm font-bold bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-60"
+            >
+              {deleting ? "Removendo…" : "Remover"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
