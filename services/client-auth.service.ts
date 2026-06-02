@@ -5,7 +5,7 @@ import {
   getClientAccessToken,
   setClientAuthTokens,
 } from "@/lib/client-api";
-import type { Client } from "@/types/client.types";
+import type { Client, UpdateMePayload } from "@/types/client.types";
 import type {
   ClientAuthSession,
   ClientAuthTokens,
@@ -144,5 +144,15 @@ export const clientAuthService = {
       }
       return getCachedClient();
     }
+  },
+
+  /**
+   * Atualiza o cadastro do próprio cliente via `PUT /clients/me`. Envia só os
+   * campos preenchidos e atualiza o cache local com o retorno.
+   */
+  async updateMe(payload: UpdateMePayload): Promise<Client> {
+    const { data } = await clientApi.put<Client>("/clients/me", payload);
+    setCachedClient(data);
+    return data;
   },
 };

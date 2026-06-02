@@ -1,19 +1,24 @@
 import { clientApi } from "@/lib/client-api";
 import type {
   Appointment,
+  ClientAppointment,
   CreateAppointmentPayload,
 } from "@/types/appointment.types";
 
 /**
  * Operações de agendamento feitas pelo cliente final (autenticado como Client).
  *
- * O `clientId` é enviado explicitamente no payload (vem do contexto de auth do
- * cliente — `client.id`).
+ * Todas usam `clientApi` → o token do cliente vai no header `Authorization`.
+ * O `clientId` no create vem do contexto de auth (`client.id`).
  */
 export const clientAppointmentsService = {
-  async listMine(barbershopId: string): Promise<Appointment[]> {
-    const { data } = await clientApi.get<Appointment[]>(
-      `/barbershops/${barbershopId}/appointments/me`,
+  /**
+   * Lista os agendamentos do próprio cliente via `GET /clients/me/appointments`.
+   * Retorna `service` e `barbershop` aninhados, ordenados por `scheduledAt`.
+   */
+  async listMine(): Promise<ClientAppointment[]> {
+    const { data } = await clientApi.get<ClientAppointment[]>(
+      "/clients/me/appointments",
     );
     return data;
   },

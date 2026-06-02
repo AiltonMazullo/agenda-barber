@@ -1,0 +1,202 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Scissors,
+  Clock,
+  AlertCircle,
+  CalendarPlus,
+} from "lucide-react";
+import { servicesService } from "@/services/services.service";
+import { BarbershopHero } from "@/components/client/BarbershopHero";
+import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useClientAuth } from "@/hooks/useClientAuth";
+import type { Service } from "@/types/service.types";
+
+function formatBRLFromCents(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default function BarbershopPublicPage({ params }: PageProps) {
+  const { slug } = use(params);
+  const { barbershop, isLoading, error, notFound } = usePublicBarbershop();
+  const { isAuthenticated } = useClientAuth();
+
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    if (!barbershop) return;
+    let active = true;
+    servicesService
+      .list(barbershop.id)
+      .then((list) => {
+        if (active) setServices(list);
+      })
+      .catch(() => {
+        /* silencioso — serviços são complemento */
+      });
+    return () => {
+      active = false;
+    };
+  }, [barbershop]);
+
+  const agendarHref = isAuthenticated
+    ? `/client/${slug}/agendar`
+    : `/client/${slug}/login?from=/client/${slug}/agendar`;
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      {isLoading && (
+        <div className="text-center py-20 text-muted-foreground text-sm">
+          Carregando…
+        </div>
+      )}
+
+      {notFound && !isLoading && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 p-8 text-center space-y-3">
+          <AlertCircle className="size-8 text-warning-foreground mx-auto" />
+          <p className="text-sm text-foreground">Barbearia não encontrada.</p>
+          <Link
+            href="/"
+            className="inline-flex h-9 px-5 rounded-md bg-brand text-brand-foreground text-sm font-bold hover:bg-brand-hover transition-colors items-center"
+          >
+            Voltar à listagem
+          </Link>
+        </div>
+      )}
+
+      {error && !isLoading && !notFound && (
+        <div className="rounded-lg border border-danger/30 bg-danger/5 p-8 text-center space-y-2">
+          <AlertCircle className="size-8 text-danger-foreground mx-auto" />
+          <p className="text-sm text-foreground">{error}</p>
+        </div>
+      )}
+
+      {barbershop && !isLoading && (
+        <>
+          <BarbershopHero barbershop={barbershop} />
+
+          <section className="rounded-xl border border-brand/40 bg-linear-to-br from-brand/10 to-brand/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <CalendarPlus className="size-6 text-brand shrink-0 mt-0.5" />
+              <div>
+                <p className="text-base font-bold text-foreground">
+                  Pronto para agendar?
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Escolha o serviço, o profissional e o melhor horário em poucos
+                  cliques.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={agendarHref}
+              className="inline-flex h-10 px-5 rounded-md bg-brand text-brand-foreground text-sm font-bold hover:bg-brand-hover transition-colors items-center whitespace-nowrap"
+            >
+              Agendar agora →
+            </Link>
+          </section>
+
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
+              <Mail className="size-4 text-brand shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  E-mail
+                </p>
+                <p className="text-sm text-foreground truncate">
+                  {barbershop.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
+              <Phone className="size-4 text-brand shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Telefone
+                </p>
+                <p className="text-sm text-foreground">
+                  {barbershop.phone ?? "—"}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
+              <MapPin className="size-4 text-brand shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Endereço
+                </p>
+                <p className="text-sm text-foreground">
+                  {barbershop.address ?? "—"}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Scissors className="size-4 text-brand" />
+              <h2 className="text-sm font-bold uppercase tracking-widest">
+                Serviços oferecidos
+              </h2>
+            </div>
+
+            {services.length === 0 ? (
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-8 text-center text-sm text-muted-foreground">
+                Esta barbearia ainda não cadastrou serviços.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {services.map((s) => (
+                  <div
+                    key={s.id}
+                    className="rounded-lg border border-border-subtle bg-surface-raised p-4 hover:border-brand/40 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="size-3 rounded-full mt-1.5 shrink-0"
+                        style={{ backgroundColor: s.hex ?? "#f5b82e" }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-base font-bold text-foreground">
+                            {s.name}
+                          </h3>
+                          <span className="text-base font-bold text-brand whitespace-nowrap">
+                            {formatBRLFromCents(s.priceInCents)}
+                          </span>
+                        </div>
+                        {s.description && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {s.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                          <Clock className="size-3" />
+                          <span>{s.durationMin} minutos</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}

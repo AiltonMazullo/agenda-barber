@@ -49,3 +49,25 @@ export interface UpdateClientPayload {
   phone?: string;
   password?: string;
 }
+
+/**
+ * Payload de `PUT /clients/me` — o próprio cliente atualiza seu cadastro.
+ * Todos os campos são opcionais (envia só o que mudou).
+ */
+export interface UpdateMePayload {
+  name?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+  /** ISO 8601 (ex.: "2000-01-01T00:00:00.000Z"). */
+  birthDate?: string;
+  howMet?: string;
+  cpf?: string;
+  cep?: string;
+  street?: string;
+  neighborhood?: string;
+  city?: string;
+  uf?: string;
+  number?: string;
+  complement?: string;
+}

@@ -20,6 +20,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 
 import {
   Sidebar,
@@ -35,31 +36,54 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const navOperacional = [
+// `module` (opcional) liga o item a uma permissão de grupo de acesso.
+// Itens sem `module` ficam sempre visíveis.
+interface NavItem {
+  title: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  module?: string;
+}
+
+const navOperacional: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Agenda", href: "/schedule", icon: Calendar },
-  { title: "Clientes", href: "/clients", icon: Users },
+  { title: "Agenda", href: "/schedule", icon: Calendar, module: "appointments" },
+  { title: "Clientes", href: "/clients", icon: Users, module: "clients" },
   { title: "Comandas", href: "/orders", icon: ClipboardList },
-  { title: "Caixa", href: "/cashier", icon: Wallet },
+  { title: "Caixa", href: "/cashier", icon: Wallet, module: "cash-registers" },
 ];
 
-const navGestao = [
-  { title: "Assinaturas", href: "/subscriptions", icon: CreditCard },
+const navGestao: NavItem[] = [
+  { title: "Planos", href: "/subscriptions", icon: CreditCard },
   { title: "Comissões", href: "/commissions", icon: TrendingUp },
-  { title: "Estoque", href: "/inventory", icon: Package },
+  { title: "Estoque", href: "/inventory", icon: Package, module: "products" },
   { title: "Financeiro", href: "/financial", icon: DollarSign },
   { title: "Relatórios", href: "/reports", icon: BarChart2 },
 ];
 
-const navBottom = [
+const navBottom: NavItem[] = [
   { title: "Configurações", href: "/settings", icon: Settings },
-  { title: "Controle de Acesso", href: "/access-control", icon: Shield },
+  {
+    title: "Controle de Acesso",
+    href: "/access-control",
+    icon: Shield,
+    module: "access-groups",
+  },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
+  const { can } = usePermissions();
+
+  // Esconde itens cujo módulo o usuário logado não pode ler.
+  const visible = (items: NavItem[]) =>
+    items.filter((i) => !i.module || can(i.module, "read"));
+
+  const operacional = visible(navOperacional);
+  const gestao = visible(navGestao);
+  const bottom = visible(navBottom);
 
   async function handleLogout() {
     try {
@@ -108,7 +132,7 @@ export function Navbar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navOperacional.map((item) => (
+              {operacional.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
@@ -132,7 +156,7 @@ export function Navbar() {
           <SidebarGroupContent>
             {/* MENU: Adicionado gap-1 aqui também */}
             <SidebarMenu>
-              {navGestao.map((item) => (
+              {gestao.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
@@ -164,7 +188,7 @@ export function Navbar() {
               <span className="font-medium">Plano</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {navBottom.map((item) => (
+          {bottom.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 render={<Link href={item.href} />}

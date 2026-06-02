@@ -45,6 +45,23 @@ export interface Appointment extends AppointmentRaw {
   employee?: AppointmentEmployee | null;
 }
 
+/** Barbearia como vem aninhada em `GET /clients/me/appointments`. */
+export interface AppointmentBarbershopRef {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/**
+ * Agendamento como vem de `GET /clients/me/appointments` (visão do cliente):
+ * traz `service` e `barbershop` aninhados, sem o `client` (é o próprio).
+ */
+export interface ClientAppointment extends AppointmentRaw {
+  service: Service;
+  barbershop: AppointmentBarbershopRef;
+  employee?: AppointmentEmployee | null;
+}
+
 export interface CreateAppointmentPayload {
   /**
    * Obrigatório quando o dono cria o agendamento (escolhe o cliente da lista).

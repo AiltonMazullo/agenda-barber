@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { clientAuthService } from "@/services/client-auth.service";
-import type { Client } from "@/types/client.types";
+import type { Client, UpdateMePayload } from "@/types/client.types";
 import type {
   ClientLoginCredentials,
   ClientRegisterPayload,
@@ -21,6 +21,7 @@ interface ClientAuthContextValue {
   isLoading: boolean;
   login: (credentials: ClientLoginCredentials) => Promise<Client>;
   register: (payload: ClientRegisterPayload) => Promise<Client>;
+  updateProfile: (payload: UpdateMePayload) => Promise<Client>;
   logout: () => Promise<void>;
 }
 
@@ -61,6 +62,12 @@ export function ClientAuthProvider({ children }: ClientAuthProviderProps) {
     return session.client;
   }, []);
 
+  const updateProfile = useCallback(async (payload: UpdateMePayload) => {
+    const updated = await clientAuthService.updateMe(payload);
+    setClient(updated);
+    return updated;
+  }, []);
+
   const logout = useCallback(async () => {
     await clientAuthService.logout();
     setClient(null);
@@ -74,6 +81,7 @@ export function ClientAuthProvider({ children }: ClientAuthProviderProps) {
         isLoading,
         login,
         register,
+        updateProfile,
         logout,
       }}
     >

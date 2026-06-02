@@ -1,7 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -9,7 +8,6 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotifications } from "@/hooks/useNotifications";
 
 function getInitials(name: string | undefined): string {
   if (!name) return "?";
@@ -22,7 +20,6 @@ function getInitials(name: string | undefined): string {
 export function Header() {
   const router = useRouter();
   const { barbershop, logout } = useAuth();
-  const { hasUnread, markAsRead } = useNotifications();
 
   const name = barbershop?.name ?? "—";
   const initials = getInitials(barbershop?.name);
@@ -47,35 +44,6 @@ export function Header() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button
-          onClick={markAsRead}
-          variant="ghost"
-          size="icon"
-          className="cursor-pointer relative size-8"
-          aria-label={
-            hasUnread ? "Notificações pendentes" : "Sem notificações novas"
-          }
-        >
-          <motion.span
-            animate={
-              hasUnread
-                ? { rotate: [0, -12, 12, -10, 10, -6, 6, 0] }
-                : { rotate: 0 }
-            }
-            transition={
-              hasUnread
-                ? { duration: 1.2, repeat: Infinity, repeatDelay: 1.2 }
-                : { duration: 0.2 }
-            }
-            className="inline-flex"
-          >
-            <Bell className={`size-4 ${hasUnread ? "text-brand" : ""}`} />
-          </motion.span>
-          {hasUnread && (
-            <span className="absolute top-1 right-1 size-2 rounded-full bg-danger ring-2 ring-background animate-pulse" />
-          )}
-        </Button>
-
         <Button
           onClick={handleLogout}
           variant="ghost"

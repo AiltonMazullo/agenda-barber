@@ -107,6 +107,17 @@ clientApi.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Em GET, evita resposta obsoleta servida do cache do browser via 304
+  // (ex.: filiais recém-criadas que não apareciam). O `_ts` torna a URL única
+  // a cada chamada, forçando um 200 fresco; os headers reforçam o no-cache.
+  if ((config.method ?? "get").toLowerCase() === "get") {
+    config.headers["Cache-Control"] = "no-cache";
+    config.headers["Pragma"] = "no-cache";
+    config.params = {
+      ...(config.params as Record<string, unknown> | undefined),
+      _ts: Date.now(),
+    };
+  }
   return config;
 });
 

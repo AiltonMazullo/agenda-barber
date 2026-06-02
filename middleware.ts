@@ -45,7 +45,13 @@ function parseClientPath(pathname: string): ClientPathInfo | null {
   return { slug, sub };
 }
 
-const CLIENT_PROTECTED_SUBS = ["agendar", "me"];
+const CLIENT_PROTECTED_SUBS = [
+  "agendar",
+  "me",
+  "agendamentos",
+  "plano",
+  "perfil",
+];
 const CLIENT_PUBLIC_AUTH_SUBS = ["login", "register"];
 
 export function middleware(req: NextRequest) {

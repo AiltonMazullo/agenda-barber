@@ -1,11 +1,22 @@
 import { api, ApiError } from "@/lib/api";
+import { clientApi, getClientAccessToken } from "@/lib/client-api";
 import type {
   Barbershop,
   UpdateBarbershopPayload,
 } from "@/types/barbershop.types";
 
+/**
+ * As rotas `GET /barbershops` e `GET /barbershops/:slug` exigem token. Usa o
+ * token do **cliente** quando há sessão de cliente (fluxo público/cliente);
+ * senão usa a instância do **dono** (`api`, que injeta o token do dono se
+ * houver). Assim ambos os contextos autenticados funcionam.
+ */
+function reader() {
+  return getClientAccessToken() ? clientApi : api;
+}
+
 async function findInList(slug: string): Promise<Barbershop> {
-  const { data } = await api.get<Barbershop[]>("/barbershops");
+  const { data } = await reader().get<Barbershop[]>("/barbershops");
   const found = data.find((b) => b.slug === slug);
   if (!found) throw new ApiError("Barbearia não encontrada.", 404);
   return found;
@@ -13,24 +24,22 @@ async function findInList(slug: string): Promise<Barbershop> {
 
 export const barbershopsService = {
   async list(): Promise<Barbershop[]> {
-    const { data } = await api.get<Barbershop[]>("/barbershops");
+    const { data } = await reader().get<Barbershop[]>("/barbershops");
     return data;
   },
 
   /**
-   * Busca pelo slug. Tenta `GET /barbershops/:slug` direto; se o backend ainda
-   * estiver protegendo essa rota (401/403), cai pra `GET /barbershops` (pública)
-   * e filtra client-side. Isso destrava o fluxo público enquanto o backend não
-   * libera o endpoint direto.
+   * Busca pelo slug. Tenta `GET /barbershops/:slug` direto; se falhar com
+   * 401/403/404, cai pra `GET /barbershops` filtrando pelo slug.
    */
   async getBySlug(slug: string): Promise<Barbershop> {
     try {
-      const { data } = await api.get<Barbershop>(`/barbershops/${slug}`);
+      const { data } = await reader().get<Barbershop>(`/barbershops/${slug}`);
       return data;
     } catch (err) {
       if (
         err instanceof ApiError &&
-        (err.status === 401 || err.status === 403)
+        (err.status === 401 || err.status === 403 || err.status === 404)
       ) {
         return findInList(slug);
       }

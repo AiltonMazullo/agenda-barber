@@ -1,13 +1,13 @@
 "use client";
 
 import { Calendar, Clock, X, RotateCcw } from "lucide-react";
-import type { Appointment } from "@/types/appointment.types";
+import type { ClientAppointment } from "@/types/appointment.types";
 
 interface AppointmentItemProps {
-  appointment: Appointment;
+  appointment: ClientAppointment;
   variant: "upcoming" | "past" | "cancelled";
   onCancel?: (id: string) => void;
-  onRebook?: (appt: Appointment) => void;
+  onRebook?: (appt: ClientAppointment) => void;
 }
 
 const STATUS_LABEL: Record<string, string> = {
