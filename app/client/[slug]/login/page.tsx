@@ -97,11 +97,15 @@ function ClientLoginForm({ slug }: { slug: string }) {
           Criar conta
         </Link>
       </p>
-      <p className="text-center text-[11px] text-text-faint">
-        <Link href={`/client/${slug}`} className="hover:underline">
+      <div className="flex items-center justify-center gap-4 text-[11px] text-text-faint">
+        <Link href={`/client/${slug}`} className="hover:text-foreground hover:underline">
           ← Voltar à barbearia
         </Link>
-      </p>
+        <span className="text-border">|</span>
+        <Link href="/login" className="hover:text-foreground hover:underline">
+          Sou dono de barbearia →
+        </Link>
+      </div>
     </form>
   );
 }

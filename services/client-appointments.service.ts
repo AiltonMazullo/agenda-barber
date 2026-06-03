@@ -9,7 +9,7 @@ import type {
  * Operações de agendamento feitas pelo cliente final (autenticado como Client).
  *
  * Todas usam `clientApi` → o token do cliente vai no header `Authorization`.
- * O `clientId` no create vem do contexto de auth (`client.id`).
+ * O `clientId` vem do token (`req.user.sub`), nunca do body.
  */
 export const clientAppointmentsService = {
   /**
@@ -23,12 +23,18 @@ export const clientAppointmentsService = {
     return data;
   },
 
+  /**
+   * Cria um agendamento pelo fluxo do cliente via
+   * `POST /barbershops/:id/appointments/book` (rota dedicada com
+   * `clientAuthMiddleware`). O backend usa `req.user.sub` como cliente.
+   * Body: `{ serviceId, scheduledAt, employeeId? }`.
+   */
   async create(
     barbershopId: string,
     payload: CreateAppointmentPayload,
   ): Promise<Appointment> {
     const { data } = await clientApi.post<Appointment>(
-      `/barbershops/${barbershopId}/appointments`,
+      `/barbershops/${barbershopId}/appointments/book`,
       payload,
     );
     return data;

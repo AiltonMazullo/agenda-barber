@@ -1,3 +1,7 @@
+import type { Service } from "@/types/service.types";
+import type { Employee } from "@/types/employee.types";
+import type { Branch } from "@/types/branch.types";
+
 export type PersonType = "FISICA" | "JURIDICA";
 
 export interface Barbershop {
@@ -18,6 +22,12 @@ export interface Barbershop {
   description?: string | null;
   createdAt: string;
   updatedAt: string;
+  // ─── Relações aninhadas em `GET /barbershops/:slug` (visão do cliente) ────
+  // O backend retorna `branches`, `services` e `employees` aninhados aqui.
+  // Usadas no fluxo de agendamento do cliente.
+  services?: Service[];
+  employees?: Employee[];
+  branches?: Branch[];
 }
 
 export interface CreateBarbershopFisicaPayload {

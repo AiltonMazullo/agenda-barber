@@ -52,7 +52,7 @@ export function AuthCard({
       {footer}
 
       <p className="mt-8 text-[10px] text-text-faint uppercase tracking-widest">
-        Smart Man OS © 2026
+        Agendle Barber © 2026
       </p>
     </div>
   );

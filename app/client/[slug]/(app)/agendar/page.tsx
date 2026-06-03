@@ -116,48 +116,75 @@ export default function AgendarPage({ params }: PageProps) {
     setBranchesError(null);
     setEmployeesError(null);
 
-    Promise.allSettled([
-      clientCatalogService.listBranches(barbershop.id),
-      clientCatalogService.listServices(barbershop.id),
-      clientCatalogService.listEmployees(barbershop.id),
-    ]).then(([bRes, sRes, eRes]) => {
+    async function loadCatalog(bs: NonNullable<typeof barbershop>) {
+      // `GET /barbershops/:slug` já traz `branches`, `services` e `employees`
+      // aninhados (visão do cliente). Usamos esses; só caímos nas rotas
+      // dedicadas se algo não vier aninhado.
+      let brs = bs.branches ?? [];
+      let svc = bs.services ?? [];
+      let emp = bs.employees ?? [];
+
+      if (brs.length === 0) {
+        try {
+          brs = await clientCatalogService.listBranches(bs.id);
+        } catch (err) {
+          setBranchesError(
+            err instanceof Error ? err.message : "Falha ao carregar filiais.",
+          );
+        }
+      }
+      if (svc.length === 0) {
+        try {
+          svc = await clientCatalogService.listServices(bs.id);
+        } catch {
+          /* serviços são complemento — silencioso */
+        }
+      }
+      if (emp.length === 0) {
+        try {
+          emp = await clientCatalogService.listEmployees(bs.id);
+        } catch (err) {
+          setEmployeesError(
+            err instanceof Error
+              ? err.message
+              : "Falha ao carregar profissionais.",
+          );
+        }
+      }
+
       if (!active) return;
-      if (bRes.status === "fulfilled") {
-        setBranches(bRes.value);
-        // Se só há uma filial, já seleciona.
-        if (bRes.value.length === 1) setSelectedBranch(bRes.value[0]);
-      } else {
-        const reason = bRes.reason;
-        setBranchesError(
-          reason instanceof Error
-            ? reason.message
-            : "Falha ao carregar filiais.",
-        );
-      }
-      if (sRes.status === "fulfilled") setServices(sRes.value);
-      if (eRes.status === "fulfilled") {
-        setEmployees(eRes.value);
-      } else {
-        const reason = eRes.reason;
-        setEmployeesError(
-          reason instanceof Error
-            ? reason.message
-            : "Falha ao carregar profissionais.",
-        );
-      }
+      setBranches(brs);
+      setServices(svc);
+      setEmployees(emp);
+      // Se só há uma filial, já seleciona.
+      if (brs.length === 1) setSelectedBranch(brs[0]);
       setLoadingCatalog(false);
-    });
+    }
+
+    void loadCatalog(barbershop);
 
     return () => {
       active = false;
     };
   }, [barbershop]);
 
-  // Profissionais da filial escolhida (Employee.branchId).
+  // Há filiais? Se não (caso raro), o passo "Filial" é pulado e todos os
+  // profissionais ficam disponíveis.
+  const hasBranches = branches.length > 0;
+  const minStep: Step = hasBranches ? 1 : 2;
+
+  // Profissionais da filial escolhida (Employee.branchId). Sem filiais →
+  // todos os profissionais da barbearia.
   const branchEmployees = useMemo(() => {
+    if (!hasBranches) return employees;
     if (!selectedBranch) return [];
     return employees.filter((e) => e.branchId === selectedBranch.id);
-  }, [employees, selectedBranch]);
+  }, [employees, selectedBranch, hasBranches]);
+
+  // Sem filiais: não fica parado no passo 1 (Filial).
+  useEffect(() => {
+    if (!loadingCatalog && !hasBranches && step === 1) setStep(2);
+  }, [loadingCatalog, hasBranches, step]);
 
   // Horários livres vindos da API (por profissional + serviço + dia).
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -204,7 +231,7 @@ export default function AgendarPage({ params }: PageProps) {
     setStep((s) => (s < 5 ? ((s + 1) as Step) : s));
   }
   function prevStep() {
-    setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
+    setStep((s) => (s > minStep ? ((s - 1) as Step) : s));
   }
 
   async function handleConfirm() {
@@ -220,6 +247,8 @@ export default function AgendarPage({ params }: PageProps) {
       return;
     }
 
+    // Garante que há sessão de cliente; o `clientId` em si NÃO vai no payload —
+    // o backend usa `req.user.sub` (token). Enviar clientId é ignorado.
     const clientId = client?.id ?? getClientIdFromToken();
     if (!clientId) {
       toast.error("Sua sessão expirou. Faça login novamente.");
@@ -239,7 +268,6 @@ export default function AgendarPage({ params }: PageProps) {
     setSubmitting(true);
     try {
       const appt = await clientAppointmentsService.create(barbershop.id, {
-        clientId,
         serviceId: selectedService.id,
         employeeId: effectiveEmployee.id,
         scheduledAt: scheduledAtDate.toISOString(),
@@ -265,7 +293,7 @@ export default function AgendarPage({ params }: PageProps) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      <Stepper step={step} />
+      <Stepper step={step} hasBranches={hasBranches} />
 
       {loadingBarbershop || loadingCatalog ? (
         <div className="text-center py-20 text-muted-foreground text-sm">
@@ -411,7 +439,12 @@ export default function AgendarPage({ params }: PageProps) {
             >
               <div className="rounded-lg border border-border-subtle bg-surface-raised p-5 space-y-3">
                 <ResumoLine label="Barbearia" value={barbershop?.name ?? "—"} />
-                <ResumoLine label="Filial" value={selectedBranch?.name ?? "—"} />
+                {hasBranches && (
+                  <ResumoLine
+                    label="Filial"
+                    value={selectedBranch?.name ?? "—"}
+                  />
+                )}
                 <ResumoLine
                   label="Profissional"
                   value={
@@ -455,7 +488,7 @@ export default function AgendarPage({ params }: PageProps) {
               type="button"
               variant="outline"
               onClick={prevStep}
-              disabled={step === 1 || submitting}
+              disabled={step === minStep || submitting}
               className="gap-1 cursor-pointer"
             >
               <ChevronLeft className="size-4" />
@@ -493,14 +526,16 @@ export default function AgendarPage({ params }: PageProps) {
   );
 }
 
-function Stepper({ step }: { step: Step }) {
-  const steps: Array<{ n: Step; label: string }> = [
+function Stepper({ step, hasBranches }: { step: Step; hasBranches: boolean }) {
+  const allSteps: Array<{ n: Step; label: string }> = [
     { n: 1, label: "Filial" },
     { n: 2, label: "Profissional" },
     { n: 3, label: "Serviço" },
     { n: 4, label: "Data/Hora" },
     { n: 5, label: "Confirmação" },
   ];
+  // Sem filiais, o passo "Filial" é pulado e não aparece no indicador.
+  const steps = hasBranches ? allSteps : allSteps.filter((s) => s.n !== 1);
   return (
     <ol className="flex items-center gap-1.5 text-xs">
       {steps.map((s, idx) => {

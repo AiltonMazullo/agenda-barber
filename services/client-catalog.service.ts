@@ -12,7 +12,7 @@ import type { Branch } from "@/types/branch.types";
 export const clientCatalogService = {
   async listBranches(barbershopId: string): Promise<Branch[]> {
     const { data } = await clientApi.get<Branch[]>(
-      `/barbershops/${barbershopId}/branches`,
+      `/barbershops/${barbershopId}`,
     );
     return data;
   },

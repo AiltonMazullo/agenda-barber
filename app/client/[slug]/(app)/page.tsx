@@ -10,12 +10,16 @@ import {
   Clock,
   AlertCircle,
   CalendarPlus,
+  Building2,
 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
+import { barbershopsService } from "@/services/barbershops.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
+import { BarbershopCard } from "@/components/client/BarbershopCard";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import type { Service } from "@/types/service.types";
+import type { Barbershop } from "@/types/barbershop.types";
 
 function formatBRLFromCents(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -34,6 +38,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
   const { isAuthenticated } = useClientAuth();
 
   const [services, setServices] = useState<Service[]>([]);
+  const [allShops, setAllShops] = useState<Barbershop[]>([]);
 
   useEffect(() => {
     if (!barbershop) return;
@@ -50,6 +55,25 @@ export default function BarbershopPublicPage({ params }: PageProps) {
       active = false;
     };
   }, [barbershop]);
+
+  // Lista de barbearias disponíveis (módulo Início).
+  useEffect(() => {
+    let active = true;
+    barbershopsService
+      .list()
+      .then((list) => {
+        if (active) setAllShops(list);
+      })
+      .catch(() => {
+        /* silencioso — listagem é complemento */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Outras barbearias (exclui a atual) para o módulo "Barbearias disponíveis".
+  const otherShops = allShops.filter((b) => b.slug !== slug);
 
   const agendarHref = isAuthenticated
     ? `/client/${slug}/agendar`
@@ -191,6 +215,27 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                       </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="size-4 text-brand" />
+              <h2 className="text-sm font-bold uppercase tracking-widest">
+                Barbearias disponíveis
+              </h2>
+            </div>
+
+            {otherShops.length === 0 ? (
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-8 text-center text-sm text-muted-foreground">
+                Nenhuma outra barbearia disponível no momento.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {otherShops.map((b) => (
+                  <BarbershopCard key={b.id} barbershop={b} />
                 ))}
               </div>
             )}
