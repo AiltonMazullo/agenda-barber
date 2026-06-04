@@ -41,10 +41,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DatePickerField } from "@/components/shared";
+import { DatePickerField, DataTablePagination } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+import { usePagination } from "@/hooks/usePagination";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -1542,6 +1543,7 @@ function TabProfissionais() {
 
   const branchById = new Map(branches.map((b) => [b.id, b.name]));
   const groupById = new Map(groups.map((g) => [g.id, g.name]));
+  const pag = usePagination(employees, 10);
 
   return (
     <Card className="bg-surface-raised border-border">
@@ -1595,7 +1597,7 @@ function TabProfissionais() {
                   </td>
                 </tr>
               ) : (
-                employees.map((p) => (
+                pag.pageItems.map((p) => (
                   <TableRow
                     key={p.id}
                     className="border-border hover:bg-surface-elevated/40 transition-colors"
@@ -1648,6 +1650,18 @@ function TabProfissionais() {
             </TableBody>
           </Table>
         </div>
+        {pag.total > 0 && (
+          <DataTablePagination
+            page={pag.page}
+            pageSize={pag.pageSize}
+            totalPages={pag.totalPages}
+            total={pag.total}
+            from={pag.from}
+            to={pag.to}
+            onPageChange={pag.setPage}
+            onPageSizeChange={pag.setPageSize}
+          />
+        )}
       </CardContent>
       <DialogProfissional
         open={dialog}
@@ -1865,6 +1879,7 @@ function TabServicos() {
   );
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
+  const pag = usePagination(services, 10);
 
   async function handleSave(payload: CreateServicePayload) {
     if (editing) {
@@ -1935,7 +1950,7 @@ function TabServicos() {
                   </td>
                 </tr>
               ) : (
-                services.map((s) => (
+                pag.pageItems.map((s) => (
                   <TableRow
                     key={s.id}
                     className="border-border hover:bg-surface-elevated/40 transition-colors"
@@ -1985,6 +2000,18 @@ function TabServicos() {
             </TableBody>
           </Table>
         </div>
+        {pag.total > 0 && (
+          <DataTablePagination
+            page={pag.page}
+            pageSize={pag.pageSize}
+            totalPages={pag.totalPages}
+            total={pag.total}
+            from={pag.from}
+            to={pag.to}
+            onPageChange={pag.setPage}
+            onPageSizeChange={pag.setPageSize}
+          />
+        )}
       </CardContent>
       <DialogServico
         open={dialog}

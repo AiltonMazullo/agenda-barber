@@ -7,12 +7,28 @@ import type { Branch } from "@/types/branch.types";
 
 export type TransactionType = "ENTRY" | "EXIT";
 
+export type PaymentMethod =
+  | "DINHEIRO"
+  | "CARTAO_DEBITO"
+  | "CARTAO_CREDITO"
+  | "PIX"
+  | "OUTRO";
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  DINHEIRO: "Dinheiro",
+  CARTAO_DEBITO: "Cartão de Débito",
+  CARTAO_CREDITO: "Cartão de Crédito",
+  PIX: "PIX",
+  OUTRO: "Outro",
+};
+
 export interface CashTransaction {
   id: string;
   name: string;
   valueInCents: number;
   description: string | null;
   type: TransactionType;
+  paymentMethod?: PaymentMethod | null;
   cashRegisterId: string;
   createdAt: string;
 }
@@ -27,6 +43,8 @@ export interface CashRegister {
   branch: Branch;
   /** Presente apenas no GET por ID. */
   transactions?: CashTransaction[];
+  /** Valor em espécie registrado na abertura (centavos). Frontend-computed via transação "Saldo inicial". */
+  openingCashInCents?: number;
 }
 
 export interface CreateCashRegisterPayload {
@@ -37,9 +55,12 @@ export interface NewTransactionInput {
   name: string;
   valueInCents: number;
   type: TransactionType;
+  paymentMethod?: PaymentMethod;
   description?: string;
 }
 
 export interface AddTransactionsPayload {
   transactions: NewTransactionInput[];
 }
+
+export const OPENING_TRANSACTION_NAME = "Saldo inicial em espécie";

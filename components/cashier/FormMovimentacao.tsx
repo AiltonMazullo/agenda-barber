@@ -3,13 +3,20 @@
 import { useState } from "react";
 import { Plus, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { SelectField } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { maskBRLInput, parseBRL } from "@/utils/format";
-import type {
-  NewTransactionInput,
-  TransactionType,
+import {
+  PAYMENT_METHOD_LABELS,
+  type NewTransactionInput,
+  type PaymentMethod,
+  type TransactionType,
 } from "@/types/cash-register.types";
+
+const PAYMENT_OPTIONS = (
+  Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]
+).map(([value, label]) => ({ value, label }));
 
 export function FormMovimentacao({
   onAdd,
@@ -21,6 +28,7 @@ export function FormMovimentacao({
   const [name, setName] = useState("");
   const [valor, setValor] = useState("");
   const [type, setType] = useState<TransactionType>("ENTRY");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("DINHEIRO");
   const [description, setDescription] = useState("");
 
   function handleAdd() {
@@ -37,6 +45,7 @@ export function FormMovimentacao({
       name: name.trim(),
       valueInCents,
       type,
+      paymentMethod,
       description: description.trim() || undefined,
     });
     setName("");
@@ -94,6 +103,14 @@ export function FormMovimentacao({
           className="bg-surface-raised border-border text-foreground placeholder:text-text-faint h-9"
         />
       </div>
+
+      <SelectField
+        id="paymentMethod"
+        label="Meio de pagamento"
+        value={paymentMethod}
+        options={PAYMENT_OPTIONS}
+        onChange={(v) => setPaymentMethod(v as PaymentMethod)}
+      />
 
       <Input
         value={description}

@@ -59,12 +59,22 @@ export function useCashRegisters(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  /** Busca o detalhe (com transações) de um caixa. */
+  /**
+   * Busca o detalhe (com transações) de um caixa e actualiza o item na lista
+   * para que o CaixaCard exiba o resumo (abertura/entradas/total) sem nova
+   * requisição.
+   */
   const getById = useCallback(
     async (id: string) => {
       if (!barbershopId) return null;
       try {
-        return await cashRegistersService.getById(barbershopId, id);
+        const full = await cashRegistersService.getById(barbershopId, id);
+        if (full) {
+          setRegisters((prev) =>
+            prev.map((r) => (r.id === id ? { ...r, transactions: full.transactions } : r)),
+          );
+        }
+        return full;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Falha ao carregar o caixa.",

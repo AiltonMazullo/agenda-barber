@@ -1,117 +1,81 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Wallet, Plus, DollarSign } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Wallet, Plus, DollarSign, History, Layers } from "lucide-react";
 import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
 import {
   DialogAbrirCaixa,
   CaixaCard,
   DialogDetalheCaixa,
+  BranchSelect,
 } from "@/components/cashier";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useCashRegisters } from "@/hooks/useCashRegisters";
-import type {
-  CashRegister,
-  NewTransactionInput,
-} from "@/types/cash-register.types";
+import { useCaixaDetalhe } from "@/hooks/useCaixaDetalhe";
+import { OPENING_TRANSACTION_NAME } from "@/types/cash-register.types";
 
 export default function CaixaPage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
-  const {
-    registers,
-    isLoading,
-    create,
-    getById,
-    addTransactions,
-    close,
-    remove,
-  } = useCashRegisters(barbershop?.id);
+  const crud = useCashRegisters(barbershop?.id);
+  const { registers, isLoading, create, addTransactions } = crud;
+
+  const detalhe = useCaixaDetalhe(crud);
+
+  // ─── Filtro por filial (inicia na filial principal — 1ª da lista) ──────────
+  // Quando houver login de funcionário, trocar para a filial atribuída ao
+  // usuário logado, respeitando as permissões de visualização.
+  const [filterBranchId, setFilterBranchId] = useState<string>("all");
+  const [touchedFilter, setTouchedFilter] = useState(false);
+
+  useEffect(() => {
+    if (!touchedFilter && branches.length > 0) {
+      setFilterBranchId(branches[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branches]);
 
   const [dialogAbrir, setDialogAbrir] = useState(false);
   const [abrindo, setAbrindo] = useState(false);
 
-  const [detalheOpen, setDetalheOpen] = useState(false);
-  const [detalhe, setDetalhe] = useState<CashRegister | null>(null);
-  const [loadingDetalhe, setLoadingDetalhe] = useState(false);
-  const [busy, setBusy] = useState(false);
+  // ─── Caixas abertos (filtrados por filial) ─────────────────────────────────
+  const abertos = useMemo(() => {
+    const open = registers.filter((r) => r.closedAt === null);
+    return filterBranchId === "all"
+      ? open
+      : open.filter((r) => r.branchId === filterBranchId);
+  }, [registers, filterBranchId]);
 
-  const abertos = useMemo(
-    () => registers.filter((r) => r.closedAt === null).length,
+  /** Filiais com caixa aberto → não podem abrir outro. */
+  const openBranchIds = useMemo(
+    () => registers.filter((r) => r.closedAt === null).map((r) => r.branchId),
     [registers],
   );
 
-  async function handleAbrir(branchId: string) {
+  async function handleAbrir(branchId: string, openingCashInCents: number) {
     setAbrindo(true);
     try {
       const created = await create(branchId);
       if (created) {
         setDialogAbrir(false);
-        await openDetalhe(created.id);
+        if (openingCashInCents > 0) {
+          await addTransactions(created.id, {
+            transactions: [
+              {
+                name: OPENING_TRANSACTION_NAME,
+                valueInCents: openingCashInCents,
+                type: "ENTRY",
+                description: "Saldo em espécie registrado na abertura.",
+              },
+            ],
+          });
+        }
+        await detalhe.openDetalhe(created.id);
       }
     } finally {
       setAbrindo(false);
-    }
-  }
-
-  async function openDetalhe(id: string) {
-    setDetalheOpen(true);
-    setLoadingDetalhe(true);
-    setDetalhe(null);
-    const full = await getById(id);
-    setDetalhe(full);
-    setLoadingDetalhe(false);
-  }
-
-  async function refreshDetalhe() {
-    if (!detalhe) return;
-    const full = await getById(detalhe.id);
-    if (full) setDetalhe(full);
-  }
-
-  async function handleAddTransaction(input: NewTransactionInput) {
-    if (!detalhe) return;
-    setBusy(true);
-    try {
-      const res = await addTransactions(detalhe.id, {
-        transactions: [input],
-      });
-      if (res) await refreshDetalhe();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleClose() {
-    if (!detalhe) return;
-    setBusy(true);
-    try {
-      const closed = await close(detalhe.id);
-      if (closed) setDetalhe((prev) => (prev ? { ...prev, closedAt: closed.closedAt } : prev));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleRemove() {
-    if (!detalhe) return;
-    if (
-      !confirm(
-        "Excluir este caixa? Todas as movimentações serão removidas permanentemente.",
-      )
-    ) {
-      return;
-    }
-    setBusy(true);
-    try {
-      const ok = await remove(detalhe.id);
-      if (ok) {
-        setDetalheOpen(false);
-        setDetalhe(null);
-      }
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -121,20 +85,38 @@ export default function CaixaPage() {
         title="Caixa"
         subtitle="Abertura, fechamento e movimentações financeiras"
         actions={
-          <button
-            type="button"
-            onClick={() => setDialogAbrir(true)}
-            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            Abrir caixa
-          </button>
+          <div className="flex items-center gap-2">
+            <BranchSelect
+              value={filterBranchId}
+              onChange={(v) => {
+                setTouchedFilter(true);
+                setFilterBranchId(v);
+              }}
+              branches={branches}
+            />
+            <Link
+              href="/cashier/historico"
+              className="h-9 px-4 rounded-md text-sm font-medium border border-border bg-surface-raised text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
+            >
+              <History className="size-3.5" />
+              Histórico
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDialogAbrir(true)}
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="size-3.5" />
+              Abrir caixa
+            </button>
+          </div>
         }
       />
 
+      {/* Resumo */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <SummaryCard
-          label="Caixas"
+          label="Total"
           value={isLoading ? "…" : String(registers.length)}
           icon={<Wallet className="size-3.5" />}
           tone="brand"
@@ -142,51 +124,79 @@ export default function CaixaPage() {
         />
         <SummaryCard
           label="Abertos"
-          value={isLoading ? "…" : String(abertos)}
+          value={
+            isLoading
+              ? "…"
+              : String(registers.filter((r) => r.closedAt === null).length)
+          }
           icon={<DollarSign className="size-3.5" />}
           tone="success"
         />
         <SummaryCard
           label="Fechados"
-          value={isLoading ? "…" : String(registers.length - abertos)}
+          value={
+            isLoading
+              ? "…"
+              : String(registers.filter((r) => r.closedAt !== null).length)
+          }
         />
       </div>
 
-      <div className="space-y-2">
+      {/* ─── Caixas abertos ──────────────────────────────────────────────────── */}
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Layers className="size-4 text-brand" />
+          <h2 className="text-sm font-bold uppercase tracking-widest">
+            Caixas abertos
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            ({abertos.length})
+          </span>
+        </div>
+
         {isLoading ? (
           <p className="text-sm text-muted-foreground py-8 text-center">
             Carregando caixas…
           </p>
-        ) : registers.length === 0 ? (
-          <EmptyState message="Nenhum caixa registrado. Abra um caixa para começar." />
+        ) : abertos.length === 0 ? (
+          <EmptyState
+            icon={<Wallet className="size-10" />}
+            message="Nenhum caixa aberto. Clique em «Abrir caixa» para começar."
+          />
         ) : (
-          registers.map((r) => (
-            <CaixaCard
-              key={r.id}
-              register={r}
-              onClick={() => void openDetalhe(r.id)}
-            />
-          ))
+          <div className="space-y-2">
+            {abertos.map((r) => (
+              <CaixaCard
+                key={r.id}
+                register={r}
+                onClick={() => void detalhe.openDetalhe(r.id)}
+                onExpand={() => void crud.getById(r.id)}
+              />
+            ))}
+          </div>
         )}
-      </div>
+      </section>
 
       <DialogAbrirCaixa
         open={dialogAbrir}
         onOpenChange={setDialogAbrir}
         branches={branches}
-        onConfirm={(branchId) => void handleAbrir(branchId)}
+        openBranchIds={openBranchIds}
+        onConfirm={(branchId, openingCash) =>
+          void handleAbrir(branchId, openingCash)
+        }
         submitting={abrindo}
       />
 
       <DialogDetalheCaixa
-        open={detalheOpen}
-        onOpenChange={setDetalheOpen}
-        register={detalhe}
-        loading={loadingDetalhe}
-        busy={busy}
-        onAddTransaction={(input) => void handleAddTransaction(input)}
-        onClose={() => void handleClose()}
-        onRemove={() => void handleRemove()}
+        open={detalhe.open}
+        onOpenChange={detalhe.setOpen}
+        register={detalhe.detalhe}
+        loading={detalhe.loading}
+        busy={detalhe.busy}
+        onAddTransaction={(input) => void detalhe.addTransaction(input)}
+        onClose={() => void detalhe.handleClose()}
+        onRemove={() => void detalhe.handleRemove()}
       />
     </div>
   );

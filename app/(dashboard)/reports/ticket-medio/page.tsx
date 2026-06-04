@@ -17,9 +17,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageHeader, SummaryCard } from "@/components/shared";
+import {
+  PageHeader,
+  SummaryCard,
+  DataTablePagination,
+} from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useReports } from "@/hooks/useReports";
+import { usePagination } from "@/hooks/usePagination";
 import { formatBRL } from "@/utils/format";
 
 export default function TicketMedioReportPage() {
@@ -31,6 +36,8 @@ export default function TicketMedioReportPage() {
     faturamentoTotal,
     servicosMaisVendidos,
   } = useReports(barbershop?.id);
+
+  const pag = usePagination(servicosMaisVendidos, 10);
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
@@ -128,7 +135,7 @@ export default function TicketMedioReportPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  servicosMaisVendidos.map((row) => (
+                  pag.pageItems.map((row) => (
                     <TableRow
                       key={row.service.id}
                       className="border-border hover:bg-surface-elevated/50 transition-colors"
@@ -161,6 +168,18 @@ export default function TicketMedioReportPage() {
               </TableBody>
             </Table>
           </div>
+          {pag.total > 0 && (
+            <DataTablePagination
+              page={pag.page}
+              pageSize={pag.pageSize}
+              totalPages={pag.totalPages}
+              total={pag.total}
+              from={pag.from}
+              to={pag.to}
+              onPageChange={pag.setPage}
+              onPageSizeChange={pag.setPageSize}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

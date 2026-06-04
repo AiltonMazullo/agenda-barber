@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,38 +8,59 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared";
 import { toast } from "sonner";
+import { maskBRLInput, parseBRL } from "@/utils/format";
 import type { Branch } from "@/types/branch.types";
+
+interface DialogAbrirCaixaProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** Todas as filiais cadastradas. */
+  branches: Branch[];
+  /** IDs de filiais que já têm caixa aberto (não disponíveis). */
+  openBranchIds: string[];
+  onConfirm: (branchId: string, openingCashInCents: number) => void;
+  submitting?: boolean;
+}
 
 export function DialogAbrirCaixa({
   open,
   onOpenChange,
   branches,
+  openBranchIds,
   onConfirm,
   submitting,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  branches: Branch[];
-  onConfirm: (branchId: string) => void;
-  submitting?: boolean;
-}) {
+}: DialogAbrirCaixaProps) {
+  const available = branches.filter((b) => !openBranchIds.includes(b.id));
+
   const [branchId, setBranchId] = useState("");
+  const [especie, setEspecie] = useState("");
 
   useEffect(() => {
-    if (open) setBranchId(branches[0]?.id ?? "");
-  }, [open, branches]);
+    if (open) {
+      setBranchId(available[0]?.id ?? "");
+      setEspecie("");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  const options = branches.map((b) => ({ value: b.id, label: b.name }));
+  const options = available.map((b) => ({ value: b.id, label: b.name }));
 
   function handleConfirm() {
     if (!branchId) {
       toast.error("Selecione uma filial.");
       return;
     }
-    onConfirm(branchId);
+    const openingCashInCents = especie
+      ? Math.round(parseBRL(especie) * 100)
+      : 0;
+    onConfirm(branchId, openingCashInCents);
   }
+
+  const noBranches = branches.length === 0;
+  const noAvailable = !noBranches && available.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,20 +84,44 @@ export function DialogAbrirCaixa({
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4">
-          {branches.length === 0 ? (
+          {noBranches ? (
             <p className="text-sm text-muted-foreground">
               Nenhuma filial cadastrada. Cadastre uma filial em Configurações
               antes de abrir um caixa.
             </p>
+          ) : noAvailable ? (
+            <p className="text-sm text-muted-foreground">
+              Todas as filiais já têm um caixa aberto. Feche um caixa antes de
+              abrir outro.
+            </p>
           ) : (
-            <SelectField
-              id="branch"
-              label="Filial"
-              value={branchId}
-              options={options}
-              onChange={setBranchId}
-              placeholder="Selecione a filial"
-            />
+            <>
+              <SelectField
+                id="branch"
+                label="Filial"
+                value={branchId}
+                options={options}
+                onChange={setBranchId}
+                placeholder="Selecione a filial"
+              />
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Valor em espécie no caixa (opcional)
+                </label>
+                <Input
+                  value={especie}
+                  onChange={(e) => setEspecie(maskBRLInput(e.target.value))}
+                  placeholder="R$ 0,00"
+                  inputMode="numeric"
+                  className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+                />
+                <p className="text-[11px] text-text-faint">
+                  Informe o troco/saldo em dinheiro já presente no caixa ao
+                  abrir.
+                </p>
+              </div>
+            </>
           )}
         </div>
 
@@ -92,7 +136,7 @@ export function DialogAbrirCaixa({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={submitting || branches.length === 0}
+            disabled={submitting || noBranches || noAvailable}
             className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
           >
             {submitting ? "Abrindo…" : "Abrir caixa"}

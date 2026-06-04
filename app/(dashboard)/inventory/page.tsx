@@ -29,12 +29,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader, EmptyState, StatusBadge } from "@/components/shared";
+import {
+  PageHeader,
+  EmptyState,
+  StatusBadge,
+  DataTablePagination,
+} from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { maskBRLInput } from "@/utils/format";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
+import { usePagination } from "@/hooks/usePagination";
 import {
   useProducts,
   type ProductWithStock,
@@ -551,6 +557,8 @@ export default function EstoquePage() {
     );
   }, [products, search]);
 
+  const pag = usePagination(filtered, 10);
+
   const summary = useMemo(() => {
     const totalUn = products.reduce((acc, p) => acc + p.totalCurrent, 0);
     const totalValueCents = products.reduce(
@@ -745,7 +753,7 @@ export default function EstoquePage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((p) => {
+                    pag.pageItems.map((p) => {
                       const status = deriveStatus(p);
                       return (
                         <TableRow
@@ -827,7 +835,7 @@ export default function EstoquePage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((p) => (
+                    pag.pageItems.map((p) => (
                       <TableRow
                         key={p.id}
                         className="border-border hover:bg-surface-elevated/50 transition-colors"
@@ -878,6 +886,19 @@ export default function EstoquePage() {
                 </TableBody>
               </Table>
             </div>
+          )}
+
+          {pag.total > 0 && (
+            <DataTablePagination
+              page={pag.page}
+              pageSize={pag.pageSize}
+              totalPages={pag.totalPages}
+              total={pag.total}
+              from={pag.from}
+              to={pag.to}
+              onPageChange={pag.setPage}
+              onPageSizeChange={pag.setPageSize}
+            />
           )}
         </CardContent>
       </Card>

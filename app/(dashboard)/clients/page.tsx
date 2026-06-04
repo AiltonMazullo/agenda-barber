@@ -32,12 +32,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import {
+  PageHeader,
+  SummaryCard,
+  EmptyState,
+  DataTablePagination,
+} from "@/components/shared";
 import { DialogNovoCliente } from "@/components/clients/DialogNovoCliente";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
+import { usePagination } from "@/hooks/usePagination";
 import { formatBRL, formatDate, maskPhone } from "@/utils/format";
 import type {
   Client,
@@ -315,6 +321,8 @@ export default function ClientesPage() {
     );
   }, [enriched, search]);
 
+  const pag = usePagination(filtered, 10);
+
   const summary = useMemo(() => {
     const total = enriched.length;
     const totalSpent = enriched.reduce(
@@ -462,7 +470,7 @@ export default function ClientesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((c) => (
+                  pag.pageItems.map((c) => (
                     <TableRow
                       key={c.id}
                       className="border-border hover:bg-surface-elevated/50 transition-colors"
@@ -530,6 +538,19 @@ export default function ClientesPage() {
               </TableBody>
             </Table>
           </div>
+
+          {pag.total > 0 && (
+            <DataTablePagination
+              page={pag.page}
+              pageSize={pag.pageSize}
+              totalPages={pag.totalPages}
+              total={pag.total}
+              from={pag.from}
+              to={pag.to}
+              onPageChange={pag.setPage}
+              onPageSizeChange={pag.setPageSize}
+            />
+          )}
         </CardContent>
       </Card>
 
