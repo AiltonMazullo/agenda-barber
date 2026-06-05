@@ -42,17 +42,50 @@ export interface AgendamentoVM {
   observacao?: string;
 }
 
+/** Um serviço escolhido no agendamento (com profissional opcional). */
+export interface ServicoSelecionado {
+  servicoId: string;
+  /** Profissional opcional para este serviço. */
+  profissionalId?: string;
+  /** Duração em minutos (default = tempo padrão do serviço). */
+  duracao: number;
+  /** Valor em reais. */
+  valor: number;
+}
+
+/** Dados de ativação de plano (coletados na confirmação do agendamento). */
+export interface PlanoAtivacaoInput {
+  /** Dia de início da vigência. */
+  dataInicio: Date;
+  /** Forma de pagamento (ex.: "DINHEIRO", "PIX", ...). */
+  formaPagamento: string;
+  /** Dia do mês de vencimento (1–31). */
+  vencimento: number;
+  /** CPF do cliente (obrigatório para ativar). */
+  cpf: string;
+}
+
 /** Dados para criar um novo agendamento (saída do dialog). */
 export interface NovoAgendamentoInput {
   clientId: string;
-  serviceId: string;
-  employeeId: string;
+  /** Um ou mais serviços, executados em sequência a partir do horário. */
+  servicos: ServicoSelecionado[];
   /** Dia do agendamento. */
   data: Date;
   /** "HH:mm" */
   hora: string;
   observacao?: string;
+  /** Definida automaticamente pelo sistema (recepção no painel). */
   origem: Origem;
+  /** Presente apenas quando o usuário optou por ativar um plano. */
+  planoAtivacao?: PlanoAtivacaoInput;
+}
+
+/** Dados para criação rápida de cliente (mini-form do dialog). */
+export interface QuickClientInput {
+  name: string;
+  phone: string;
+  email?: string;
 }
 
 /** Bloqueio de horário — apenas local (sem persistência no backend). */

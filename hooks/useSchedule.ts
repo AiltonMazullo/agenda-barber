@@ -10,9 +10,11 @@ import type {
   AgendamentoVM,
   NovoAgendamentoInput,
   ProfissionalVM,
+  QuickClientInput,
   ServicoVM,
 } from "@/components/schedule/types";
 import type { Appointment } from "@/types/appointment.types";
+import type { Client } from "@/types/client.types";
 
 const DEFAULT_HEX = "#f5b82e";
 
@@ -39,7 +41,11 @@ export function useSchedule(
 ) {
   const { services, isLoading: loadingServices } = useServices(barbershopId);
   const { employees, isLoading: loadingEmployees } = useEmployees(barbershopId);
-  const { clients, isLoading: loadingClients } = useClients(barbershopId);
+  const {
+    clients,
+    isLoading: loadingClients,
+    create: createClientRaw,
+  } = useClients(barbershopId);
   const {
     appointments,
     isLoading: loadingAppts,
@@ -122,43 +128,67 @@ export function useSchedule(
   }, [appointments, selectedDate, overlay, servicoById, employeeNameById]);
 
   // ─── Ações ──────────────────────────────────────────────────────────────────
+  /**
+   * Cria um agendamento por serviço (executados em sequência a partir do
+   * horário). Retorna o primeiro agendamento criado. O backend trata cada
+   * serviço como um Appointment próprio.
+   */
   const createAgendamento = useCallback(
     async (input: NovoAgendamentoInput): Promise<Appointment | null> => {
       const [h, m] = input.hora.split(":").map(Number);
-      const dt = new Date(input.data);
-      dt.setHours(h, m || 0, 0, 0);
-      const created = await create({
-        clientId: input.clientId,
-        serviceId: input.serviceId,
-        employeeId: input.employeeId || undefined,
-        scheduledAt: dt.toISOString(),
-      });
-      if (created) {
-        // Enriquece localmente o que o backend pode não estar ecoando no POST
-        // (employeeId, employee, client) usando o que já temos em memória, pra
-        // o card aparecer imediatamente na coluna correta do kanban. Não fazemos
-        // refetch porque o GET pode não devolver `employeeId` ainda — e isso
-        // sobrescreveria a enriquecimento, escondendo o card do kanban.
-        const emp = employees.find((e) => e.id === input.employeeId);
-        const cli = clients.find((c) => c.id === input.clientId);
-        replaceLocal(created.id, {
-          employeeId: input.employeeId || null,
-          employee: emp
-            ? { id: emp.id, name: emp.name, appName: emp.appName }
-            : null,
-          client: cli
-            ? {
-                id: cli.id,
-                name: cli.name,
-                email: cli.email,
-                phone: cli.phone,
-              }
-            : created.client,
+      let cursorMin = h * 60 + (m || 0);
+      let first: Appointment | null = null;
+
+      for (const sv of input.servicos) {
+        const dt = new Date(input.data);
+        dt.setHours(0, 0, 0, 0);
+        dt.setMinutes(cursorMin);
+        const created = await create({
+          clientId: input.clientId,
+          serviceId: sv.servicoId,
+          employeeId: sv.profissionalId || undefined,
+          scheduledAt: dt.toISOString(),
         });
+        if (created) {
+          // Enriquece localmente (employeeId/employee/client) pra o card
+          // aparecer imediatamente na coluna correta do kanban.
+          const emp = employees.find((e) => e.id === sv.profissionalId);
+          const cli = clients.find((c) => c.id === input.clientId);
+          replaceLocal(created.id, {
+            employeeId: sv.profissionalId || null,
+            employee: emp
+              ? { id: emp.id, name: emp.name, appName: emp.appName }
+              : null,
+            client: cli
+              ? { id: cli.id, name: cli.name, email: cli.email, phone: cli.phone }
+              : created.client,
+          });
+          if (!first) first = created;
+        }
+        cursorMin += sv.duracao;
       }
-      return created;
+      return first;
     },
     [create, replaceLocal, employees, clients],
+  );
+
+  /**
+   * Criação rápida de cliente (mini-form do dialog). Preenche defaults para os
+   * campos que o backend exige mas não são coletados no cadastro rápido.
+   */
+  const createClient = useCallback(
+    async (input: QuickClientInput): Promise<Client | null> => {
+      const digits = input.phone.replace(/\D/g, "");
+      return createClientRaw({
+        name: input.name,
+        email: input.email || `${digits || Date.now()}@sememail.cliente`,
+        password: `${Math.random().toString(36).slice(2, 10)}A1!`,
+        phone: digits,
+        birthDate: "2000-01-01T00:00:00.000Z",
+        howMet: "Recepção",
+      });
+    },
+    [createClientRaw],
   );
 
   const moveLocal = useCallback(
@@ -183,6 +213,7 @@ export function useSchedule(
     servicoById,
     isLoading,
     createAgendamento,
+    createClient,
     updateStatus,
     cancel,
     moveLocal,

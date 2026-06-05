@@ -89,6 +89,7 @@ export default function SchedulePage() {
     servicoById,
     isLoading,
     createAgendamento,
+    createClient,
     updateStatus,
     cancel,
     moveLocal,
@@ -707,8 +708,10 @@ export default function SchedulePage() {
           open={dialogNovo}
           onOpenChange={setDialogNovo}
           onConfirm={(d) => void handleNovoAgendamento(d)}
+          onCreateClient={createClient}
           servicos={servicos}
           profissionais={profissionais}
+          agendamentos={agendamentos}
           clients={clients}
           defaultDate={selectedDate}
           prefilledHora={prefilledHora}

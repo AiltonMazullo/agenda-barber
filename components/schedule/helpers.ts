@@ -7,6 +7,21 @@ export function minToTime(min: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** "08:30" → 510 */
+export function timeToMin(time: string): number {
+  const [h, m] = time.split(":").map((n) => parseInt(n, 10));
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** True se duas datas são o mesmo dia (fuso local). */
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 export function snapToSlot(min: number, slotSize: SlotSize): number {
   return Math.round(min / slotSize) * slotSize;
 }
