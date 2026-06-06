@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Search,
   Users,
@@ -10,11 +11,11 @@ import {
   Clock,
   Trophy,
   Pencil,
-  Trash2,
   X,
   Eye,
   EyeOff,
   UserPlus,
+  UserX,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,12 +38,15 @@ import {
   SummaryCard,
   EmptyState,
   DataTablePagination,
+  ConfirmDialog,
+  Loading,
 } from "@/components/shared";
 import { DialogNovoCliente } from "@/components/clients/DialogNovoCliente";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useDeactivatedClients } from "@/hooks/useDeactivatedClients";
 import { usePagination } from "@/hooks/usePagination";
 import { formatBRL, formatDate, maskPhone } from "@/utils/format";
 import type {
@@ -270,15 +274,17 @@ function DialogEditarCliente({
 
 export default function ClientesPage() {
   const { barbershop } = useAuth();
-  const { clients, isLoading, create, update, remove } = useClients(
+  const { clients, isLoading, create, update } = useClients(barbershop?.id);
+  const { appointments } = useAppointments(barbershop?.id);
+  const { ids: deactivatedIds, deactivate } = useDeactivatedClients(
     barbershop?.id,
   );
-  const { appointments } = useAppointments(barbershop?.id);
 
   const [search, setSearch] = useState("");
   const [editDialog, setEditDialog] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [novoDialog, setNovoDialog] = useState(false);
+  const [toDeactivate, setToDeactivate] = useState<Client | null>(null);
 
   // Enriquece clientes com estatísticas de appointments
   const enriched = useMemo<EnrichedClient[]>(() => {
@@ -304,11 +310,13 @@ export default function ClientesPage() {
       statsMap.set(a.clientId, prev);
     }
 
-    return clients.map((c) => ({
-      ...c,
-      stats: statsMap.get(c.id) ?? EMPTY_STATS,
-    }));
-  }, [clients, appointments]);
+    return clients
+      .filter((c) => !deactivatedIds.includes(c.id))
+      .map((c) => ({
+        ...c,
+        stats: statsMap.get(c.id) ?? EMPTY_STATS,
+      }));
+  }, [clients, appointments, deactivatedIds]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -352,15 +360,10 @@ export default function ClientesPage() {
     return create(payload);
   }
 
-  async function handleDelete(c: Client) {
-    if (
-      !confirm(
-        `Remover o cliente "${c.name}"? Essa ação não pode ser desfeita.`,
-      )
-    ) {
-      return;
-    }
-    await remove(c.id);
+  function doDeactivate() {
+    if (!toDeactivate) return;
+    deactivate(toDeactivate.id);
+    toast.success("Cliente desativado.");
   }
 
   return (
@@ -369,14 +372,24 @@ export default function ClientesPage() {
         title="Clientes"
         subtitle="Base de clientes da barbearia"
         actions={
-          <button
-            type="button"
-            onClick={() => setNovoDialog(true)}
-            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
-          >
-            <UserPlus className="size-3.5" />
-            Novo cliente
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/clients/desativados"
+              className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
+            >
+              <UserX className="size-3.5" />
+              Desativados
+              {deactivatedIds.length > 0 ? ` (${deactivatedIds.length})` : ""}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setNovoDialog(true)}
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+            >
+              <UserPlus className="size-3.5" />
+              Novo cliente
+            </button>
+          </div>
         }
       />
 
@@ -450,11 +463,8 @@ export default function ClientesPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell
-                      colSpan={7}
-                      className="py-12 text-center text-sm text-text-faint"
-                    >
-                      Carregando…
+                    <TableCell colSpan={7} className="py-4">
+                      <Loading />
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
@@ -475,8 +485,13 @@ export default function ClientesPage() {
                       key={c.id}
                       className="border-border hover:bg-surface-elevated/50 transition-colors"
                     >
-                      <TableCell className="px-4 py-4 font-semibold text-foreground text-sm">
-                        {c.name}
+                      <TableCell className="px-4 py-4 font-semibold text-sm">
+                        <Link
+                          href={`/clients/${c.id}`}
+                          className="text-foreground hover:text-brand transition-colors"
+                        >
+                          {c.name}
+                        </Link>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
@@ -523,12 +538,20 @@ export default function ClientesPage() {
                           >
                             <Pencil className="size-3" />
                           </button>
+                          <Link
+                            href={`/clients/${c.id}`}
+                            title="Ver ficha"
+                            className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                          >
+                            <Eye className="size-3" />
+                          </Link>
                           <button
                             type="button"
-                            onClick={() => handleDelete(c)}
+                            onClick={() => setToDeactivate(c)}
+                            title="Desativar cliente"
                             className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
                           >
-                            <Trash2 className="size-3" />
+                            <UserX className="size-3" />
                           </button>
                         </div>
                       </TableCell>
@@ -565,6 +588,20 @@ export default function ClientesPage() {
         open={novoDialog}
         onOpenChange={setNovoDialog}
         onCreate={handleCreate}
+      />
+
+      <ConfirmDialog
+        open={toDeactivate !== null}
+        onOpenChange={(v) => !v && setToDeactivate(null)}
+        title="Desativar cliente?"
+        description={
+          toDeactivate
+            ? `"${toDeactivate.name}" vai para a lista de Clientes Desativados. Não será excluído e pode ser reativado depois.`
+            : undefined
+        }
+        confirmLabel="Desativar"
+        tone="danger"
+        onConfirm={doDeactivate}
       />
     </div>
   );

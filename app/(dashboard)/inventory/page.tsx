@@ -34,6 +34,7 @@ import {
   EmptyState,
   StatusBadge,
   DataTablePagination,
+  Loading,
 } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -739,11 +740,8 @@ export default function EstoquePage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow className="border-border hover:bg-transparent">
-                      <TableCell
-                        colSpan={7}
-                        className="py-12 text-center text-sm text-text-faint"
-                      >
-                        Carregando…
+                      <TableCell colSpan={7} className="py-4">
+                        <Loading />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
@@ -821,11 +819,8 @@ export default function EstoquePage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow className="border-border hover:bg-transparent">
-                      <TableCell
-                        colSpan={6}
-                        className="py-12 text-center text-sm text-text-faint"
-                      >
-                        Carregando…
+                      <TableCell colSpan={6} className="py-4">
+                        <Loading />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (

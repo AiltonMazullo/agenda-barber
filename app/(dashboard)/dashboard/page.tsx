@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageHeader, SummaryCard, StatusBadge } from "@/components/shared";
+import { PageHeader, SummaryCard, StatusBadge, Loading } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useClients } from "@/hooks/useClients";
@@ -267,9 +267,7 @@ export default function DashboardPage() {
           actionLabel="Ver agenda"
         >
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
-              <p className="text-sm">Carregando…</p>
-            </div>
+            <Loading />
           ) : stats.todayList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-35 text-muted-foreground">
               <p className="text-sm">Nenhum agendamento para hoje.</p>

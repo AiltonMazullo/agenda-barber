@@ -16,6 +16,7 @@ import { servicesService } from "@/services/services.service";
 import { barbershopsService } from "@/services/barbershops.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
 import { BarbershopCard } from "@/components/client/BarbershopCard";
+import { Loading } from "@/components/shared/Loading";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import type { Service } from "@/types/service.types";
@@ -81,11 +82,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      {isLoading && (
-        <div className="text-center py-20 text-muted-foreground text-sm">
-          Carregando…
-        </div>
-      )}
+      {isLoading && <Loading />}
 
       {notFound && !isLoading && (
         <div className="rounded-lg border border-warning/30 bg-warning/5 p-8 text-center space-y-3">

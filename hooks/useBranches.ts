@@ -4,11 +4,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { branchesService } from "@/services/branches.service";
+import {
+  branchConfigStore,
+  type BranchConfigExtras,
+} from "@/lib/branch-config-store";
 import type {
   Branch,
   CreateBranchPayload,
   UpdateBranchPayload,
 } from "@/types/branch.types";
+
+/** Extrai os campos de configuração local de um payload de filial. */
+function pickExtras(
+  p: CreateBranchPayload | UpdateBranchPayload,
+): BranchConfigExtras {
+  return {
+    cnpj: p.cnpj ?? null,
+    isReceivingBranch: p.isReceivingBranch,
+    isHidden: p.isHidden,
+    receiptDeadlineDays: p.receiptDeadlineDays ?? null,
+    bankAccount: p.bankAccount ?? null,
+    paymentConfigs: p.paymentConfigs,
+  };
+}
 
 export function useBranches(barbershopId: string | undefined) {
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -24,7 +42,7 @@ export function useBranches(barbershopId: string | undefined) {
     branchesService
       .list(barbershopId)
       .then((data) => {
-        if (active) setBranches(data);
+        if (active) setBranches(data.map((b) => branchConfigStore.merge(b)));
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -45,9 +63,12 @@ export function useBranches(barbershopId: string | undefined) {
       if (!barbershopId) return null;
       try {
         const created = await branchesService.create(barbershopId, payload);
-        setBranches((prev) => [...prev, created]);
+        const extras = pickExtras(payload);
+        branchConfigStore.set(created.id, extras);
+        const merged = { ...created, ...extras };
+        setBranches((prev) => [...prev, merged]);
         toast.success("Filial criada.");
-        return created;
+        return merged;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Falha ao criar filial.",
@@ -63,9 +84,11 @@ export function useBranches(barbershopId: string | undefined) {
       if (!barbershopId) return null;
       try {
         const updated = await branchesService.update(barbershopId, id, payload);
-        setBranches((prev) => prev.map((b) => (b.id === id ? updated : b)));
+        branchConfigStore.set(id, pickExtras(payload));
+        const merged = branchConfigStore.merge(updated);
+        setBranches((prev) => prev.map((b) => (b.id === id ? merged : b)));
         toast.success("Filial atualizada.");
-        return updated;
+        return merged;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Falha ao atualizar filial.",
@@ -81,6 +104,7 @@ export function useBranches(barbershopId: string | undefined) {
       if (!barbershopId) return false;
       try {
         await branchesService.remove(barbershopId, id);
+        branchConfigStore.remove(id);
         setBranches((prev) => prev.filter((b) => b.id !== id));
         toast.success("Filial removida.");
         return true;
@@ -94,5 +118,16 @@ export function useBranches(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { branches, isLoading, create, update, remove };
+  /**
+   * Atualiza apenas os campos de configuração local (flags, taxas, etc.) sem
+   * chamar o backend — usado para toggles rápidos (ex.: checkboxes da filial).
+   */
+  const patchConfig = useCallback((id: string, extras: BranchConfigExtras) => {
+    branchConfigStore.set(id, extras);
+    setBranches((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, ...extras } : b)),
+    );
+  }, []);
+
+  return { branches, isLoading, create, update, remove, patchConfig };
 }

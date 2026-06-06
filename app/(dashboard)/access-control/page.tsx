@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import { PageHeader, SummaryCard, EmptyState, Loading } from "@/components/shared";
 import { DialogGrupoAcesso } from "@/components/access-control/DialogGrupoAcesso";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
@@ -100,9 +100,7 @@ export default function ControleAcessoPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">
-          Carregando grupos…
-        </p>
+        <Loading label="Carregando grupos" />
       ) : groups.length === 0 ? (
         <EmptyState message="Nenhum grupo de acesso. Crie um para definir permissões dos profissionais." />
       ) : (

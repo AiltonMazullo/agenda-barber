@@ -88,9 +88,6 @@ export function DataTablePagination({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="hidden sm:inline whitespace-nowrap">
-          · {from}–{to} de {total}
-        </span>
       </div>
 
       <Pagination className="mx-0 w-auto justify-end">

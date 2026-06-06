@@ -25,6 +25,7 @@ import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import { Button } from "@/components/ui/button";
 import { DatePickerField } from "@/components/shared";
+import { Loading } from "@/components/shared/Loading";
 import { getClientIdFromToken } from "@/lib/client-api";
 import type { Service } from "@/types/service.types";
 import type { Employee } from "@/types/employee.types";
@@ -296,9 +297,7 @@ export default function AgendarPage({ params }: PageProps) {
       <Stepper step={step} hasBranches={hasBranches} />
 
       {loadingBarbershop || loadingCatalog ? (
-        <div className="text-center py-20 text-muted-foreground text-sm">
-          Carregando…
-        </div>
+        <Loading />
       ) : (
         <>
           {step === 1 && (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Building2, Clock, ChevronDown, TrendingUp } from "lucide-react";
+import { Loading } from "@/components/shared";
 import { formatDate, formatTime, formatBRL } from "@/utils/format";
 import { OPENING_TRANSACTION_NAME } from "@/types/cash-register.types";
 import { cn } from "@/lib/utils";
@@ -147,9 +148,9 @@ export function CaixaCard({
                   </div>
                 </div>
               ) : (
-                <p className="pt-3 border-t border-border-subtle text-center text-xs text-muted-foreground">
-                  Carregando resumo…
-                </p>
+                <div className="pt-3 border-t border-border-subtle">
+                  <Loading label="Carregando resumo" size={20} className="py-2" />
+                </div>
               )}
             </div>
           </motion.div>

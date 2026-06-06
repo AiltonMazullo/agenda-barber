@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageHeader, EmptyState, StatusBadge } from "@/components/shared";
+import { PageHeader, EmptyState, StatusBadge, Loading } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useReports } from "@/hooks/useReports";
@@ -335,9 +335,7 @@ function SemDados({ motivo }: { motivo?: string }) {
 }
 
 function LoadingState() {
-  return (
-    <p className="py-12 text-center text-sm text-text-faint">Carregando…</p>
-  );
+  return <Loading />;
 }
 
 function RelFaturamentoVisao() {

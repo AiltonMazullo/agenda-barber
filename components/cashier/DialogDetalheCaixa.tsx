@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Loading } from "@/components/shared";
 import { FormMovimentacao } from "./FormMovimentacao";
 import { DialogFechamentoCaixa } from "./DialogFechamentoCaixa";
 import { formatBRL, formatDate, formatTime } from "@/utils/format";
@@ -112,9 +113,7 @@ export function DialogDetalheCaixa({
 
           <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
             {loading ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Carregando…
-              </p>
+              <Loading />
             ) : (
               <>
                 {/* Resumo com abertura */}

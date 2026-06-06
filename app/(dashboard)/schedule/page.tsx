@@ -68,6 +68,7 @@ import type {
   ViewMode,
 } from "@/components/schedule";
 import type { UpdatableAppointmentStatus } from "@/types/appointment.types";
+import { Loading } from "@/components/shared";
 
 export default function SchedulePage() {
   const { barbershop } = useAuth();
@@ -610,8 +611,8 @@ export default function SchedulePage() {
 
         {/* ── Conteúdo ── */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-            Carregando agenda…
+          <div className="flex-1 flex items-center justify-center">
+            <Loading label="Carregando agenda" />
           </div>
         ) : profissionais.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-text-faint gap-2 px-6 text-center">

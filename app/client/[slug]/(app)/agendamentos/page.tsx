@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Loading } from "@/components/shared/Loading";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
 import type { ClientAppointment } from "@/types/appointment.types";
 
@@ -105,9 +106,7 @@ export default function AgendamentosPage({ params }: PageProps) {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">
-          Carregando…
-        </div>
+        <Loading />
       ) : error ? (
         <div className="rounded-lg border border-danger/30 bg-danger/5 p-6 text-center space-y-2">
           <AlertCircle className="size-6 text-danger-foreground mx-auto" />

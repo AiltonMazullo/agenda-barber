@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Wallet, Plus, DollarSign, History, Layers } from "lucide-react";
-import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
+import { PageHeader, SummaryCard, EmptyState, Loading } from "@/components/shared";
 import {
   DialogAbrirCaixa,
   CaixaCard,
@@ -155,9 +155,7 @@ export default function CaixaPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            Carregando caixas…
-          </p>
+          <Loading label="Carregando caixas" />
         ) : abertos.length === 0 ? (
           <EmptyState
             icon={<Wallet className="size-10" />}

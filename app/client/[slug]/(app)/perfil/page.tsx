@@ -5,6 +5,7 @@ import { User as UserIcon, Pencil } from "lucide-react";
 import { ClientProfileCard } from "@/components/client/ClientProfileCard";
 import { ClientProfileForm } from "@/components/client/ClientProfileForm";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/shared/Loading";
 import { useClientAuth } from "@/hooks/useClientAuth";
 
 export default function PerfilClientePage() {
@@ -29,9 +30,7 @@ export default function PerfilClientePage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">
-          Carregando…
-        </div>
+        <Loading />
       ) : client ? (
         editing ? (
           <ClientProfileForm

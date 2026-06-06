@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DatePickerField, DataTablePagination } from "@/components/shared";
+import { DatePickerField, DataTablePagination, Loading } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -53,7 +54,19 @@ import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { usePaymentData } from "@/hooks/usePaymentData";
 import { useServices } from "@/hooks/useServices";
 import { barbershopsService } from "@/services/barbershops.service";
-import type { Branch, CreateBranchPayload } from "@/types/branch.types";
+import {
+  companyConfigStore,
+  type CompanyConfig,
+} from "@/lib/company-config-store";
+import type {
+  Branch,
+  BranchPaymentConfig,
+  CreateBranchPayload,
+} from "@/types/branch.types";
+import {
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethod,
+} from "@/types/cash-register.types";
 import type {
   CreateEmployeePayload,
   Employee,
@@ -146,6 +159,11 @@ function parseBRLToCents(input: string): number {
 function TabEmpresa() {
   const router = useRouter();
   const { barbershop, updateBarbershop, logout } = useAuth();
+  /** Configuração da unidade principal (nível empresa, persistida localmente). */
+  const [config, setConfig] = useState<CompanyConfig>({
+    isReceivingBranch: false,
+    isHidden: false,
+  });
 
   const [name, setName] = useState(barbershop?.name ?? "");
   const [phone, setPhone] = useState(barbershop?.phone ?? "");
@@ -171,7 +189,16 @@ function TabEmpresa() {
     setSubtitle(barbershop?.subtitle ?? "");
     setDescription(barbershop?.description ?? "");
     setBannerUrls(barbershop?.bannerUrls ?? []);
+    if (barbershop) setConfig(companyConfigStore.get(barbershop.id));
   }, [barbershop]);
+
+  function toggleConfig(patch: Partial<CompanyConfig>) {
+    setConfig((prev) => {
+      const next = { ...prev, ...patch };
+      if (barbershop) companyConfigStore.set(barbershop.id, patch);
+      return next;
+    });
+  }
 
   function removeBanner(i: number) {
     setBannerUrls((prev) => prev.filter((_, idx) => idx !== i));
@@ -233,97 +260,111 @@ function TabEmpresa() {
 
   if (!barbershop) {
     return (
-      <p className="text-sm text-muted-foreground">Carregando informações…</p>
+      <Loading label="Carregando informações" />
     );
   }
 
   return (
-    <div className="max-w-lg space-y-5">
-      <Card className="bg-surface-raised border-border">
-        <CardContent className="p-5 space-y-5">
-          <div className="flex items-center gap-4">
-            <div className="size-16 rounded-xl bg-[#f5b82e]/20 border-2 border-dashed border-[#f5b82e]/30 flex items-center justify-center overflow-hidden shrink-0">
-              {logoUrl.trim() ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt="logo"
-                  className="size-16 object-cover rounded-xl"
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        {/* ─── Col 1: Empresa ─── */}
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="size-16 rounded-xl bg-[#f5b82e]/20 border-2 border-dashed border-[#f5b82e]/30 flex items-center justify-center overflow-hidden shrink-0">
+                {logoUrl.trim() ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt="logo"
+                    className="size-16 object-cover rounded-xl"
+                  />
+                ) : (
+                  <Image
+                    src="/Logo-Agendle-05.png"
+                    alt="Agendle"
+                    width={48}
+                    height={28}
+                    className="object-contain"
+                  />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-white truncate">
+                  {barbershop.name}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  A logo aparece na vitrine pública da barbearia.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <FormLabel required>Nome</FormLabel>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
                 />
-              ) : (
-                <Image
-                  src="/Logo-Agendle-05.png"
-                  alt="Agendle"
-                  width={48}
-                  height={28}
-                  className="object-contain"
+              </div>
+
+              <div className="space-y-1.5">
+                <FormLabel>Slug (URL)</FormLabel>
+                <Input
+                  value={barbershop.slug}
+                  readOnly
+                  className="bg-surface-base border-border text-muted-foreground focus-visible:ring-0 h-10 cursor-not-allowed"
                 />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-bold text-white truncate">
-                {barbershop.name}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                A logo aparece na vitrine pública da barbearia.
-              </p>
-            </div>
-          </div>
+                <p className="text-[10px] text-text-faint">
+                  Slug não pode ser alterado após o cadastro.
+                </p>
+              </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <FormLabel required>Nome</FormLabel>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <FormLabel>E-mail</FormLabel>
+                <Input
+                  value={barbershop.email}
+                  readOnly
+                  className="bg-surface-base border-border text-muted-foreground focus-visible:ring-0 h-10 cursor-not-allowed"
+                />
+              </div>
 
-            <div className="space-y-1.5">
-              <FormLabel>Slug (URL)</FormLabel>
-              <Input
-                value={barbershop.slug}
-                readOnly
-                className="bg-surface-base border-border text-muted-foreground focus-visible:ring-0 h-10 cursor-not-allowed"
-              />
-              <p className="text-[10px] text-text-faint">
-                Slug não pode ser alterado após o cadastro.
-              </p>
-            </div>
+              <div className="space-y-1.5">
+                <FormLabel>Telefone</FormLabel>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(maskPhone(e.target.value))}
+                  inputMode="numeric"
+                  maxLength={15}
+                  className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                />
+              </div>
 
-            <div className="space-y-1.5">
-              <FormLabel>E-mail</FormLabel>
-              <Input
-                value={barbershop.email}
-                readOnly
-                className="bg-surface-base border-border text-muted-foreground focus-visible:ring-0 h-10 cursor-not-allowed"
-              />
+              <div className="space-y-1.5">
+                <FormLabel>Endereço</FormLabel>
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <FormLabel>Telefone</FormLabel>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(maskPhone(e.target.value))}
-                inputMode="numeric"
-                maxLength={15}
-                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
-              />
-            </div>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSave}
+              className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all disabled:opacity-60"
+            >
+              {saving ? "Salvando…" : "Salvar Alterações"}
+            </button>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-1.5">
-              <FormLabel>Endereço</FormLabel>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10"
-              />
-            </div>
-          </div>
-
-          {/* ─── Vitrine pública (branding) ─── */}
-          <div className="pt-2 border-t border-border-subtle space-y-4">
+        {/* ─── Col 2: Vitrine pública ─── */}
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-4">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
                 Vitrine pública
@@ -469,18 +510,71 @@ function TabEmpresa() {
                 </div>
               )}
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all disabled:opacity-60"
-          >
-            {saving ? "Salvando…" : "Salvar Alterações"}
-          </button>
-        </CardContent>
-      </Card>
+        {/* ─── Col 3: Configuração da filial ─── */}
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
+                Configuração da filial
+              </h3>
+              <p className="text-[11px] text-text-faint mt-1">
+                Defina como esta filial será utilizada no sistema e suas
+                visibilidades.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <Checkbox
+                checked={config.isReceivingBranch}
+                onCheckedChange={(c) =>
+                  toggleConfig({ isReceivingBranch: c === true })
+                }
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Filial de recebimentos
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Marca esta filial como responsável pelos recebimentos da
+                  empresa.
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <Checkbox
+                checked={config.isHidden}
+                onCheckedChange={(c) => toggleConfig({ isHidden: c === true })}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-white">Filial oculta</p>
+                <p className="text-xs text-muted-foreground">
+                  Oculta esta filial de seleções públicas no sistema (ex.:
+                  agendamentos de clientes).
+                </p>
+              </div>
+            </label>
+
+            <div className="flex items-start gap-2 rounded-md border border-border-subtle bg-surface-base p-3">
+              <Info className="size-4 text-brand shrink-0 mt-0.5" />
+              <p className="text-[11px] text-text-faint">
+                Estas configurações impactam o comportamento da filial em todo o
+                sistema, incluindo{" "}
+                <span className="font-semibold text-muted-foreground">
+                  vitrines públicas, fluxos de agendamento e conciliação
+                  financeira
+                </span>
+                .
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Danger zone */}
       <Card className="bg-surface-raised border-danger/30">
@@ -590,6 +684,7 @@ function TabEmpresa() {
 
 interface BranchFormState {
   name: string;
+  cnpj: string;
   email: string;
   phone: string;
   cep: string;
@@ -599,10 +694,18 @@ interface BranchFormState {
   uf: string;
   number: string;
   complement: string;
+  // Configuração financeira
+  paymentConfigs: BranchPaymentConfig[];
+  receiptDeadlineDays: string;
+  bankAccount: string;
+  // Configuração da filial
+  isReceivingBranch: boolean;
+  isHidden: boolean;
 }
 
 const EMPTY_BRANCH_FORM: BranchFormState = {
   name: "",
+  cnpj: "",
   email: "",
   phone: "",
   cep: "",
@@ -612,18 +715,38 @@ const EMPTY_BRANCH_FORM: BranchFormState = {
   uf: "",
   number: "",
   complement: "",
+  paymentConfigs: [],
+  receiptDeadlineDays: "",
+  bankAccount: "",
+  isReceivingBranch: false,
+  isHidden: false,
 };
+
+const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[];
+
+interface CompanyDefaults {
+  name: string;
+  email: string;
+  phone: string;
+  cnpj: string | null;
+}
 
 function DialogFilial({
   open,
   onOpenChange,
   branch,
   onSave,
+  companyDefaults,
+  isFirstBranch,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   branch: Branch | null;
   onSave: (payload: CreateBranchPayload) => Promise<void>;
+  /** Dados da empresa para pré-preencher a primeira filial. */
+  companyDefaults?: CompanyDefaults | null;
+  /** Quando true (sem filiais), marca como filial de recebimentos por padrão. */
+  isFirstBranch?: boolean;
 }) {
   const [form, setForm] = useState<BranchFormState>(EMPTY_BRANCH_FORM);
   const [saving, setSaving] = useState(false);
@@ -634,6 +757,7 @@ function DialogFilial({
     if (branch) {
       setForm({
         name: branch.name,
+        cnpj: branch.cnpj ? maskCnpj(branch.cnpj) : "",
         email: branch.email,
         phone: branch.phone,
         cep: branch.cep,
@@ -643,17 +767,60 @@ function DialogFilial({
         uf: branch.uf,
         number: branch.number,
         complement: branch.complement ?? "",
+        paymentConfigs: branch.paymentConfigs ?? [],
+        receiptDeadlineDays:
+          branch.receiptDeadlineDays != null
+            ? String(branch.receiptDeadlineDays)
+            : "",
+        bankAccount: branch.bankAccount ?? "",
+        isReceivingBranch: branch.isReceivingBranch ?? false,
+        isHidden: branch.isHidden ?? false,
       });
     } else {
-      setForm(EMPTY_BRANCH_FORM);
+      // Primeiro cadastro / nova filial: pré-preenche com os dados da empresa
+      // para que a unidade principal já inicie configurada.
+      setForm({
+        ...EMPTY_BRANCH_FORM,
+        name: isFirstBranch ? companyDefaults?.name ?? "" : "",
+        cnpj: companyDefaults?.cnpj ? maskCnpj(companyDefaults.cnpj) : "",
+        email: companyDefaults?.email ?? "",
+        phone: companyDefaults?.phone ?? "",
+        isReceivingBranch: Boolean(isFirstBranch),
+      });
     }
-  }, [open, branch]);
+  }, [open, branch, companyDefaults, isFirstBranch]);
 
   function update<K extends keyof BranchFormState>(
     key: K,
     value: BranchFormState[K],
   ) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function isPaymentOn(method: PaymentMethod): boolean {
+    return form.paymentConfigs.some((p) => p.method === method);
+  }
+  function togglePayment(method: PaymentMethod, on: boolean) {
+    setForm((prev) => {
+      const others = prev.paymentConfigs.filter((p) => p.method !== method);
+      return {
+        ...prev,
+        paymentConfigs: on
+          ? [...others, { method, feePercent: 0 }]
+          : others,
+      };
+    });
+  }
+  function setFee(method: PaymentMethod, fee: number) {
+    setForm((prev) => ({
+      ...prev,
+      paymentConfigs: prev.paymentConfigs.map((p) =>
+        p.method === method ? { ...p, feePercent: fee } : p,
+      ),
+    }));
+  }
+  function feeOf(method: PaymentMethod): number {
+    return form.paymentConfigs.find((p) => p.method === method)?.feePercent ?? 0;
   }
 
   async function handleCepChange(raw: string) {
@@ -682,6 +849,8 @@ function DialogFilial({
     if (!form.name.trim()) return toast.error("Informe o nome da filial.");
     if (!form.email.trim()) return toast.error("Informe o e-mail.");
     if (!form.phone.trim()) return toast.error("Informe o telefone.");
+    if (form.cnpj && form.cnpj.replace(/\D/g, "").length !== 14)
+      return toast.error("CNPJ inválido.");
     if (form.cep.replace(/\D/g, "").length < 8)
       return toast.error("CEP inválido.");
     if (!form.street.trim()) return toast.error("Informe a rua.");
@@ -689,6 +858,15 @@ function DialogFilial({
     if (!form.city.trim()) return toast.error("Informe a cidade.");
     if (form.uf.length !== 2) return toast.error("UF deve ter 2 letras.");
     if (!form.number.trim()) return toast.error("Informe o número.");
+    // Parametrização (ref. CashB): filial de recebimentos exige conta bancária.
+    if (form.isReceivingBranch && !form.bankAccount.trim())
+      return toast.error(
+        "Filial de recebimentos requer uma conta bancária.",
+      );
+
+    const deadline = form.receiptDeadlineDays
+      ? parseInt(form.receiptDeadlineDays, 10)
+      : undefined;
 
     setSaving(true);
     try {
@@ -703,6 +881,12 @@ function DialogFilial({
         uf: form.uf.trim().toUpperCase(),
         number: form.number.trim(),
         complement: form.complement.trim() || undefined,
+        cnpj: form.cnpj ? form.cnpj.replace(/\D/g, "") : undefined,
+        isReceivingBranch: form.isReceivingBranch,
+        isHidden: form.isHidden,
+        receiptDeadlineDays: deadline,
+        bankAccount: form.bankAccount.trim() || undefined,
+        paymentConfigs: form.paymentConfigs,
       });
       onOpenChange(false);
     } finally {
@@ -734,6 +918,18 @@ function DialogFilial({
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
               placeholder="Ex.: Matriz, Filial Centro"
+              className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <FormLabel>CNPJ da filial</FormLabel>
+            <Input
+              value={form.cnpj}
+              onChange={(e) => update("cnpj", maskCnpj(e.target.value))}
+              placeholder="00.000.000/0000-00"
+              inputMode="numeric"
+              maxLength={18}
               className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
             />
           </div>
@@ -846,6 +1042,130 @@ function DialogFilial({
               />
             </div>
           </div>
+
+          {/* ── Configuração financeira ── */}
+          <SectionTitle>Configuração financeira</SectionTitle>
+
+          <div className="space-y-1.5">
+            <FormLabel>Formas de pagamento e taxas</FormLabel>
+            <div className="space-y-1.5">
+              {PAYMENT_METHODS.map((method) => {
+                const on = isPaymentOn(method);
+                return (
+                  <div
+                    key={method}
+                    className="flex items-center gap-3 rounded-md border border-border-subtle bg-surface-base px-3 py-2"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0">
+                      <Checkbox
+                        checked={on}
+                        onCheckedChange={(c) =>
+                          togglePayment(method, c === true)
+                        }
+                      />
+                      <span className="text-sm text-white truncate">
+                        {PAYMENT_METHOD_LABELS[method]}
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input
+                        value={on ? String(feeOf(method)) : ""}
+                        onChange={(e) =>
+                          setFee(
+                            method,
+                            parseFloat(e.target.value.replace(",", ".")) || 0,
+                          )
+                        }
+                        disabled={!on}
+                        inputMode="decimal"
+                        placeholder="0"
+                        className="h-8 w-20 bg-surface-raised border-border text-white text-right disabled:opacity-50"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        % taxa
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FormLabel>Prazo p/ recebimento (dias)</FormLabel>
+              <Input
+                value={form.receiptDeadlineDays}
+                onChange={(e) =>
+                  update(
+                    "receiptDeadlineDays",
+                    e.target.value.replace(/\D/g, "").slice(0, 3),
+                  )
+                }
+                inputMode="numeric"
+                placeholder="Ex.: 30"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <FormLabel>Conta bancária</FormLabel>
+              <Input
+                value={form.bankAccount}
+                onChange={(e) => update("bankAccount", e.target.value)}
+                placeholder="Banco · Agência · Conta"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+          </div>
+
+          {/* ── Configuração da filial ── */}
+          <SectionTitle>Configuração da filial</SectionTitle>
+
+          <div className="space-y-2.5">
+            <label className="flex items-start gap-3 cursor-pointer select-none rounded-md border border-border-subtle bg-surface-base p-3">
+              <Checkbox
+                checked={form.isReceivingBranch}
+                onCheckedChange={(c) =>
+                  update("isReceivingBranch", c === true)
+                }
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Filial de recebimentos
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Marca esta filial como responsável pelos recebimentos da
+                  empresa.
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none rounded-md border border-border-subtle bg-surface-base p-3">
+              <Checkbox
+                checked={form.isHidden}
+                onCheckedChange={(c) => update("isHidden", c === true)}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-white">Filial oculta</p>
+                <p className="text-xs text-muted-foreground">
+                  Oculta esta filial de seleções públicas no sistema (ex.:
+                  agendamentos de clientes).
+                </p>
+              </div>
+            </label>
+
+            <p className="text-[11px] text-text-faint rounded-md border border-border-subtle bg-surface-base/60 p-3">
+              Estas configurações impactam o comportamento da filial em todo o
+              sistema, incluindo{" "}
+              <span className="font-semibold text-muted-foreground">
+                vitrines públicas, fluxos de agendamento e conciliação
+                financeira
+              </span>
+              .
+            </p>
+          </div>
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
           <button
@@ -914,9 +1234,7 @@ function TabFiliais() {
 
         <div className="divide-y divide-border-subtle">
           {isLoading ? (
-            <div className="px-5 py-12 text-center text-sm text-text-faint">
-              Carregando…
-            </div>
+            <Loading />
           ) : branches.length === 0 ? (
             <div className="px-5 py-12 text-center text-sm text-text-faint">
               Nenhuma filial cadastrada.
@@ -928,7 +1246,19 @@ function TabFiliais() {
                 className="flex items-center justify-between px-5 py-4 hover:bg-surface-elevated/40 transition-colors"
               >
                 <div>
-                  <p className="text-sm font-semibold text-white">{b.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-white">{b.name}</p>
+                    {b.isReceivingBranch && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-success-bg text-success-foreground">
+                        Recebimentos
+                      </span>
+                    )}
+                    {b.isHidden && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-surface-elevated text-muted-foreground">
+                        Oculta
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {b.street}, {b.number}
                     {b.complement ? ` — ${b.complement}` : ""}
@@ -969,6 +1299,17 @@ function TabFiliais() {
         onOpenChange={setDialog}
         branch={editing}
         onSave={handleSave}
+        companyDefaults={
+          barbershop
+            ? {
+                name: barbershop.name,
+                email: barbershop.email,
+                phone: barbershop.phone ?? "",
+                cnpj: barbershop.cnpj,
+              }
+            : null
+        }
+        isFirstBranch={branches.length === 0}
       />
     </Card>
   );
@@ -1580,11 +1921,8 @@ function TabProfissionais() {
             <TableBody>
               {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="py-12 text-center text-sm text-text-faint"
-                  >
-                    Carregando…
+                  <td colSpan={5} className="py-4">
+                    <Loading />
                   </td>
                 </tr>
               ) : employees.length === 0 ? (
@@ -1933,11 +2271,8 @@ function TabServicos() {
             <TableBody>
               {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="py-12 text-center text-sm text-text-faint"
-                  >
-                    Carregando…
+                  <td colSpan={6} className="py-4">
+                    <Loading />
                   </td>
                 </tr>
               ) : services.length === 0 ? (
@@ -2087,7 +2422,7 @@ function TabPagamento() {
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-text-faint">Carregando…</p>
+            <Loading />
           ) : (
             <>
               <div className="flex items-center justify-end">

@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, History, Search } from "lucide-react";
-import { PageHeader, EmptyState, DatePickerField } from "@/components/shared";
+import {
+  PageHeader,
+  EmptyState,
+  DatePickerField,
+  Loading,
+} from "@/components/shared";
 import {
   CaixaCard,
   DialogDetalheCaixa,
@@ -125,9 +130,7 @@ export default function CaixaHistoricoPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            Carregando histórico…
-          </p>
+          <Loading label="Carregando histórico" />
         ) : historico.length === 0 ? (
           <EmptyState
             icon={<Search className="size-10" />}
