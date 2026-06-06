@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DropdownButton } from "./Primitives";
 import { minToTime } from "./helpers";
+import { STATUS_COR, STATUS_ROTULO } from "./status";
 import type {
   AgendamentoVM,
   ProfissionalVM,
@@ -238,6 +239,15 @@ export function ModoLista({
                       )}
                     </div>
                   </div>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: `${STATUS_COR[ag.status]}22`,
+                      color: STATUS_COR[ag.status],
+                    }}
+                  >
+                    {STATUS_ROTULO[ag.status]}
+                  </span>
                   <div className="text-xs font-bold text-emerald-400 shrink-0">
                     R$ {s.preco.toFixed(2)}
                   </div>

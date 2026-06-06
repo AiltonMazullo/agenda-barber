@@ -1,12 +1,19 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LogOut, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 
 function getInitials(name: string | undefined): string {
@@ -44,6 +51,30 @@ export function Header() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Notificações"
+            className="cursor-pointer relative inline-flex size-8 items-center justify-center rounded-lg text-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted"
+          >
+            <Bell className="size-4" />
+            <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-brand" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="flex flex-col items-center gap-1 px-3 py-6 text-center">
+              <Bell className="size-5 text-muted-foreground/60" />
+              <p className="text-xs font-medium text-foreground">
+                Em breve
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                As notificações estão em desenvolvimento e ficarão disponíveis
+                em breve.
+              </p>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Button
           onClick={handleLogout}
           variant="ghost"

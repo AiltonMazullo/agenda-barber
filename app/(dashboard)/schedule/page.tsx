@@ -17,7 +17,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings2,
-  Scissors,
   User,
   Ban,
   Receipt,
@@ -25,6 +24,7 @@ import {
   LayoutGrid,
   Building2,
 } from "lucide-react";
+// (Scissors removido — a orientação textual da legenda foi substituída)
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +45,8 @@ import {
   TimeLine,
   ModoLista,
   ResumoDia,
+  IconLegend,
+  ColorLegend,
   DialogNovoAgendamento,
   DialogDetalhe,
   DialogConflito,
@@ -68,7 +70,7 @@ import type {
   ViewMode,
 } from "@/components/schedule";
 import type { UpdatableAppointmentStatus } from "@/types/appointment.types";
-import { Loading } from "@/components/shared";
+import { Loading, DatePickerField } from "@/components/shared";
 
 export default function SchedulePage() {
   const { barbershop } = useAuth();
@@ -165,6 +167,8 @@ export default function SchedulePage() {
     const map: Record<string, AgendamentoVM[]> = {};
     profissionais.forEach((p) => (map[p.id] = []));
     agendamentos.forEach((ag) => {
+      // Cancelados (e faltas) aparecem apenas na visualização em lista.
+      if (ag.status === "CANCELLED") return;
       if (map[ag.profissionalId]) map[ag.profissionalId].push(ag);
     });
     return map;
@@ -418,7 +422,7 @@ export default function SchedulePage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Navegação de data */}
+            {/* Navegação de data: setas + Hoje + escolher qualquer data */}
             <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-border">
               <button
                 type="button"
@@ -427,9 +431,18 @@ export default function SchedulePage() {
               >
                 <ChevronLeft className="size-4" />
               </button>
-              <span className="text-sm font-medium text-foreground px-3 min-w-[60px] text-center">
-                {isToday(selectedDate) ? "Hoje" : format(selectedDate, "dd/MM")}
-              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(new Date())}
+                className={cn(
+                  "h-9 px-3 text-sm font-medium transition-colors min-w-[60px]",
+                  isToday(selectedDate)
+                    ? "text-brand"
+                    : "text-foreground hover:bg-surface-elevated",
+                )}
+              >
+                Hoje
+              </button>
               <button
                 type="button"
                 onClick={() => shiftDate(1)}
@@ -437,6 +450,13 @@ export default function SchedulePage() {
               >
                 <ChevronRight className="size-4" />
               </button>
+            </div>
+            <div className="w-40">
+              <DatePickerField
+                id="agenda-data"
+                date={selectedDate}
+                onChange={(d) => d && setSelectedDate(d)}
+              />
             </div>
 
             {/* View toggle */}
@@ -558,7 +578,7 @@ export default function SchedulePage() {
               className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5"
             >
               <Receipt className="size-3.5 text-muted-foreground" />
-              Comanda
+              Comanda de consumo
             </button>
 
             {/* Novo agendamento */}
@@ -572,41 +592,20 @@ export default function SchedulePage() {
               className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5"
             >
               <Plus className="size-3.5" />
-              Novo
+              Novo agendamento
             </button>
           </div>
         </div>
 
         {/* ── Resumo do Dia ── */}
-        <ResumoDia agendamentos={agendamentos} servicoById={servicoById} />
+        <ResumoDia agendamentos={agendamentos} />
 
-        {/* ── Legenda ── */}
+        {/* ── Legendas (ícones + cores) ── */}
         {viewMode === "kanban" && (
-          <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-border-subtle shrink-0 overflow-x-auto schedule-scroll">
-            {servicos.map((s) => (
-              <div key={s.id} className="flex items-center gap-1.5 shrink-0">
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: s.cor }}
-                />
-                <span className="text-[10px] text-muted-foreground">{s.nome}</span>
-                <span className="text-[9px] text-text-faint">R$ {s.preco}</span>
-              </div>
-            ))}
-            <div className="ml-auto text-[9px] text-text-faint flex items-center gap-1 shrink-0">
-              {modoBloquear ? (
-                <span className="text-red-400 font-semibold animate-pulse">
-                  🔴 Modo bloqueio ativo — clique e arraste para bloquear
-                </span>
-              ) : (
-                <>
-                  <Scissors className="size-3" />
-                  Vertical: horário · Horizontal: profissional · Clique no slot
-                  para agendar
-                </>
-              )}
-            </div>
-          </div>
+          <>
+            <IconLegend />
+            <ColorLegend />
+          </>
         )}
 
         {/* ── Conteúdo ── */}

@@ -10,5 +10,7 @@ export { DialogDetalhe } from "./DialogDetalhe";
 export { DialogConflito, type ConflitoDados } from "./DialogConflito";
 export { DialogNovaComanda } from "./DialogNovaComanda";
 export { DropdownButton, InfoRow } from "./Primitives";
+export { IconLegend, ColorLegend, AgendaInfo } from "./AgendaLegend";
+export * from "./status";
 export * from "./types";
 export * from "./helpers";
