@@ -1,52 +1,51 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Users,
   UserPlus,
   ClipboardList,
   Calendar,
   Target,
-  Monitor,
   Cake,
-  AlertTriangle,
-  Wallet,
   ArrowUpRight,
-  ChevronDown,
   Package,
   TrendingUp,
   CheckCircle2,
   Clock,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { PageHeader, SummaryCard, StatusBadge, Loading } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useClients } from "@/hooks/useClients";
 import { useEmployees } from "@/hooks/useEmployees";
-import type { AppointmentStatus } from "@/types/appointment.types";
-import type { Tone } from "@/types/common.types";
+import { useBranches } from "@/hooks/useBranches";
+import { isBirthdayInCurrentWeek } from "@/utils/birthday";
+import {
+  SectionCard,
+  MiniStat,
+  DashboardFilters,
+  STATUS_LABEL,
+  STATUS_TONE,
+  isSameDay,
+} from "@/components/dashboard";
 
-const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  PENDING: "Pendente",
-  CONFIRMED: "Confirmado",
-  COMPLETED: "Concluído",
-  CANCELLED: "Cancelado",
-};
-
-const STATUS_TONE: Record<AppointmentStatus, Tone> = {
-  PENDING: "warning",
-  CONFIRMED: "info",
-  COMPLETED: "success",
-  CANCELLED: "danger",
-};
-
-function isSameDay(a: Date, b: Date): boolean {
+/** Card de métrica clicável (envolve o SummaryCard num link com hover). */
+function ClickableCard({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
   return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
+    <Link
+      href={href}
+      className="block rounded-xl transition hover:ring-2 hover:ring-brand/40 hover:-translate-y-0.5"
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -54,9 +53,29 @@ export default function DashboardPage() {
   const { barbershop } = useAuth();
   const { appointments, isLoading } = useAppointments(barbershop?.id);
   const { clients, isLoading: loadingClients } = useClients(barbershop?.id);
-  const { employees, isLoading: loadingEmployees } = useEmployees(barbershop?.id);
+  const { employees, isLoading: loadingEmployees } = useEmployees(
+    barbershop?.id,
+  );
+  const { branches } = useBranches(barbershop?.id);
 
   const today = new Date();
+
+  // ─── Filtro de filiais (#1): inicia na filial principal/matriz ──────────────
+  // "Matriz" = filial de recebimentos (isReceivingBranch) ou a primeira filial.
+  const principalBranchId = useMemo(() => {
+    const receiving = branches.find((b) => b.isReceivingBranch);
+    return receiving?.id ?? branches[0]?.id ?? "todas";
+  }, [branches]);
+
+  const [branchFilter, setBranchFilter] = useState("todas");
+  const [period, setPeriod] = useState("30");
+  const branchInited = useRef(false);
+
+  useEffect(() => {
+    if (branchInited.current || branches.length === 0) return;
+    branchInited.current = true;
+    setBranchFilter(principalBranchId);
+  }, [branches, principalBranchId]);
 
   const stats = useMemo(() => {
     const todayAppts = appointments.filter((a) =>
@@ -65,10 +84,16 @@ export default function DashboardPage() {
     const future = appointments.filter(
       (a) => new Date(a.scheduledAt) >= today && a.status !== "CANCELLED",
     );
+    // O backend não expõe a origem do agendamento (online x recepção); todo o
+    // app trata como recepção, então o total via online fica em 0 até existir
+    // esse campo. O indicador verde segue o padrão visual solicitado.
+    const onlineToday = 0;
+    const onlineFuture = 0;
     return {
       todayCount: todayAppts.length,
-      totalCount: appointments.length,
       futureCount: future.length,
+      onlineToday,
+      onlineFuture,
       todayList: todayAppts
         .sort(
           (a, b) =>
@@ -80,41 +105,29 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments]);
 
-  /** Aniversariantes do mês atual (a partir do birthDate dos clientes). */
-  const birthdaysThisMonth = useMemo(() => {
-    const m = today.getMonth();
-    return clients.filter((c) => {
-      if (!c.birthDate) return false;
-      return new Date(c.birthDate).getMonth() === m;
-    }).length;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clients]);
+  /** Aniversariantes da semana vigente (segunda a domingo). */
+  const birthdaysThisWeek = useMemo(
+    () => clients.filter((c) => isBirthdayInCurrentWeek(c.birthDate)).length,
+    [clients],
+  );
+
   return (
     <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Dashboard"
         subtitle="Visão geral do seu negócio"
         actions={
-          <>
-            <Button
-              variant="outline"
-              className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9"
-            >
-              Todas filiais{" "}
-              <ChevronDown className="ml-2 size-4 text-muted-foreground" />
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-surface-raised border-border text-foreground hover:bg-surface-elevated h-9"
-            >
-              30 dias{" "}
-              <ChevronDown className="ml-2 size-4 text-muted-foreground" />
-            </Button>
-          </>
+          <DashboardFilters
+            branches={branches}
+            branchValue={branchFilter}
+            onBranchChange={setBranchFilter}
+            periodValue={period}
+            onPeriodChange={setPeriod}
+          />
         }
       />
 
-      {/* Grid de Cards Principais — 5 colunas */}
+      {/* Cards principais */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <SummaryCard
           label="Profissionais"
@@ -137,55 +150,35 @@ export default function DashboardPage() {
         <SummaryCard
           label="Agenda Hoje"
           value={isLoading ? "…" : String(stats.todayCount)}
-          icon={<Calendar className="size-4" />}
-          tone="brand"
-        />
-        <SummaryCard
-          label="Taxa Ocupação"
-          value="0%"
-          icon={<Target className="size-4" />}
-          tone="brand"
-        />
-        <SummaryCard
-          label="Agendamentos"
-          value={isLoading ? "…" : String(stats.totalCount)}
-          subtitle={`${stats.futureCount} futuros`}
+          subtitle={`${stats.onlineToday} via online`}
           subtitleTone="success"
           icon={<Calendar className="size-4" />}
           tone="brand"
         />
+        <ClickableCard href="/reports/taxa-ocupacao">
+          <SummaryCard
+            label="Taxa Ocupação"
+            value="0%"
+            icon={<Target className="size-4" />}
+            tone="brand"
+          />
+        </ClickableCard>
         <SummaryCard
-          label="Via Recepção"
-          value="0"
-          icon={<Users className="size-4" />}
+          label="Agendamentos"
+          value={isLoading ? "…" : String(stats.futureCount)}
+          subtitle={`${stats.onlineFuture} via online`}
+          subtitleTone="success"
+          icon={<Calendar className="size-4" />}
           tone="brand"
         />
-        <SummaryCard
-          label="Via Online"
-          value="0"
-          icon={<Monitor className="size-4" />}
-          tone="brand"
-        />
-        <SummaryCard
-          label="Aniversariantes"
-          value={loadingClients ? "…" : String(birthdaysThisMonth)}
-          icon={<Cake className="size-4" />}
-          tone="brand"
-        />
-        <SummaryCard
-          label="Estoque Baixo"
-          value="0"
-          icon={<AlertTriangle className="size-4" />}
-          tone="brand"
-        />
-        <SummaryCard
-          label="Vendas (Mês)"
-          value="0"
-          subtitle="R$ 0,00"
-          subtitleTone="danger"
-          icon={<Wallet className="size-4" />}
-          tone="brand"
-        />
+        <ClickableCard href="/clients?aniversariantes=semana">
+          <SummaryCard
+            label="Aniversariantes da Semana"
+            value={loadingClients ? "…" : String(birthdaysThisWeek)}
+            icon={<Cake className="size-4" />}
+            tone="brand"
+          />
+        </ClickableCard>
       </div>
 
       {/* Resumo Financeiro */}
@@ -197,12 +190,12 @@ export default function DashboardPage() {
               Resumo Financeiro
             </h2>
           </div>
-          <Button
-            variant="link"
-            className="text-brand text-xs gap-1 p-0 h-auto font-medium"
+          <Link
+            href="/financial"
+            className="text-brand text-xs gap-1 font-medium flex items-center hover:underline"
           >
             Ver tudo <ArrowUpRight className="size-3" />
-          </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -234,29 +227,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Seção Inferior: Assinaturas, Agenda, Ranking, Estoque */}
+      {/* Seção inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SectionCard
           icon={<ClipboardList className="size-4" />}
           title="Assinaturas"
           actionLabel="Ver tudo"
+          actionHref="/subscriptions"
         >
           <div className="grid grid-cols-2 gap-4">
-            <MiniStat
-              label="Ativos"
-              value="0"
-              tone="success"
-            />
-            <MiniStat
-              label="Inadimplentes"
-              value="0"
-              tone="danger"
-            />
-            <MiniStat
-              label="Novos no período"
-              value="0"
-              tone="warning"
-            />
+            <MiniStat label="Ativos" value="0" tone="success" />
+            <MiniStat label="Inadimplentes" value="0" tone="danger" />
+            <MiniStat label="Novos no período" value="0" tone="warning" />
             <MiniStat label="Cancelados" value="0" tone="neutral" />
           </div>
         </SectionCard>
@@ -265,6 +247,7 @@ export default function DashboardPage() {
           icon={<Calendar className="size-4" />}
           title="Agenda do Dia"
           actionLabel="Ver agenda"
+          actionHref="/schedule"
         >
           {isLoading ? (
             <Loading />
@@ -310,6 +293,7 @@ export default function DashboardPage() {
           icon={<TrendingUp className="size-4" />}
           title="Ranking de Profissionais"
           actionLabel="Ver comissões"
+          actionHref="/commissions"
         >
           <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
             <p className="text-sm">Sem dados no período.</p>
@@ -320,6 +304,7 @@ export default function DashboardPage() {
           icon={<Package className="size-4" />}
           title="Estoque Crítico"
           actionLabel="Ver estoque"
+          actionHref="/inventory"
         >
           <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
             <div className="flex items-center gap-2 text-success-foreground/80">
@@ -329,72 +314,6 @@ export default function DashboardPage() {
           </div>
         </SectionCard>
       </div>
-    </div>
-  );
-}
-
-// ─── Sub-componentes locais ──────────────────────────────────────────────────
-
-interface SectionCardProps {
-  icon: React.ReactNode;
-  title: string;
-  actionLabel: string;
-  children: React.ReactNode;
-}
-
-function SectionCard({ icon, title, actionLabel, children }: SectionCardProps) {
-  return (
-    <Card className="bg-surface-raised border-border">
-      <CardHeader className="flex flex-row items-center justify-between py-4">
-        <div className="flex items-center gap-2 text-brand">
-          {icon}
-          <CardTitle className="text-sm font-bold text-foreground uppercase">
-            {title}
-          </CardTitle>
-        </div>
-        <Button
-          variant="link"
-          className="text-brand text-xs gap-1 p-0 h-auto"
-        >
-          {actionLabel} <ArrowUpRight className="size-3" />
-        </Button>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-interface MiniStatProps {
-  label: string;
-  value: string;
-  tone: "success" | "danger" | "warning" | "neutral";
-}
-
-const MINI_STAT_BG: Record<MiniStatProps["tone"], string> = {
-  success: "bg-success-bg",
-  danger: "bg-danger-bg",
-  warning: "bg-warning-bg",
-  neutral: "bg-surface-elevated",
-};
-
-const MINI_STAT_TEXT: Record<MiniStatProps["tone"], string> = {
-  success: "text-success-foreground",
-  danger: "text-danger-foreground",
-  warning: "text-warning-foreground",
-  neutral: "text-muted-foreground",
-};
-
-function MiniStat({ label, value, tone }: MiniStatProps) {
-  return (
-    <div
-      className={`${MINI_STAT_BG[tone]} rounded-md p-4 flex flex-col items-center justify-center text-center`}
-    >
-      <span className={`text-2xl font-bold ${MINI_STAT_TEXT[tone]}`}>
-        {value}
-      </span>
-      <span className="text-[10px] text-muted-foreground font-medium uppercase mt-1">
-        {label}
-      </span>
     </div>
   );
 }

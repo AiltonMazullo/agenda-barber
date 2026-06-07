@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Users,
@@ -16,6 +17,7 @@ import {
   EyeOff,
   UserPlus,
   UserX,
+  Cake,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +51,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { useDeactivatedClients } from "@/hooks/useDeactivatedClients";
 import { usePagination } from "@/hooks/usePagination";
 import { formatBRL, formatDate, maskPhone } from "@/utils/format";
+import { isBirthdayInCurrentWeek } from "@/utils/birthday";
 import type {
   Client,
   CreateClientPayload,
@@ -272,13 +275,17 @@ function DialogEditarCliente({
 
 // ─── Página ──────────────────────────────────────────────────────────────────
 
-export default function ClientesPage() {
+function ClientesContent() {
   const { barbershop } = useAuth();
   const { clients, isLoading, create, update } = useClients(barbershop?.id);
   const { appointments } = useAppointments(barbershop?.id);
   const { ids: deactivatedIds, deactivate } = useDeactivatedClients(
     barbershop?.id,
   );
+
+  const searchParams = useSearchParams();
+  const aniversariantesSemana =
+    searchParams.get("aniversariantes") === "semana";
 
   const [search, setSearch] = useState("");
   const [editDialog, setEditDialog] = useState(false);
@@ -319,15 +326,19 @@ export default function ClientesPage() {
   }, [clients, appointments, deactivatedIds]);
 
   const filtered = useMemo(() => {
+    let base = enriched;
+    if (aniversariantesSemana) {
+      base = base.filter((c) => isBirthdayInCurrentWeek(c.birthDate));
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return enriched;
-    return enriched.filter(
+    if (!q) return base;
+    return base.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
         (c.phone?.toLowerCase().includes(q) ?? false),
     );
-  }, [enriched, search]);
+  }, [enriched, search, aniversariantesSemana]);
 
   const pag = usePagination(filtered, 10);
 
@@ -423,6 +434,18 @@ export default function ClientesPage() {
           icon={<Trophy className="size-3.5" />}
         />
       </div>
+
+      {aniversariantesSemana && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-brand/10 border border-brand/30 text-xs text-foreground">
+          <span className="flex items-center gap-1.5">
+            <Cake className="size-3.5 text-brand" />
+            Mostrando aniversariantes da semana
+          </span>
+          <Link href="/clients" className="text-brand font-medium hover:underline">
+            Limpar filtro
+          </Link>
+        </div>
+      )}
 
       <Card className="bg-surface-raised border-border">
         <CardContent className="p-0">
@@ -604,5 +627,13 @@ export default function ClientesPage() {
         onConfirm={doDeactivate}
       />
     </div>
+  );
+}
+
+export default function ClientesPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ClientesContent />
+    </Suspense>
   );
 }
