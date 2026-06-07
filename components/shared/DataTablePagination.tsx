@@ -67,14 +67,11 @@ export function DataTablePagination({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="whitespace-nowrap">Linhas por página</span>
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <button
-              type="button"
-              className="h-8 px-2.5 rounded-md border border-border bg-surface-base text-xs font-medium text-foreground flex items-center gap-1.5 hover:border-brand/40 transition-colors outline-none"
-            >
-              {pageSize}
-              <ChevronDown className="size-3 text-muted-foreground" />
-            </button>
+          <DropdownMenuTrigger
+            className="h-8 px-2.5 rounded-md border border-border bg-surface-base text-xs font-medium text-foreground flex items-center gap-1.5 hover:border-brand/40 transition-colors outline-none cursor-pointer"
+          >
+            {pageSize}
+            <ChevronDown className="size-3 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-surface-raised border-border text-foreground min-w-[5rem]">
             {PAGE_SIZE_OPTIONS.map((size) => (

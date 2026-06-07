@@ -48,17 +48,14 @@ export function SelectField<T extends string>({
         </FieldLabel>
       )}
       <DropdownMenu>
-        <DropdownMenuTrigger>
-          <button
-            id={id}
-            type="button"
-            className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors outline-none"
-          >
-            <span className="truncate">
-              {selected?.label ?? placeholder ?? "Selecione"}
-            </span>
-            <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-          </button>
+        <DropdownMenuTrigger
+          id={id}
+          className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors outline-none cursor-pointer"
+        >
+          <span className="truncate">
+            {selected?.label ?? placeholder ?? "Selecione"}
+          </span>
+          <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-surface-raised border-border text-foreground min-w-[160px]">
           {items.map((opt) => (

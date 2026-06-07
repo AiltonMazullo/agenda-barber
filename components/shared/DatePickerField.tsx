@@ -81,33 +81,28 @@ export function DatePickerField({
         </FieldLabel>
       )}
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger>
-          <button
-            id={id}
-            type="button"
-            className={cn(
-              "group w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all duration-200 outline-none bg-surface-base",
-              open
-                ? "border-brand/70 shadow-[0_0_0_3px_rgba(245,184,46,0.08)]"
-                : "border-border hover:border-brand/40",
-            )}
+        <PopoverTrigger
+          id={id}
+          className={cn(
+            "group w-full h-10 px-3 rounded-md border text-sm flex items-center justify-between gap-2 transition-all duration-200 outline-none bg-surface-base cursor-pointer",
+            open
+              ? "border-brand/70 shadow-[0_0_0_3px_rgba(245,184,46,0.08)]"
+              : "border-border hover:border-brand/40",
+          )}
+        >
+          <span
+            className={date ? "text-foreground font-medium" : "text-text-faint"}
           >
-            <span
-              className={
-                date ? "text-foreground font-medium" : "text-text-faint"
-              }
-            >
-              {formatted ?? placeholder}
-            </span>
-            <CalendarIcon
-              className={cn(
-                "size-3.5 shrink-0 transition-colors",
-                open
-                  ? "text-brand"
-                  : "text-text-faint group-hover:text-muted-foreground",
-              )}
-            />
-          </button>
+            {formatted ?? placeholder}
+          </span>
+          <CalendarIcon
+            className={cn(
+              "size-3.5 shrink-0 transition-colors",
+              open
+                ? "text-brand"
+                : "text-text-faint group-hover:text-muted-foreground",
+            )}
+          />
         </PopoverTrigger>
         <PopoverContent
           align="start"

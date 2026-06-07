@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Calendar,
   Users,
+  UserCog,
   ClipboardList,
   Wallet,
   CreditCard,
@@ -49,6 +50,12 @@ const navOperacional: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Agenda", href: "/schedule", icon: Calendar, module: "appointments" },
   { title: "Clientes", href: "/clients", icon: Users, module: "clients" },
+  {
+    title: "Profissionais",
+    href: "/professionals",
+    icon: UserCog,
+    module: "employees",
+  },
   { title: "Comandas", href: "/orders", icon: ClipboardList },
   { title: "Caixa", href: "/cashier", icon: Wallet, module: "cash-registers" },
 ];
