@@ -74,10 +74,21 @@ export default function ProfessionalEditPage() {
     if (updated) router.push("/professionals");
   }
 
+  const initialBasic: ProfessionalBasic = {
+    name: employee.name,
+    appName: employee.appName,
+    cpf: employee.cpf ?? "",
+    birthDate: employee.birthDate ? employee.birthDate.slice(0, 10) : "",
+    email: employee.email,
+    phone: employee.phone,
+    pixKey: employee.pixKey,
+    hasBranchAccess: employee.hasBranchAccess,
+  };
+
   return (
     <ProfessionalForm
       key={employee.id}
-      employee={employee}
+      initialBasic={initialBasic}
       services={services}
       initialConfig={config}
       onSave={handleSave}

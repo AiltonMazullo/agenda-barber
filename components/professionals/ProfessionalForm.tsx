@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { Employee } from "@/types/employee.types";
 import type { Service } from "@/types/service.types";
 import type { ProfessionalConfig } from "@/types/professional-config.types";
 import type { ProfessionalBasic } from "./types";
@@ -19,35 +18,20 @@ import { Intervalos } from "./Intervalos";
 import { Folgas } from "./Folgas";
 import { RegrasComissao } from "./RegrasComissao";
 
-function basicFromEmployee(e: Employee): ProfessionalBasic {
-  return {
-    name: e.name,
-    appName: e.appName,
-    cpf: e.cpf ?? "",
-    birthDate: e.birthDate ? e.birthDate.slice(0, 10) : "",
-    email: e.email,
-    phone: e.phone,
-    pixKey: e.pixKey,
-    hasBranchAccess: e.hasBranchAccess,
-  };
-}
-
 export function ProfessionalForm({
-  employee,
+  initialBasic,
   services,
   initialConfig,
   onSave,
   onBack,
 }: {
-  employee: Employee;
+  initialBasic: ProfessionalBasic;
   services: Service[];
   initialConfig: ProfessionalConfig;
   onSave: (basic: ProfessionalBasic, config: ProfessionalConfig) => Promise<void>;
   onBack: () => void;
 }) {
-  const [basic, setBasic] = useState<ProfessionalBasic>(() =>
-    basicFromEmployee(employee),
-  );
+  const [basic, setBasic] = useState<ProfessionalBasic>(initialBasic);
   const [config, setConfig] = useState<ProfessionalConfig>(initialConfig);
   const [saving, setSaving] = useState(false);
 
@@ -78,7 +62,7 @@ export function ProfessionalForm({
   return (
     <div className="bg-surface-base min-h-screen text-foreground">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface-base/95 backdrop-blur px-4 md:px-6 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-base px-4 md:px-6 py-3">
         <div>
           <h1 className="text-lg font-bold">Cadastro do Profissional</h1>
           <p className="text-xs text-muted-foreground">

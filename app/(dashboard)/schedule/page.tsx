@@ -374,7 +374,7 @@ export default function SchedulePage() {
         .schedule-scroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
       `}</style>
 
-      <div className="flex flex-col h-screen bg-surface-base text-foreground overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 bg-surface-base text-foreground overflow-hidden">
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
@@ -434,14 +434,20 @@ export default function SchedulePage() {
               <button
                 type="button"
                 onClick={() => setSelectedDate(new Date())}
+                title="Ir para hoje"
                 className={cn(
-                  "h-9 px-3 text-sm font-medium transition-colors min-w-[60px]",
+                  "h-9 px-3 text-sm font-medium transition-colors min-w-[64px] whitespace-nowrap",
                   isToday(selectedDate)
                     ? "text-brand"
                     : "text-foreground hover:bg-surface-elevated",
                 )}
               >
-                Hoje
+                {isToday(selectedDate)
+                  ? "Hoje"
+                  : selectedDate.toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                    })}
               </button>
               <button
                 type="button"
@@ -622,7 +628,7 @@ export default function SchedulePage() {
             </p>
           </div>
         ) : viewMode === "kanban" ? (
-          <div className="flex-1 overflow-auto schedule-scroll">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden schedule-scroll">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -640,7 +646,7 @@ export default function SchedulePage() {
                   {profissionaisVisiveis.map((prof) => (
                     <div
                       key={prof.id}
-                      className="relative flex flex-col min-w-[180px] flex-1"
+                      className="relative flex flex-col flex-1 min-w-0"
                     >
                       {nowTopPx !== null && (
                         <div

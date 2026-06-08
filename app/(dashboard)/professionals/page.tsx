@@ -26,8 +26,7 @@ export default function ProfessionalsPage() {
         subtitle="Equipe e configurações de atendimento"
         actions={
           <Link
-            href="/settings"
-            title="Novos profissionais são criados em Configurações"
+            href="/professionals/new"
             className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
           >
             <UserPlus className="size-3.5" />

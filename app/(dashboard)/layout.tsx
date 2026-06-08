@@ -8,11 +8,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
       <Navbar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0 overflow-hidden">
         <Header />
-        <main className="flex flex-1 flex-col gap-4 p-6 bg-(--primary) ">
+        <main className="flex flex-1 flex-col gap-4 p-6 bg-(--primary) min-w-0 min-h-0 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </SidebarInset>
