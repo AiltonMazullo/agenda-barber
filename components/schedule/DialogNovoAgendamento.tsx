@@ -39,12 +39,21 @@ import type {
   ServicoVM,
 } from "./types";
 import type { Client } from "@/types/client.types";
+import type { AppointmentStatus } from "@/types/appointment.types";
+import { STATUS_ROTULO, STATUS_COR } from "./status";
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
 }
+
+const STATUS_OPTIONS: AppointmentStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "COMPLETED",
+  "CANCELLED",
+];
 
 export function DialogNovoAgendamento({
   open,
@@ -83,6 +92,7 @@ export function DialogNovoAgendamento({
   const [data, setData] = useState<Date | undefined>(defaultDate);
   const [hora, setHora] = useState(prefilledHora ?? "09:00");
   const [observacao, setObservacao] = useState("");
+  const [status, setStatus] = useState<AppointmentStatus>("PENDING");
 
   // Plano (UI local — ativado após confirmação)
   const [ativarPlano, setAtivarPlano] = useState(false);
@@ -126,6 +136,7 @@ export function DialogNovoAgendamento({
     setPlanoVencimento("");
     setPlanoDataInicio(new Date());
     setPlanoForma("DINHEIRO");
+    setStatus("PENDING");
   }, [open, prefilledHora, prefilledProfId, defaultDate, servicos]);
 
   // Prefill CPF do plano com o CPF do cliente selecionado
@@ -250,6 +261,7 @@ export function DialogNovoAgendamento({
       data,
       hora,
       observacao,
+      status,
       origem: "recepcao", // definida automaticamente
       planoAtivacao:
         ativarPlano && planoDataInicio
@@ -441,6 +453,37 @@ export function DialogNovoAgendamento({
               <CalendarCheck className="size-3.5" />
               Verificar Horário
             </button>
+
+            {/* ── Situação ── */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Situação
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {STATUS_OPTIONS.map((st) => {
+                  const selected = status === st;
+                  return (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setStatus(st)}
+                      className={cn(
+                        "h-9 rounded-md border text-xs font-semibold transition-colors flex items-center justify-center gap-1.5",
+                        selected
+                          ? "bg-brand/15 border-brand/60 text-brand"
+                          : "border-border bg-surface-base text-muted-foreground hover:border-brand/30",
+                      )}
+                    >
+                      <span
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: STATUS_COR[st] }}
+                      />
+                      {STATUS_ROTULO[st]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* ── Observação ── */}
             <div className="space-y-1.5">

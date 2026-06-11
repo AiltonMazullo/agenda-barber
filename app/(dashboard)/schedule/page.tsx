@@ -743,9 +743,6 @@ export default function SchedulePage() {
         <DialogNovaComanda
           open={dialogComanda}
           onOpenChange={setDialogComanda}
-          agendamentos={agendamentos}
-          servicoById={servicoById}
-          profById={profById}
         />
       </div>
     </>

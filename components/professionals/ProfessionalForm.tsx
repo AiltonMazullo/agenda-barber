@@ -24,12 +24,17 @@ export function ProfessionalForm({
   initialConfig,
   onSave,
   onBack,
+  featured,
+  onFeaturedChange,
 }: {
   initialBasic: ProfessionalBasic;
   services: Service[];
   initialConfig: ProfessionalConfig;
   onSave: (basic: ProfessionalBasic, config: ProfessionalConfig) => Promise<void>;
   onBack: () => void;
+  /** Destaque (campo do backend). Só aparece quando há `onFeaturedChange`. */
+  featured?: boolean;
+  onFeaturedChange?: (value: boolean) => void;
 }) {
   const [basic, setBasic] = useState<ProfessionalBasic>(initialBasic);
   const [config, setConfig] = useState<ProfessionalConfig>(initialConfig);
@@ -95,6 +100,8 @@ export function ProfessionalForm({
           active={config.active}
           hidden={config.hidden}
           onChange={updateConfig}
+          featured={featured}
+          onFeaturedChange={onFeaturedChange}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

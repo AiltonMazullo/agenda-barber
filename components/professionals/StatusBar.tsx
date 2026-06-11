@@ -7,10 +7,15 @@ export function StatusBar({
   active,
   hidden,
   onChange,
+  featured,
+  onFeaturedChange,
 }: {
   active: boolean;
   hidden: boolean;
   onChange: (patch: { active?: boolean; hidden?: boolean }) => void;
+  /** Destaque (campo do backend). Só aparece quando há `onFeaturedChange`. */
+  featured?: boolean;
+  onFeaturedChange?: (value: boolean) => void;
 }) {
   const options: { value: boolean; label: string }[] = [
     { value: true, label: "Ativo" },
@@ -48,6 +53,7 @@ export function StatusBar({
         <Checkbox
           checked={hidden}
           onCheckedChange={(c) => onChange({ hidden: c === true })}
+          className="cursor-pointer"
         />
         <span className="flex flex-col">
           <span className="text-sm text-foreground">Profissional oculto</span>
@@ -56,6 +62,22 @@ export function StatusBar({
           </span>
         </span>
       </label>
+
+      {onFeaturedChange && (
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <Checkbox
+            checked={featured}
+            onCheckedChange={(c) => onFeaturedChange(c === true)}
+            className="cursor-pointer"
+          />
+          <span className="flex flex-col">
+            <span className="text-sm text-foreground">Destaque</span>
+            <span className="text-[11px] text-muted-foreground">
+              Aparece primeiro e com selo para o cliente.
+            </span>
+          </span>
+        </label>
+      )}
     </div>
   );
 }

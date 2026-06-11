@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { UserPlus, Pencil, Mail, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -17,7 +18,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 
 export default function ProfessionalsPage() {
   const { barbershop } = useAuth();
-  const { employees, isLoading } = useEmployees(barbershop?.id);
+  const { employees, isLoading, setFeatured } = useEmployees(barbershop?.id);
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
@@ -41,10 +42,12 @@ export default function ProfessionalsPage() {
             <Table>
               <TableHeader className="border-t border-border">
                 <TableRow className="border-border hover:bg-transparent">
-                  {["Profissional", "Contato", ""].map((col, i) => (
+                  {["Profissional", "Contato", "Destaque", ""].map((col, i) => (
                     <TableHead
                       key={col || `c-${i}`}
-                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+                      className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto ${
+                        col === "Destaque" ? "text-center" : ""
+                      }`}
                     >
                       {col}
                     </TableHead>
@@ -54,13 +57,13 @@ export default function ProfessionalsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={3} className="py-4">
+                    <TableCell colSpan={4} className="py-4">
                       <Loading />
                     </TableCell>
                   </TableRow>
                 ) : employees.length === 0 ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={3} className="py-4">
+                    <TableCell colSpan={4} className="py-4">
                       <EmptyState message="Nenhum profissional cadastrado." />
                     </TableCell>
                   </TableRow>
@@ -90,6 +93,18 @@ export default function ProfessionalsPage() {
                             {e.phone}
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={e.featured}
+                            onCheckedChange={(c) =>
+                              setFeatured(e.id, c === true)
+                            }
+                            aria-label="Marcar como destaque"
+                            className="cursor-pointer"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4">
                         <Link

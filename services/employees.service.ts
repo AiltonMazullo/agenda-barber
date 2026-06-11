@@ -39,4 +39,16 @@ export const employeesService = {
   async remove(barbershopId: string, id: string): Promise<void> {
     await api.delete<void>(`/barbershops/${barbershopId}/employees/${id}`);
   },
+
+  async setFeatured(
+    barbershopId: string,
+    id: string,
+    featured: boolean,
+  ): Promise<Employee> {
+    const { data } = await api.patch<Employee>(
+      `/barbershops/${barbershopId}/employees/${id}/featured`,
+      { featured },
+    );
+    return data;
+  },
 };

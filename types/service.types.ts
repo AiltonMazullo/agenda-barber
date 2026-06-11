@@ -10,6 +10,8 @@ export interface Service {
   durationMin: number;
   priceInCents: number;
   hex: string | null;
+  /** Serviço marcado como destaque (aparece primeiro e com badge "Em alta"). */
+  featured: boolean;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;

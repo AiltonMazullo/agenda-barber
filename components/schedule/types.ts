@@ -77,6 +77,8 @@ export interface NovoAgendamentoInput {
   observacao?: string;
   /** Definida automaticamente pelo sistema (recepção no painel). */
   origem: Origem;
+  /** Situação escolhida pelo dono ao cadastrar (default "PENDING"/Agendado). */
+  status?: AppointmentStatus;
   /** Presente apenas quando o usuário optou por ativar um plano. */
   planoAtivacao?: PlanoAtivacaoInput;
 }

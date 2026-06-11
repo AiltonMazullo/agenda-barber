@@ -18,7 +18,9 @@ export default function ProfessionalEditPage() {
   const router = useRouter();
 
   const { barbershop } = useAuth();
-  const { employees, isLoading, update } = useEmployees(barbershop?.id);
+  const { employees, isLoading, update, setFeatured } = useEmployees(
+    barbershop?.id,
+  );
   const { services } = useServices(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 
@@ -93,6 +95,8 @@ export default function ProfessionalEditPage() {
       initialConfig={config}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}
+      featured={employee.featured}
+      onFeaturedChange={(v) => setFeatured(employee.id, v)}
     />
   );
 }

@@ -100,7 +100,7 @@ export default function AgendarPage({ params }: PageProps) {
   const [employeesError, setEmployeesError] = useState<string | null>(null);
 
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null,
   );
@@ -192,13 +192,14 @@ export default function AgendarPage({ params }: PageProps) {
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
-    if (step !== 4 || !barbershop || !selectedService || !date) return;
+    const firstService = selectedServices[0];
+    if (step !== 4 || !barbershop || !firstService || !date) return;
     let active = true;
     setLoadingSlots(true);
     availabilityService
       .getAvailableSlots(barbershop.id, {
         employeeId: anyEmployee ? undefined : selectedEmployee?.id,
-        serviceId: selectedService.id,
+        serviceId: firstService.id,
         date: dateToISODate(date),
       })
       .then((s) => {
@@ -213,7 +214,7 @@ export default function AgendarPage({ params }: PageProps) {
     return () => {
       active = false;
     };
-  }, [step, barbershop, selectedService, selectedEmployee, anyEmployee, date]);
+  }, [step, barbershop, selectedServices, selectedEmployee, anyEmployee, date]);
 
   // Salvaguarda: se a data é hoje, desabilita horários que já passaram.
   const busy = useMemo(() => {
@@ -236,7 +237,7 @@ export default function AgendarPage({ params }: PageProps) {
   }
 
   async function handleConfirm() {
-    if (!barbershop || !selectedService || !date || !time) return;
+    if (!barbershop || selectedServices.length === 0 || !date || !time) return;
 
     // "Sem preferência" → sorteia um profissional da filial (o backend exige
     // employeeId). Caso específico → usa o escolhido.
@@ -258,23 +259,33 @@ export default function AgendarPage({ params }: PageProps) {
     }
 
     const [hh, mm] = time.split(":").map((n) => parseInt(n, 10));
-    const scheduledAtDate = new Date(date);
-    scheduledAtDate.setHours(hh, mm, 0, 0);
+    const baseStart = new Date(date);
+    baseStart.setHours(hh, mm, 0, 0);
 
-    if (scheduledAtDate.getTime() < Date.now()) {
+    if (baseStart.getTime() < Date.now()) {
       toast.error("Não é possível agendar em um horário que já passou.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const appt = await clientAppointmentsService.create(barbershop.id, {
-        serviceId: selectedService.id,
-        employeeId: effectiveEmployee.id,
-        scheduledAt: scheduledAtDate.toISOString(),
-      });
-      setLocalEmployee(appt.id, effectiveEmployee.id);
-      toast.success("Agendamento confirmado!");
+      // O backend cria um agendamento por serviço; encadeamos os serviços em
+      // sequência a partir do horário escolhido (cada um após o anterior).
+      let cursor = new Date(baseStart);
+      for (const svc of selectedServices) {
+        const appt = await clientAppointmentsService.create(barbershop.id, {
+          serviceId: svc.id,
+          employeeId: effectiveEmployee.id,
+          scheduledAt: cursor.toISOString(),
+        });
+        setLocalEmployee(appt.id, effectiveEmployee.id);
+        cursor = new Date(cursor.getTime() + svc.durationMin * 60000);
+      }
+      toast.success(
+        selectedServices.length > 1
+          ? "Agendamentos confirmados!"
+          : "Agendamento confirmado!",
+      );
       router.push(`/client/${slug}/agendamentos`);
     } catch (err) {
       toast.error(
@@ -288,7 +299,7 @@ export default function AgendarPage({ params }: PageProps) {
   const canAdvance =
     (step === 1 && selectedBranch !== null) ||
     (step === 2 && (anyEmployee || selectedEmployee !== null)) ||
-    (step === 3 && selectedService !== null) ||
+    (step === 3 && selectedServices.length > 0) ||
     (step === 4 && date !== undefined && time !== null) ||
     step === 5;
 
@@ -371,21 +382,32 @@ export default function AgendarPage({ params }: PageProps) {
           {step === 3 && (
             <StepWrapper
               icon={<Scissors className="size-4" />}
-              title="Escolha o serviço"
+              title="Escolha os serviços"
             >
               {services.length === 0 ? (
                 <EmptyState message="Esta barbearia ainda não cadastrou serviços." />
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {services.map((s) => (
-                    <ServicoSelectCard
-                      key={s.id}
-                      service={s}
-                      selected={selectedService?.id === s.id}
-                      onSelect={() => setSelectedService(s)}
-                    />
-                  ))}
-                </div>
+                <>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    Você pode escolher mais de um serviço.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {services.map((s) => (
+                      <ServicoSelectCard
+                        key={s.id}
+                        service={s}
+                        selected={selectedServices.some((x) => x.id === s.id)}
+                        onSelect={() =>
+                          setSelectedServices((prev) =>
+                            prev.some((x) => x.id === s.id)
+                              ? prev.filter((x) => x.id !== s.id)
+                              : [...prev, s],
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </StepWrapper>
           )}
@@ -431,7 +453,7 @@ export default function AgendarPage({ params }: PageProps) {
             </StepWrapper>
           )}
 
-          {step === 5 && selectedService && (
+          {step === 5 && selectedServices.length > 0 && (
             <StepWrapper
               icon={<CheckCircle2 className="size-4" />}
               title="Confirme seu agendamento"
@@ -454,7 +476,10 @@ export default function AgendarPage({ params }: PageProps) {
                         "—"
                   }
                 />
-                <ResumoLine label="Serviço" value={selectedService.name} />
+                <ResumoLine
+                  label={selectedServices.length > 1 ? "Serviços" : "Serviço"}
+                  value={selectedServices.map((s) => s.name).join(", ")}
+                />
                 <ResumoLine
                   label="Data"
                   value={
@@ -470,12 +495,17 @@ export default function AgendarPage({ params }: PageProps) {
                 <ResumoLine label="Horário" value={time ?? "—"} />
                 <ResumoLine
                   label="Duração"
-                  value={`${selectedService.durationMin} min`}
+                  value={`${selectedServices.reduce(
+                    (a, s) => a + s.durationMin,
+                    0,
+                  )} min`}
                 />
                 <div className="pt-3 border-t border-border-subtle flex items-center justify-between">
                   <span className="text-sm font-bold">Total</span>
                   <span className="text-lg font-bold text-brand">
-                    {formatBRLFromCents(selectedService.priceInCents)}
+                    {formatBRLFromCents(
+                      selectedServices.reduce((a, s) => a + s.priceInCents, 0),
+                    )}
                   </span>
                 </div>
               </div>

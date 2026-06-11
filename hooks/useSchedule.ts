@@ -156,6 +156,7 @@ export function useSchedule(
           const cli = clients.find((c) => c.id === input.clientId);
           replaceLocal(created.id, {
             employeeId: sv.profissionalId || null,
+            status: input.status ?? created.status,
             employee: emp
               ? { id: emp.id, name: emp.name, appName: emp.appName }
               : null,
@@ -163,13 +164,17 @@ export function useSchedule(
               ? { id: cli.id, name: cli.name, email: cli.email, phone: cli.phone }
               : created.client,
           });
+          // Persiste a situação escolhida (o backend cria como PENDING).
+          if (input.status && input.status !== "PENDING") {
+            await updateStatus(created.id, input.status);
+          }
           if (!first) first = created;
         }
         cursorMin += sv.duracao;
       }
       return first;
     },
-    [create, replaceLocal, employees, clients],
+    [create, replaceLocal, updateStatus, employees, clients],
   );
 
   /**

@@ -102,5 +102,28 @@ export function useEmployees(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { employees, isLoading, create, update, remove };
+  const setFeatured = useCallback(
+    async (id: string, featured: boolean) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await employeesService.setFeatured(
+          barbershopId,
+          id,
+          featured,
+        );
+        setEmployees((prev) =>
+          prev.map((e) => (e.id === id ? updated : e)),
+        );
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao alterar destaque.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  return { employees, isLoading, create, update, remove, setFeatured };
 }

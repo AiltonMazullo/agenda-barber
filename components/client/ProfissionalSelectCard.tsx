@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Shuffle } from "lucide-react";
+import { FeaturedFlag } from "./FeaturedFlag";
 import type { Employee } from "@/types/employee.types";
 
 interface ProfissionalSelectCardProps {
@@ -36,12 +37,13 @@ export function ProfissionalSelectCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group text-left rounded-lg border p-4 transition-all cursor-pointer flex items-center gap-3 ${
+      className={`group relative text-left rounded-lg border p-4 transition-all cursor-pointer flex items-center gap-3 ${
         selected
           ? "border-brand bg-brand/5"
           : "border-border-subtle bg-surface-raised hover:border-brand/40"
       }`}
     >
+      {!isAny && employee.featured && <FeaturedFlag label="Destaque" />}
       <div
         className={`size-11 rounded-full grid place-items-center text-sm font-bold shrink-0 ${
           isAny ? "bg-surface-base text-muted-foreground" : "bg-brand/15 text-brand"

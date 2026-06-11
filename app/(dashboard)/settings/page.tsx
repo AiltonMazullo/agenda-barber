@@ -1857,9 +1857,8 @@ function DialogProfissional({
 
 function TabProfissionais() {
   const { barbershop } = useAuth();
-  const { employees, isLoading, create, update, remove } = useEmployees(
-    barbershop?.id,
-  );
+  const { employees, isLoading, create, update, remove, setFeatured } =
+    useEmployees(barbershop?.id);
   const { branches } = useBranches(barbershop?.id);
   const { groups } = useAccessGroups(barbershop?.id);
   const [dialog, setDialog] = useState(false);
@@ -1908,27 +1907,31 @@ function TabProfissionais() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {["Nome", "Grupo", "Filial", "Contato", ""].map((h) => (
-                  <TableHead
-                    key={h}
-                    className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
-                  >
-                    {h}
-                  </TableHead>
-                ))}
+                {["Nome", "Grupo", "Filial", "Contato", "Destaque", ""].map(
+                  (h) => (
+                    <TableHead
+                      key={h}
+                      className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto ${
+                        h === "Destaque" ? "text-center" : ""
+                      }`}
+                    >
+                      {h}
+                    </TableHead>
+                  ),
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="py-4">
+                  <td colSpan={6} className="py-4">
                     <Loading />
                   </td>
                 </tr>
               ) : employees.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="py-12 text-center text-sm text-text-faint"
                   >
                     Nenhum profissional cadastrado.
@@ -1960,6 +1963,16 @@ function TabProfissionais() {
                       <p className="text-xs text-text-faint mt-0.5">
                         {p.phone}
                       </p>
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={p.featured}
+                          onCheckedChange={(c) => setFeatured(p.id, c === true)}
+                          aria-label="Marcar como destaque"
+                          className="cursor-pointer"
+                        />
+                      </div>
                     </TableCell>
                     <TableCell className="px-5 py-4">
                       <div className="flex items-center gap-2">
@@ -2212,9 +2225,8 @@ function DialogServico({
 
 function TabServicos() {
   const { barbershop } = useAuth();
-  const { services, isLoading, create, update, remove } = useServices(
-    barbershop?.id,
-  );
+  const { services, isLoading, create, update, remove, setFeatured } =
+    useServices(barbershop?.id);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const pag = usePagination(services, 10);
@@ -2256,11 +2268,13 @@ function TabServicos() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {["", "Serviço", "Descrição", "Duração", "Preço", ""].map(
+                {["", "Serviço", "Descrição", "Duração", "Preço", "Destaque", ""].map(
                   (h, i) => (
                     <TableHead
                       key={i}
-                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
+                      className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto ${
+                        h === "Destaque" ? "text-center" : ""
+                      }`}
                     >
                       {h}
                     </TableHead>
@@ -2271,14 +2285,14 @@ function TabServicos() {
             <TableBody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-4">
+                  <td colSpan={7} className="py-4">
                     <Loading />
                   </td>
                 </tr>
               ) : services.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="py-12 text-center text-sm text-text-faint"
                   >
                     Nenhum serviço cadastrado.
@@ -2307,6 +2321,16 @@ function TabServicos() {
                     </TableCell>
                     <TableCell className="px-5 py-4 text-brand font-semibold text-sm">
                       {formatBRL(s.priceInCents)}
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={s.featured}
+                          onCheckedChange={(c) => setFeatured(s.id, c === true)}
+                          aria-label="Marcar serviço como destaque"
+                          className="cursor-pointer"
+                        />
+                      </div>
                     </TableCell>
                     <TableCell className="px-5 py-4">
                       <div className="flex items-center gap-2">

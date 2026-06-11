@@ -22,6 +22,8 @@ export interface Employee {
   uf: string;
   number: string;
   complement: string | null;
+  /** Profissional marcado como destaque (aparece primeiro e com badge). */
+  featured: boolean;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
