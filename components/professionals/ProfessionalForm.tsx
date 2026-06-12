@@ -26,6 +26,8 @@ export function ProfessionalForm({
   onBack,
   featured,
   onFeaturedChange,
+  photoUrl,
+  onUploadPhoto,
 }: {
   initialBasic: ProfessionalBasic;
   services: Service[];
@@ -35,6 +37,10 @@ export function ProfessionalForm({
   /** Destaque (campo do backend). Só aparece quando há `onFeaturedChange`. */
   featured?: boolean;
   onFeaturedChange?: (value: boolean) => void;
+  /** Foto vinda do backend (avatarUrl completo). Tem prioridade no preview. */
+  photoUrl?: string | null;
+  /** Upload real da foto (rota de avatar). Sem ele, preview local. */
+  onUploadPhoto?: (file: File) => void | Promise<void>;
 }) {
   const [basic, setBasic] = useState<ProfessionalBasic>(initialBasic);
   const [config, setConfig] = useState<ProfessionalConfig>(initialConfig);
@@ -112,11 +118,12 @@ export function ProfessionalForm({
             onType={(t) => updateConfig({ type: t })}
           />
           <MidiaDocumentos
-            photoDataUrl={config.photoDataUrl}
+            photoDataUrl={photoUrl ?? config.photoDataUrl}
             emergencyContactName={config.emergencyContactName}
             emergencyContactPhone={config.emergencyContactPhone}
             contractFileName={config.contractFileName}
             onChange={updateConfig}
+            onUploadPhoto={onUploadPhoto}
           />
         </div>
 

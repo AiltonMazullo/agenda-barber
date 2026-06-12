@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loading } from "@/components/shared";
@@ -30,10 +31,22 @@ const EMPTY_BASIC: ProfessionalBasic = {
 export default function ProfessionalNovoPage() {
   const router = useRouter();
   const { barbershop } = useAuth();
-  const { create } = useEmployees(barbershop?.id);
+  const { create, uploadAvatar } = useEmployees(barbershop?.id);
   const { branches } = useBranches(barbershop?.id);
   const { groups } = useAccessGroups(barbershop?.id);
   const { services } = useServices(barbershop?.id);
+
+  // Foto escolhida antes do profissional existir: preview local agora,
+  // upload real logo após o create (quando há ID pra rota de avatar).
+  const pendingPhoto = useRef<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  function handlePhotoSelected(file: File) {
+    pendingPhoto.current = file;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(String(reader.result));
+    reader.readAsDataURL(file);
+  }
 
   if (!barbershop) {
     return (
@@ -80,7 +93,15 @@ export default function ProfessionalNovoPage() {
 
     const created = await create(payload);
     if (created) {
-      professionalConfigStore.set(barbershop.id, created.id, config);
+      // Preview local vai junto na config — fallback de exibição caso o
+      // upload pra API falhe (ex.: rota ainda não deployada).
+      professionalConfigStore.set(barbershop.id, created.id, {
+        ...config,
+        photoDataUrl: photoPreview ?? config.photoDataUrl,
+      });
+      if (pendingPhoto.current) {
+        await uploadAvatar(created.id, pendingPhoto.current);
+      }
       router.push(`/professionals/${created.id}`);
     }
   }
@@ -92,6 +113,8 @@ export default function ProfessionalNovoPage() {
       initialConfig={defaultProfessionalConfig()}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}
+      photoUrl={photoPreview}
+      onUploadPhoto={handlePhotoSelected}
     />
   );
 }

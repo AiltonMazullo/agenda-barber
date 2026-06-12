@@ -5,7 +5,9 @@ import { useServices } from "@/hooks/useServices";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
 import { initials, isoToMin } from "@/components/schedule/helpers";
+import { apiAssetUrl } from "@/lib/api";
 import type {
   AgendamentoVM,
   NovoAgendamentoInput,
@@ -57,6 +59,12 @@ export function useSchedule(
 
   const [overlay, setOverlay] = useState<Record<string, Overlay>>({});
 
+  // Foto local (cadastro) como fallback enquanto o backend não tem avatarUrl.
+  const localPhotos = useLocalProfessionalPhotos(
+    barbershopId,
+    employees.map((e) => e.id),
+  );
+
   // ─── Serviços VM ──────────────────────────────────────────────────────────
   const servicos = useMemo<ServicoVM[]>(
     () =>
@@ -85,9 +93,10 @@ export function useSchedule(
           id: e.id,
           nome: e.appName || e.name,
           avatar: initials(e.appName || e.name),
+          fotoUrl: apiAssetUrl(e.avatarUrl) ?? localPhotos[e.id] ?? null,
           ativo: true,
         })),
-    [employees, branchId],
+    [employees, branchId, localPhotos],
   );
 
   /** Nome de qualquer profissional (independente da filial), para a lista. */

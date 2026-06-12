@@ -2,6 +2,7 @@
 
 import { Check, Shuffle } from "lucide-react";
 import { FeaturedFlag } from "./FeaturedFlag";
+import { apiAssetUrl } from "@/lib/api";
 import type { Employee } from "@/types/employee.types";
 
 interface ProfissionalSelectCardProps {
@@ -9,12 +10,15 @@ interface ProfissionalSelectCardProps {
   employee: Employee | null;
   selected: boolean;
   onSelect: () => void;
+  /** Foto resolvida externamente (ex.: fallback local); prioridade sobre o avatarUrl. */
+  photoUrl?: string | null;
 }
 
 export function ProfissionalSelectCard({
   employee,
   selected,
   onSelect,
+  photoUrl,
 }: ProfissionalSelectCardProps) {
   const isAny = employee === null;
   const displayName = isAny
@@ -33,6 +37,10 @@ export function ProfissionalSelectCard({
         .join("")
         .toUpperCase();
 
+  const fotoUrl = isAny
+    ? null
+    : (photoUrl ?? apiAssetUrl(employee.avatarUrl));
+
   return (
     <button
       type="button"
@@ -45,11 +53,12 @@ export function ProfissionalSelectCard({
     >
       {!isAny && employee.featured && <FeaturedFlag label="Destaque" />}
       <div
-        className={`size-11 rounded-full grid place-items-center text-sm font-bold shrink-0 ${
+        className={`size-11 rounded-full grid place-items-center text-sm font-bold shrink-0 bg-cover bg-center overflow-hidden ${
           isAny ? "bg-surface-base text-muted-foreground" : "bg-brand/15 text-brand"
         }`}
+        style={fotoUrl ? { backgroundImage: `url(${fotoUrl})` } : undefined}
       >
-        {isAny ? <Shuffle className="size-5" /> : initials}
+        {isAny ? <Shuffle className="size-5" /> : !fotoUrl && initials}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-foreground truncate">

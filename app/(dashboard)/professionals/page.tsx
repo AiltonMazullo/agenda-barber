@@ -15,10 +15,25 @@ import {
 import { PageHeader, EmptyState, Loading } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
+import { apiAssetUrl } from "@/lib/api";
+
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+}
 
 export default function ProfessionalsPage() {
   const { barbershop } = useAuth();
   const { employees, isLoading, setFeatured } = useEmployees(barbershop?.id);
+  const localPhotos = useLocalProfessionalPhotos(
+    barbershop?.id,
+    employees.map((e) => e.id),
+  );
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
@@ -68,19 +83,42 @@ export default function ProfessionalsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  employees.map((e) => (
+                  employees.map((e) => {
+                    const foto =
+                      apiAssetUrl(e.avatarUrl) ?? localPhotos[e.id] ?? null;
+                    return (
                     <TableRow
                       key={e.id}
                       className="border-border hover:bg-surface-elevated/50 transition-colors"
                     >
                       <TableCell className="px-4 py-4">
-                        <Link
-                          href={`/professionals/${e.id}`}
-                          className="font-semibold text-foreground hover:text-brand transition-colors text-sm"
-                        >
-                          {e.name}
-                        </Link>
-                        <p className="text-xs text-text-faint">{e.appName}</p>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="size-9 rounded-full bg-brand/15 border border-brand/30 grid place-items-center shrink-0 bg-cover bg-center overflow-hidden"
+                            style={
+                              foto
+                                ? { backgroundImage: `url(${foto})` }
+                                : undefined
+                            }
+                          >
+                            {!foto && (
+                              <span className="text-[10px] font-bold text-brand">
+                                {getInitials(e.appName || e.name)}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <Link
+                              href={`/professionals/${e.id}`}
+                              className="font-semibold text-foreground hover:text-brand transition-colors text-sm"
+                            >
+                              {e.name}
+                            </Link>
+                            <p className="text-xs text-text-faint">
+                              {e.appName}
+                            </p>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
@@ -116,7 +154,8 @@ export default function ProfessionalsPage() {
                         </Link>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

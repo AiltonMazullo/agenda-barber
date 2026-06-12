@@ -113,10 +113,19 @@ export function ProfissionalColuna({
   return (
     <div className="flex flex-col flex-1 min-w-0">
       <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle h-[92px] px-2 flex flex-col items-center justify-center gap-1">
-        <div className="size-8 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center shrink-0">
-          <span className="text-[10px] font-bold text-brand">
-            {profissional.avatar}
-          </span>
+        <div
+          className="size-8 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center shrink-0 bg-cover bg-center overflow-hidden"
+          style={
+            profissional.fotoUrl
+              ? { backgroundImage: `url(${profissional.fotoUrl})` }
+              : undefined
+          }
+        >
+          {!profissional.fotoUrl && (
+            <span className="text-[10px] font-bold text-brand">
+              {profissional.avatar}
+            </span>
+          )}
         </div>
         <span className="text-[11px] font-bold text-foreground leading-none truncate max-w-full">
           {profissional.nome}

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useServices } from "@/hooks/useServices";
 import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
+import { apiAssetUrl } from "@/lib/api";
 import type { ProfessionalConfig } from "@/types/professional-config.types";
 import type { UpdateEmployeePayload } from "@/types/employee.types";
 
@@ -18,9 +19,8 @@ export default function ProfessionalEditPage() {
   const router = useRouter();
 
   const { barbershop } = useAuth();
-  const { employees, isLoading, update, setFeatured } = useEmployees(
-    barbershop?.id,
-  );
+  const { employees, isLoading, update, setFeatured, uploadAvatar } =
+    useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 
@@ -97,6 +97,8 @@ export default function ProfessionalEditPage() {
       onBack={() => router.push("/professionals")}
       featured={employee.featured}
       onFeaturedChange={(v) => setFeatured(employee.id, v)}
+      photoUrl={apiAssetUrl(employee.avatarUrl)}
+      onUploadPhoto={(file) => void uploadAvatar(employee.id, file)}
     />
   );
 }

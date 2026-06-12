@@ -23,6 +23,8 @@ import { HoraGrid } from "@/components/client/HoraGrid";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
+import { apiAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { DatePickerField } from "@/components/shared";
 import { Loading } from "@/components/shared/Loading";
@@ -119,37 +121,24 @@ export default function AgendarPage({ params }: PageProps) {
 
     async function loadCatalog(bs: NonNullable<typeof barbershop>) {
       // `GET /barbershops/:slug` já traz `branches`, `services` e `employees`
-      // aninhados (visão do cliente). Usamos esses; só caímos nas rotas
-      // dedicadas se algo não vier aninhado.
+      // aninhados (visão do cliente). Usamos esses; se algo não veio aninhado
+      // (ex.: o contexto caiu no fallback da listagem), refazemos a busca pelo
+      // slug — é a única rota que expõe o catálogo para o token de cliente.
       let brs = bs.branches ?? [];
       let svc = bs.services ?? [];
       let emp = bs.employees ?? [];
 
-      if (brs.length === 0) {
+      if (brs.length === 0 || svc.length === 0 || emp.length === 0) {
         try {
-          brs = await clientCatalogService.listBranches(bs.id);
+          const catalog = await clientCatalogService.getCatalog(bs.slug);
+          if (brs.length === 0) brs = catalog.branches;
+          if (svc.length === 0) svc = catalog.services;
+          if (emp.length === 0) emp = catalog.employees;
         } catch (err) {
-          setBranchesError(
-            err instanceof Error ? err.message : "Falha ao carregar filiais.",
-          );
-        }
-      }
-      if (svc.length === 0) {
-        try {
-          svc = await clientCatalogService.listServices(bs.id);
-        } catch {
-          /* serviços são complemento — silencioso */
-        }
-      }
-      if (emp.length === 0) {
-        try {
-          emp = await clientCatalogService.listEmployees(bs.id);
-        } catch (err) {
-          setEmployeesError(
-            err instanceof Error
-              ? err.message
-              : "Falha ao carregar profissionais.",
-          );
+          const msg =
+            err instanceof Error ? err.message : "Falha ao carregar o catálogo.";
+          if (brs.length === 0) setBranchesError(msg);
+          if (emp.length === 0) setEmployeesError(msg);
         }
       }
 
@@ -168,6 +157,13 @@ export default function AgendarPage({ params }: PageProps) {
       active = false;
     };
   }, [barbershop]);
+
+  // Foto local (cadastro do dono) como fallback enquanto o backend não
+  // persiste o avatarUrl — válida quando dono e cliente usam o mesmo navegador.
+  const localPhotos = useLocalProfessionalPhotos(
+    barbershop?.id,
+    employees.map((e) => e.id),
+  );
 
   // Há filiais? Se não (caso raro), o passo "Filial" é pulado e todos os
   // profissionais ficam disponíveis.
@@ -367,6 +363,9 @@ export default function AgendarPage({ params }: PageProps) {
                     <ProfissionalSelectCard
                       key={e.id}
                       employee={e}
+                      photoUrl={
+                        apiAssetUrl(e.avatarUrl) ?? localPhotos[e.id] ?? null
+                      }
                       selected={!anyEmployee && selectedEmployee?.id === e.id}
                       onSelect={() => {
                         setAnyEmployee(false);

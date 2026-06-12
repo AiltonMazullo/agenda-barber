@@ -1,33 +1,48 @@
 import { clientApi } from "@/lib/client-api";
+import type { Barbershop } from "@/types/barbershop.types";
 import type { Service } from "@/types/service.types";
 import type { Employee } from "@/types/employee.types";
 import type { Branch } from "@/types/branch.types";
 
 /**
  * Catálogo (filiais + serviços + profissionais) do fluxo de agendamento do
- * cliente. Usa `clientApi` — no `/agendar` o cliente está sempre autenticado
- * (middleware exige `sm_client_token`), então enviamos o token dele, que é a
- * credencial válida para ler esses recursos.
+ * cliente. A única rota que expõe esses dados para o token de cliente é
+ * `GET /barbershops/:slug`, que devolve a barbearia com `branches`, `services`
+ * e `employees` aninhados — as rotas dedicadas (/branches, /employees) exigem
+ * token de dono e retornam vazio/404 para clientes.
  */
+async function fetchBySlug(slug: string): Promise<Barbershop> {
+  const { data } = await clientApi.get<Barbershop>(`/barbershops/${slug}`);
+  return data;
+}
+
 export const clientCatalogService = {
-  async listBranches(barbershopId: string): Promise<Branch[]> {
-    const { data } = await clientApi.get<Branch[]>(
-      `/barbershops/${barbershopId}`,
-    );
-    return data;
+  async listBranches(slug: string): Promise<Branch[]> {
+    const shop = await fetchBySlug(slug);
+    return shop.branches ?? [];
   },
 
-  async listServices(barbershopId: string): Promise<Service[]> {
-    const { data } = await clientApi.get<Service[]>(
-      `/barbershops/${barbershopId}/services`,
-    );
-    return data;
+  async listServices(slug: string): Promise<Service[]> {
+    const shop = await fetchBySlug(slug);
+    return shop.services ?? [];
   },
 
-  async listEmployees(barbershopId: string): Promise<Employee[]> {
-    const { data } = await clientApi.get<Employee[]>(
-      `/barbershops/${barbershopId}/employees`,
-    );
-    return data;
+  async listEmployees(slug: string): Promise<Employee[]> {
+    const shop = await fetchBySlug(slug);
+    return shop.employees ?? [];
+  },
+
+  /** Busca tudo de uma vez (uma request só). */
+  async getCatalog(slug: string): Promise<{
+    branches: Branch[];
+    services: Service[];
+    employees: Employee[];
+  }> {
+    const shop = await fetchBySlug(slug);
+    return {
+      branches: shop.branches ?? [],
+      services: shop.services ?? [],
+      employees: shop.employees ?? [],
+    };
   },
 };

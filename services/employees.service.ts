@@ -51,4 +51,22 @@ export const employeesService = {
     );
     return data;
   },
+
+  /** Envia a foto de perfil (campo `avatar`, JPEG/PNG/WebP até 2MB). */
+  async uploadAvatar(
+    barbershopId: string,
+    id: string,
+    file: File,
+  ): Promise<Employee> {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const { data } = await api.patch<Employee>(
+      `/barbershops/${barbershopId}/employees/${id}/avatar`,
+      formData,
+      // Sobrescreve o Content-Type JSON default da instância; o axios
+      // completa o boundary do multipart automaticamente.
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return data;
+  },
 };

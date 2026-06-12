@@ -20,12 +20,18 @@ export function MidiaDocumentos({
   emergencyContactPhone,
   contractFileName,
   onChange,
+  onUploadPhoto,
 }: {
   photoDataUrl: string | null;
   emergencyContactName: string;
   emergencyContactPhone: string;
   contractFileName: string | null;
   onChange: (patch: MidiaPatch) => void;
+  /**
+   * Upload real da foto (rota de avatar do backend). Quando presente, o
+   * arquivo é enviado pra API; sem ele, cai no preview local (data URL).
+   */
+  onUploadPhoto?: (file: File) => void | Promise<void>;
 }) {
   const photoInput = useRef<HTMLInputElement>(null);
   const contractInput = useRef<HTMLInputElement>(null);
@@ -34,12 +40,16 @@ export function MidiaDocumentos({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toast.error("Use uma imagem JPG ou PNG.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Use uma imagem JPG, PNG ou WebP.");
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
       toast.error("A foto deve ter no máximo 2MB.");
+      return;
+    }
+    if (onUploadPhoto) {
+      void onUploadPhoto(file);
       return;
     }
     const reader = new FileReader();
@@ -87,11 +97,13 @@ export function MidiaDocumentos({
           >
             Alterar foto
           </button>
-          <span className="text-[10px] text-text-faint">JPG/PNG até 2MB</span>
+          <span className="text-[10px] text-text-faint">
+            JPG/PNG/WebP até 2MB
+          </span>
           <input
             ref={photoInput}
             type="file"
-            accept="image/png,image/jpeg"
+            accept="image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={handlePhoto}
           />

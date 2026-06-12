@@ -111,8 +111,9 @@ export function useEmployees(barbershopId: string | undefined) {
           id,
           featured,
         );
+        // Merge: protege contra respostas parciais do PATCH.
         setEmployees((prev) =>
-          prev.map((e) => (e.id === id ? updated : e)),
+          prev.map((e) => (e.id === id ? { ...e, ...updated } : e)),
         );
         return updated;
       } catch (err) {
@@ -125,5 +126,38 @@ export function useEmployees(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { employees, isLoading, create, update, remove, setFeatured };
+  const uploadAvatar = useCallback(
+    async (id: string, file: File) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await employeesService.uploadAvatar(
+          barbershopId,
+          id,
+          file,
+        );
+        // Merge: protege contra respostas parciais do PATCH.
+        setEmployees((prev) =>
+          prev.map((e) => (e.id === id ? { ...e, ...updated } : e)),
+        );
+        toast.success("Foto de perfil atualizada.");
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao enviar a foto.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  return {
+    employees,
+    isLoading,
+    create,
+    update,
+    remove,
+    setFeatured,
+    uploadAvatar,
+  };
 }

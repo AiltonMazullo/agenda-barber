@@ -18,11 +18,13 @@ export interface ServicoVM {
   preco: number; // reais
 }
 
-/** View-model de profissional (avatar = iniciais). */
+/** View-model de profissional (avatar = iniciais; fotoUrl quando há upload). */
 export interface ProfissionalVM {
   id: string;
   nome: string;
   avatar: string;
+  /** URL completa da foto de perfil, quando cadastrada. */
+  fotoUrl?: string | null;
   ativo: boolean;
 }
 

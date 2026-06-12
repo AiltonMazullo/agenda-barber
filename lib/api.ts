@@ -21,6 +21,16 @@ import { translateApiError } from "@/utils/api-errors";
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ;
 
+/**
+ * Monta a URL completa de um asset servido pela API (ex.: avatar de
+ * profissional, cujo `avatarUrl` vem como caminho relativo "/uploads/...").
+ */
+export function apiAssetUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${BASE_URL ?? ""}${path}`;
+}
+
 // ─── Token storage (chaves compartilhadas com services/auth.service.ts) ───────
 
 const ACCESS_KEY = "sm_access_token";
