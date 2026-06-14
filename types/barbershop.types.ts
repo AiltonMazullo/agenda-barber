@@ -20,6 +20,10 @@ export interface Barbershop {
   title?: string | null;
   subtitle?: string | null;
   description?: string | null;
+  /** Categoria do negócio (Barbearia, Salão de Beleza, Manicure…). Filtro da
+   * vitrine pública; backend ainda não expõe — quando expuser, o filtro passa
+   * a ser estrito automaticamente. */
+  category?: string | null;
   createdAt: string;
   updatedAt: string;
   // ─── Relações aninhadas em `GET /barbershops/:slug` (visão do cliente) ────

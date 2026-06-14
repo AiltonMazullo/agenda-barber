@@ -58,6 +58,7 @@ import {
   companyConfigStore,
   type CompanyConfig,
 } from "@/lib/company-config-store";
+import { barbershopAppearanceStore } from "@/lib/barbershop-appearance-store";
 import type {
   Branch,
   BranchPaymentConfig,
@@ -175,6 +176,7 @@ function TabEmpresa() {
   const [bannerUrls, setBannerUrls] = useState<string[]>(
     barbershop?.bannerUrls ?? [],
   );
+  const [logoCentered, setLogoCentered] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -189,8 +191,16 @@ function TabEmpresa() {
     setSubtitle(barbershop?.subtitle ?? "");
     setDescription(barbershop?.description ?? "");
     setBannerUrls(barbershop?.bannerUrls ?? []);
-    if (barbershop) setConfig(companyConfigStore.get(barbershop.id));
+    if (barbershop) {
+      setConfig(companyConfigStore.get(barbershop.id));
+      setLogoCentered(barbershopAppearanceStore.get(barbershop.id).logoCentered);
+    }
   }, [barbershop]);
+
+  function toggleLogoCentered(value: boolean) {
+    setLogoCentered(value);
+    if (barbershop) barbershopAppearanceStore.set(barbershop.id, { logoCentered: value });
+  }
 
   function toggleConfig(patch: Partial<CompanyConfig>) {
     setConfig((prev) => {
@@ -423,6 +433,17 @@ function TabEmpresa() {
                   Remover logo
                 </button>
               )}
+              <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                <Checkbox
+                  checked={logoCentered}
+                  onCheckedChange={(c) => toggleLogoCentered(c === true)}
+                  className="cursor-pointer mt-0.5"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  Exibir logo centralizada no topo da vitrine, isolada e sem
+                  fundo.
+                </span>
+              </label>
             </div>
 
             <div className="space-y-1.5">

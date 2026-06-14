@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Building2, AlertCircle } from "lucide-react";
+import { Plus, Building2, AlertCircle } from "lucide-react";
 import { barbershopsService } from "@/services/barbershops.service";
 import { BarbershopCard } from "@/components/client/BarbershopCard";
 import { BarbershopCardSkeleton } from "@/components/client/BarbershopCardSkeleton";
-import { Input } from "@/components/ui/input";
+import { BarbershopFilters } from "@/components/client/BarbershopFilters";
 import type { Barbershop } from "@/types/barbershop.types";
 
 const gridVariants = {
@@ -34,6 +34,8 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [city, setCity] = useState("");
+  const [category, setCategory] = useState("all");
 
   useEffect(() => {
     let active = true;
@@ -61,12 +63,21 @@ export default function HomePage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return barbershops;
-    return barbershops.filter(
-      (b) =>
-        b.name.toLowerCase().includes(q) || b.slug.toLowerCase().includes(q),
-    );
-  }, [barbershops, query]);
+    const c = city.trim().toLowerCase();
+    return barbershops.filter((b) => {
+      const matchesName =
+        !q ||
+        b.name.toLowerCase().includes(q) ||
+        b.slug.toLowerCase().includes(q);
+      const matchesCity = !c || (b.address ?? "").toLowerCase().includes(c);
+      // Permissivo: enquanto o backend não envia `category`, nenhuma empresa é
+      // ocultada ao escolher uma categoria; vira filtro estrito quando o campo
+      // existir.
+      const matchesCategory =
+        category === "all" || !b.category || b.category === category;
+      return matchesName && matchesCity && matchesCategory;
+    });
+  }, [barbershops, query, city, category]);
 
   return (
     <div className="min-h-screen bg-surface-base text-foreground">
@@ -80,12 +91,21 @@ export default function HomePage() {
             className="object-contain"
             priority
           />
-          <Link
-            href="/login"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Sou dono de barbearia →
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/register"
+              className="h-9 px-3 sm:px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Plus className="size-3.5" />
+              Adicionar minha empresa
+            </Link>
+            <Link
+              href="/login"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            >
+              Entrar como dono →
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -97,12 +117,12 @@ export default function HomePage() {
           className="text-center space-y-3 max-w-2xl mx-auto"
         >
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Encontre sua barbearia.
+            Encontre <span className="text-brand">salões e barbearias.</span>
             <br />
             <span className="text-brand">Agende em segundos.</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Escolha uma barbearia, faça login ou crie sua conta e agende um
+            Escolha uma empresa, faça login ou crie sua conta e agende um
             atendimento com o profissional de sua preferência.
           </p>
         </motion.section>
@@ -111,14 +131,15 @@ export default function HomePage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
-          className="max-w-xl mx-auto relative"
+          className="max-w-3xl mx-auto"
         >
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Digite o nome da barbearia…"
-            className="h-11 pl-10 bg-surface-raised border-border-subtle"
+          <BarbershopFilters
+            query={query}
+            onQueryChange={setQuery}
+            city={city}
+            onCityChange={setCity}
+            category={category}
+            onCategoryChange={setCategory}
           />
         </motion.section>
 
@@ -164,9 +185,9 @@ export default function HomePage() {
               >
                 <Building2 className="size-8 text-text-faint mx-auto" />
                 <p className="text-sm text-muted-foreground">
-                  {query
-                    ? "Nenhuma barbearia encontrada para essa busca."
-                    : "Ainda não há barbearias cadastradas."}
+                  {query || city || category !== "all"
+                    ? "Nenhuma empresa encontrada para essa busca."
+                    : "Ainda não há empresas cadastradas."}
                 </p>
               </motion.div>
             )}
