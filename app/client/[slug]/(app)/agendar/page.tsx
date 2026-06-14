@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { clientCatalogService } from "@/services/client-catalog.service";
@@ -18,12 +19,19 @@ import { clientAppointmentsService } from "@/services/client-appointments.servic
 import { availabilityService } from "@/services/availability.service";
 import { FilialSelectCard } from "@/components/client/FilialSelectCard";
 import { ServicoSelectCard } from "@/components/client/ServicoSelectCard";
+import { SelecaoResumoCard } from "@/components/client/SelecaoResumoCard";
+import { PlanoCtaCard } from "@/components/client/PlanoCtaCard";
+import { AssinanteBanner } from "@/components/client/AssinanteBanner";
+import { PlanoRegrasCard } from "@/components/client/PlanoRegrasCard";
+import { UpgradeCard } from "@/components/client/UpgradeCard";
 import { ProfissionalSelectCard } from "@/components/client/ProfissionalSelectCard";
 import { HoraGrid } from "@/components/client/HoraGrid";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
+import { useClientPlan } from "@/hooks/useClientPlan";
+import { priceServiceUnderPlan } from "@/utils/plan-pricing";
 import { apiAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { DatePickerField } from "@/components/shared";
@@ -165,6 +173,11 @@ export default function AgendarPage({ params }: PageProps) {
     employees.map((e) => e.id),
   );
 
+  // Plano/assinatura simulado (localStorage) — ajusta preços e regras do passo
+  // Serviço quando o cliente é assinante ativo.
+  const { plan } = useClientPlan(barbershop?.id);
+  const isSubscriber = plan.active;
+
   // Há filiais? Se não (caso raro), o passo "Filial" é pulado e todos os
   // profissionais ficam disponíveis.
   const hasBranches = branches.length > 0;
@@ -300,7 +313,7 @@ export default function AgendarPage({ params }: PageProps) {
     step === 5;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <Stepper step={step} hasBranches={hasBranches} />
 
       {loadingBarbershop || loadingCatalog ? (
@@ -386,27 +399,59 @@ export default function AgendarPage({ params }: PageProps) {
               {services.length === 0 ? (
                 <EmptyState message="Esta barbearia ainda não cadastrou serviços." />
               ) : (
-                <>
-                  <p className="text-xs text-muted-foreground -mt-1">
-                    Você pode escolher mais de um serviço.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {services.map((s) => (
-                      <ServicoSelectCard
-                        key={s.id}
-                        service={s}
-                        selected={selectedServices.some((x) => x.id === s.id)}
-                        onSelect={() =>
-                          setSelectedServices((prev) =>
-                            prev.some((x) => x.id === s.id)
-                              ? prev.filter((x) => x.id !== s.id)
-                              : [...prev, s],
-                          )
-                        }
-                      />
-                    ))}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      {isSubscriber
+                        ? "Selecione um ou mais serviços. Os preços e regras são ajustados conforme o seu plano ativo."
+                        : "Selecione um ou mais serviços. O tempo e o valor são somados automaticamente."}
+                    </p>
+
+                    {isSubscriber && <AssinanteBanner planName={plan.name} />}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {services.map((s) => (
+                        <ServicoSelectCard
+                          key={s.id}
+                          service={s}
+                          selected={selectedServices.some((x) => x.id === s.id)}
+                          pricing={
+                            isSubscriber
+                              ? priceServiceUnderPlan(s, plan)
+                              : undefined
+                          }
+                          onSelect={() =>
+                            setSelectedServices((prev) =>
+                              prev.some((x) => x.id === s.id)
+                                ? prev.filter((x) => x.id !== s.id)
+                                : [...prev, s],
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
                   </div>
-                </>
+
+                  <div className="space-y-4 lg:sticky lg:top-4">
+                    <SelecaoResumoCard
+                      services={selectedServices}
+                      onRemove={(id) =>
+                        setSelectedServices((prev) =>
+                          prev.filter((x) => x.id !== id),
+                        )
+                      }
+                      plan={isSubscriber ? plan : null}
+                    />
+                    {isSubscriber ? (
+                      <>
+                        <PlanoRegrasCard plan={plan} />
+                        <UpgradeCard href={`/client/${slug}/plano`} />
+                      </>
+                    ) : (
+                      <PlanoCtaCard href={`/client/${slug}/plano`} />
+                    )}
+                  </div>
+                </div>
               )}
             </StepWrapper>
           )}
@@ -457,7 +502,7 @@ export default function AgendarPage({ params }: PageProps) {
               icon={<CheckCircle2 className="size-4" />}
               title="Confirme seu agendamento"
             >
-              <div className="rounded-lg border border-border-subtle bg-surface-raised p-5 space-y-3">
+              <div className="max-w-2xl rounded-lg border border-border-subtle bg-surface-raised p-5 space-y-3">
                 <ResumoLine label="Barbearia" value={barbershop?.name ?? "—"} />
                 {hasBranches && (
                   <ResumoLine
@@ -501,9 +546,21 @@ export default function AgendarPage({ params }: PageProps) {
                 />
                 <div className="pt-3 border-t border-border-subtle flex items-center justify-between">
                   <span className="text-sm font-bold">Total</span>
-                  <span className="text-lg font-bold text-brand">
+                  <span
+                    className={`text-lg font-bold ${
+                      isSubscriber ? "text-green-500" : "text-brand"
+                    }`}
+                  >
                     {formatBRLFromCents(
-                      selectedServices.reduce((a, s) => a + s.priceInCents, 0),
+                      selectedServices.reduce(
+                        (a, s) =>
+                          a +
+                          priceServiceUnderPlan(
+                            s,
+                            isSubscriber ? plan : null,
+                          ).effectiveCents,
+                        0,
+                      ),
                     )}
                   </span>
                 </div>
@@ -511,7 +568,11 @@ export default function AgendarPage({ params }: PageProps) {
             </StepWrapper>
           )}
 
-          <div className="flex items-center justify-between pt-4">
+          <div className="relative flex items-center justify-between pt-4">
+            <span className="hidden sm:flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
+              <Lock className="size-3" />
+              Seus dados estão seguros conosco.
+            </span>
             <Button
               type="button"
               variant="outline"

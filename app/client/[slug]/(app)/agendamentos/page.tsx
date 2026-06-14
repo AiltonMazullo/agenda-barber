@@ -6,11 +6,19 @@ import { useRouter } from "next/navigation";
 import { CalendarCheck, AlertCircle, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
+import { AgendamentosHelpCard } from "@/components/client/AgendamentosHelpCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loading } from "@/components/shared/Loading";
+import { EmptyState, ListPaginationBar } from "@/components/shared";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
+import { clientCatalogService } from "@/services/client-catalog.service";
+import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
+import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import { usePagination } from "@/hooks/usePagination";
 import type { ClientAppointment } from "@/types/appointment.types";
+import type { Employee } from "@/types/employee.types";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -19,10 +27,14 @@ interface PageProps {
 export default function AgendamentosPage({ params }: PageProps) {
   const { slug } = use(params);
   const router = useRouter();
+  const { barbershop } = usePublicBarbershop();
 
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { map: apptEmployeeMap } = useAppointmentEmployeeMap();
 
   useEffect(() => {
     let active = true;
@@ -46,6 +58,34 @@ export default function AgendamentosPage({ params }: PageProps) {
       active = false;
     };
   }, []);
+
+  // Lista de profissionais (via catálogo público) para resolver o nome a partir
+  // do `employeeId` — o backend não retorna o profissional em /me/appointments.
+  useEffect(() => {
+    let active = true;
+    clientCatalogService
+      .listEmployees(slug)
+      .then((list) => {
+        if (active) setEmployees(list);
+      })
+      .catch(() => {
+        /* silencioso — sem a lista, cai em "Sem preferência" */
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug]);
+
+  const empNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    employees.forEach((e) => m.set(e.id, e.appName || e.name));
+    return m;
+  }, [employees]);
+
+  /** Profissional efetivo: do backend, senão do vínculo local (cadastro). */
+  function resolveEmployeeId(a: ClientAppointment): string | null {
+    return a.employeeId ?? apptEmployeeMap[a.id] ?? null;
+  }
 
   const { agendados, historico } = useMemo(() => {
     const now = new Date();
@@ -71,6 +111,23 @@ export default function AgendamentosPage({ params }: PageProps) {
     return { agendados, historico };
   }, [appointments]);
 
+  // Fotos locais (cadastro do dono) por profissional — fallback de exibição.
+  const employeeIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          appointments
+            .map((a) => a.employeeId ?? apptEmployeeMap[a.id] ?? null)
+            .filter((x): x is string => !!x),
+        ),
+      ),
+    [appointments, apptEmployeeMap],
+  );
+  const localPhotos = useLocalProfessionalPhotos(barbershop?.id, employeeIds);
+
+  const agendadosPg = usePagination(agendados, 10);
+  const historicoPg = usePagination(historico, 10);
+
   async function handleCancel(id: string) {
     const appt = appointments.find((a) => a.id === id);
     if (!appt) return;
@@ -87,21 +144,21 @@ export default function AgendamentosPage({ params }: PageProps) {
     }
   }
 
-  function handleRebook() {
+  function goToAgendar() {
     router.push(`/client/${slug}/agendar`);
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Meus agendamentos</h1>
         <Button
           type="button"
-          onClick={() => router.push(`/client/${slug}/agendar`)}
+          onClick={goToAgendar}
           className="bg-brand hover:bg-brand-hover text-brand-foreground font-bold cursor-pointer"
         >
           <CalendarPlus className="size-4 mr-1.5" />
-          Novo
+          Novo agendamento
         </Button>
       </div>
 
@@ -113,60 +170,111 @@ export default function AgendamentosPage({ params }: PageProps) {
           <p className="text-sm text-foreground">{error}</p>
         </div>
       ) : (
-        <Tabs defaultValue="agendados">
-          <TabsList className="w-full">
-            <TabsTrigger value="agendados">
+        <Tabs defaultValue="agendados" className="gap-6">
+          <TabsList
+            variant="line"
+            className="w-full justify-start rounded-none border-b border-border-subtle p-0"
+          >
+            <TabsTrigger
+              value="agendados"
+              className="flex-1 rounded-none px-1.5 pb-3 data-active:text-foreground after:bottom-0 after:bg-brand"
+            >
               Agendados ({agendados.length})
             </TabsTrigger>
-            <TabsTrigger value="historico">
+            <TabsTrigger
+              value="historico"
+              className="flex-1 rounded-none px-1.5 pb-3 data-active:text-foreground after:bottom-0 after:bg-brand"
+            >
               Histórico ({historico.length})
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="agendados">
+          <TabsContent value="agendados" className="space-y-4">
             {agendados.length === 0 ? (
-              <EmptyAppointments message="Você não tem agendamentos futuros." />
+              <EmptyState
+                message="Você não tem agendamentos futuros."
+                icon={<CalendarCheck className="size-10" />}
+              />
             ) : (
-              <div className="space-y-3">
-                {agendados.map((a) => (
-                  <AppointmentItem
-                    key={a.id}
-                    appointment={a}
-                    variant="upcoming"
-                    onCancel={handleCancel}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="space-y-3">
+                  {agendadosPg.paged.map((a) => {
+                    const empId = resolveEmployeeId(a);
+                    return (
+                      <AppointmentItem
+                        key={a.id}
+                        appointment={a}
+                        variant="upcoming"
+                        professionalName={
+                          empId ? empNameById.get(empId) ?? null : null
+                        }
+                        photoUrl={empId ? localPhotos[empId] ?? null : null}
+                        onCancel={handleCancel}
+                        onReschedule={goToAgendar}
+                      />
+                    );
+                  })}
+                </div>
+
+                <AgendamentosHelpCard href={`/client/${slug}/agendar`} />
+
+                <ListPaginationBar
+                  page={agendadosPg.page}
+                  pageSize={agendadosPg.pageSize}
+                  totalPages={agendadosPg.totalPages}
+                  total={agendadosPg.total}
+                  from={agendadosPg.from}
+                  to={agendadosPg.to}
+                  itemLabel="agendamentos"
+                  onPageChange={agendadosPg.goTo}
+                  onPageSizeChange={agendadosPg.changePageSize}
+                />
+              </>
             )}
           </TabsContent>
 
-          <TabsContent value="historico">
+          <TabsContent value="historico" className="space-y-4">
             {historico.length === 0 ? (
-              <EmptyAppointments message="Você ainda não tem histórico de agendamentos." />
+              <EmptyState
+                message="Você ainda não tem histórico de agendamentos."
+                icon={<CalendarCheck className="size-10" />}
+              />
             ) : (
-              <div className="space-y-3">
-                {historico.map((a) => (
-                  <AppointmentItem
-                    key={a.id}
-                    appointment={a}
-                    variant="past"
-                    onRebook={handleRebook}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="space-y-3">
+                  {historicoPg.paged.map((a) => {
+                    const empId = resolveEmployeeId(a);
+                    return (
+                      <AppointmentItem
+                        key={a.id}
+                        appointment={a}
+                        variant="past"
+                        professionalName={
+                          empId ? empNameById.get(empId) ?? null : null
+                        }
+                        photoUrl={empId ? localPhotos[empId] ?? null : null}
+                        onRebook={goToAgendar}
+                      />
+                    );
+                  })}
+                </div>
+
+                <ListPaginationBar
+                  page={historicoPg.page}
+                  pageSize={historicoPg.pageSize}
+                  totalPages={historicoPg.totalPages}
+                  total={historicoPg.total}
+                  from={historicoPg.from}
+                  to={historicoPg.to}
+                  itemLabel="agendamentos"
+                  onPageChange={historicoPg.goTo}
+                  onPageSizeChange={historicoPg.changePageSize}
+                />
+              </>
             )}
           </TabsContent>
         </Tabs>
       )}
-    </div>
-  );
-}
-
-function EmptyAppointments({ message }: { message: string }) {
-  return (
-    <div className="rounded-lg border border-border-subtle bg-surface-raised p-12 text-center space-y-2">
-      <CalendarCheck className="size-8 text-text-faint mx-auto" />
-      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }

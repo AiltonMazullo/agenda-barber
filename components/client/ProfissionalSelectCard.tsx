@@ -51,7 +51,6 @@ export function ProfissionalSelectCard({
           : "border-border-subtle bg-surface-raised hover:border-brand/40"
       }`}
     >
-      {!isAny && employee.featured && <FeaturedFlag label="Destaque" />}
       <div
         className={`size-11 rounded-full grid place-items-center text-sm font-bold shrink-0 bg-cover bg-center overflow-hidden ${
           isAny ? "bg-surface-base text-muted-foreground" : "bg-brand/15 text-brand"
@@ -66,6 +65,9 @@ export function ProfissionalSelectCard({
         </p>
         <p className="text-xs text-muted-foreground truncate">{subline}</p>
       </div>
+      {!isAny && employee.featured && (
+        <FeaturedFlag label="Destaque" variant="inline" />
+      )}
       {selected && <Check className="size-4 text-brand shrink-0" />}
     </button>
   );

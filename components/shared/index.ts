@@ -6,5 +6,6 @@ export { SelectField } from "./SelectField";
 export { DatePickerField } from "./DatePickerField";
 export { ComingSoon } from "./ComingSoon";
 export { DataTablePagination } from "./DataTablePagination";
+export { ListPaginationBar } from "./ListPaginationBar";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Loading } from "./Loading";
