@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserPlus, Pencil, Mail, Phone, GripVertical } from "lucide-react";
+import { UserPlus, Pencil, Mail, Phone, GripVertical, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -47,10 +47,12 @@ function SortableEmployeeRow({
   e,
   foto,
   onFeatured,
+  onHidden,
 }: {
   e: Employee;
   foto: string | null;
   onFeatured: (id: string, v: boolean) => void;
+  onHidden: (id: string, v: boolean) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: e.id });
@@ -121,6 +123,19 @@ function SortableEmployeeRow({
         </div>
       </TableCell>
       <TableCell className="px-4 py-4">
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => onHidden(e.id, !e.hidden)}
+            aria-label={e.hidden ? "Tornar visível" : "Ocultar profissional"}
+            title={e.hidden ? "Oculto — clique para tornar visível" : "Visível — clique para ocultar"}
+            className={`transition-colors ${e.hidden ? "text-muted-foreground/40 hover:text-muted-foreground" : "text-foreground hover:text-muted-foreground"}`}
+          >
+            {e.hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+      </TableCell>
+      <TableCell className="px-4 py-4">
         <Link
           href={`/professionals/${e.id}`}
           title="Editar profissional"
@@ -135,7 +150,7 @@ function SortableEmployeeRow({
 
 export default function ProfessionalsPage() {
   const { barbershop } = useAuth();
-  const { employees, isLoading, setFeatured, reorder } = useEmployees(barbershop?.id);
+  const { employees, isLoading, setFeatured, setHidden, reorder } = useEmployees(barbershop?.id);
   const localPhotos = useLocalProfessionalPhotos(
     barbershop?.id,
     employees.map((e) => e.id),
@@ -177,11 +192,11 @@ export default function ProfessionalsPage() {
             <Table>
               <TableHeader className="border-t border-border">
                 <TableRow className="border-border hover:bg-transparent">
-                  {["", "Profissional", "Contato", "Destaque", ""].map((col, i) => (
+                  {["", "Profissional", "Contato", "Destaque", "Visível", ""].map((col, i) => (
                     <TableHead
                       key={col || `c-${i}`}
                       className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto ${
-                        col === "Destaque" ? "text-center" : ""
+                        col === "Destaque" || col === "Visível" ? "text-center" : ""
                       }`}
                     >
                       {col}
@@ -201,13 +216,13 @@ export default function ProfessionalsPage() {
                   <TableBody>
                     {isLoading ? (
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableCell colSpan={5} className="py-4">
+                        <TableCell colSpan={6} className="py-4">
                           <Loading />
                         </TableCell>
                       </TableRow>
                     ) : employees.length === 0 ? (
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableCell colSpan={5} className="py-4">
+                        <TableCell colSpan={6} className="py-4">
                           <EmptyState message="Nenhum profissional cadastrado." />
                         </TableCell>
                       </TableRow>
@@ -221,6 +236,7 @@ export default function ProfessionalsPage() {
                             e={e}
                             foto={foto}
                             onFeatured={setFeatured}
+                            onHidden={setHidden}
                           />
                         );
                       })

@@ -52,6 +52,18 @@ export const employeesService = {
     return data;
   },
 
+  async setHidden(
+    barbershopId: string,
+    id: string,
+    hidden: boolean,
+  ): Promise<Employee> {
+    const { data } = await api.patch<Employee>(
+      `/barbershops/${barbershopId}/employees/${id}/hidden`,
+      { hidden },
+    );
+    return data;
+  },
+
   async reorder(
     barbershopId: string,
     orderedIds: string[],

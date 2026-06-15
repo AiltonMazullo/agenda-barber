@@ -7,12 +7,15 @@ export function StatusBar({
   active,
   hidden,
   onChange,
+  onHiddenChange,
   featured,
   onFeaturedChange,
 }: {
   active: boolean;
   hidden: boolean;
   onChange: (patch: { active?: boolean; hidden?: boolean }) => void;
+  /** Quando fornecido, o toggle "Oculto" chama este callback (campo do backend). */
+  onHiddenChange?: (value: boolean) => void;
   /** Destaque (campo do backend). Só aparece quando há `onFeaturedChange`. */
   featured?: boolean;
   onFeaturedChange?: (value: boolean) => void;
@@ -52,7 +55,11 @@ export function StatusBar({
       <label className="flex items-center gap-2.5 cursor-pointer">
         <Checkbox
           checked={hidden}
-          onCheckedChange={(c) => onChange({ hidden: c === true })}
+          onCheckedChange={(c) =>
+            onHiddenChange
+              ? onHiddenChange(c === true)
+              : onChange({ hidden: c === true })
+          }
           className="cursor-pointer"
         />
         <span className="flex flex-col">

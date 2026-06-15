@@ -24,6 +24,8 @@ export interface Employee {
   complement: string | null;
   /** Profissional marcado como destaque (aparece primeiro e com badge). */
   featured: boolean;
+  /** Quando true, o profissional não aparece para clientes no app. */
+  hidden: boolean;
   /** Caminho relativo da foto de perfil (ex.: "/uploads/.../foto.jpg"). */
   avatarUrl?: string | null;
   barbershopId: string;

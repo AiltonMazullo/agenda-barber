@@ -26,6 +26,8 @@ export function ProfessionalForm({
   onBack,
   featured,
   onFeaturedChange,
+  hidden,
+  onHiddenChange,
   photoUrl,
   onUploadPhoto,
 }: {
@@ -37,6 +39,9 @@ export function ProfessionalForm({
   /** Destaque (campo do backend). Só aparece quando há `onFeaturedChange`. */
   featured?: boolean;
   onFeaturedChange?: (value: boolean) => void;
+  /** Oculto (campo do backend). Só conecta ao backend quando há `onHiddenChange`. */
+  hidden?: boolean;
+  onHiddenChange?: (value: boolean) => void;
   /** Foto vinda do backend (avatarUrl completo). Tem prioridade no preview. */
   photoUrl?: string | null;
   /** Upload real da foto (rota de avatar). Sem ele, preview local. */
@@ -104,8 +109,9 @@ export function ProfessionalForm({
       <div className="p-4 md:p-6 space-y-5">
         <StatusBar
           active={config.active}
-          hidden={config.hidden}
+          hidden={hidden ?? config.hidden}
           onChange={updateConfig}
+          onHiddenChange={onHiddenChange}
           featured={featured}
           onFeaturedChange={onFeaturedChange}
         />

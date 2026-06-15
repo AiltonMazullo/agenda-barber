@@ -126,6 +126,26 @@ export function useEmployees(barbershopId: string | undefined) {
     [barbershopId],
   );
 
+  const setHidden = useCallback(
+    async (id: string, hidden: boolean) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await employeesService.setHidden(barbershopId, id, hidden);
+        setEmployees((prev) =>
+          prev.map((e) => (e.id === id ? { ...e, ...updated } : e)),
+        );
+        toast.success(hidden ? "Profissional ocultado." : "Profissional visível.");
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao alterar visibilidade.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
   const reorder = useCallback(
     async (orderedIds: string[]) => {
       if (!barbershopId) return;
@@ -179,6 +199,7 @@ export function useEmployees(barbershopId: string | undefined) {
     update,
     remove,
     setFeatured,
+    setHidden,
     reorder,
     uploadAvatar,
   };

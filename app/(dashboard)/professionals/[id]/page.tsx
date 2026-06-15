@@ -19,7 +19,7 @@ export default function ProfessionalEditPage() {
   const router = useRouter();
 
   const { barbershop } = useAuth();
-  const { employees, isLoading, update, setFeatured, uploadAvatar } =
+  const { employees, isLoading, update, setFeatured, setHidden, uploadAvatar } =
     useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
@@ -97,6 +97,8 @@ export default function ProfessionalEditPage() {
       onBack={() => router.push("/professionals")}
       featured={employee.featured}
       onFeaturedChange={(v) => setFeatured(employee.id, v)}
+      hidden={employee.hidden}
+      onHiddenChange={(v) => setHidden(employee.id, v)}
       photoUrl={apiAssetUrl(employee.avatarUrl)}
       onUploadPhoto={(file) => void uploadAvatar(employee.id, file)}
     />
