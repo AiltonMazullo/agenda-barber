@@ -1,23 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Plus, Pencil, Trash2 } from "lucide-react";
+import { CreditCard, Plus, Pencil, PowerOff, Power } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader, SummaryCard, EmptyState } from "@/components/shared";
 import { DialogNovoPlano } from "@/components/plans/DialogNovoPlano";
-import { toast } from "sonner";
 import { formatBRL } from "@/utils/format";
-import type { Plan, CreatePlanPayload } from "@/types/plan.types";
-
-const INTERVAL_LABEL: Record<string, string> = {
-  MONTHLY: "Mensal",
-  QUARTERLY: "Trimestral",
-  YEARLY: "Anual",
-};
+import { useAuth } from "@/hooks/useAuth";
+import { usePlans } from "@/hooks/usePlans";
+import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 
 export default function PlanosPage() {
-  // ⚠️ Placeholder: lista local até as rotas de planos existirem no backend.
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const { barbershop } = useAuth();
+  const { plans, isLoading, create, update, deactivate, activate } = usePlans(barbershop?.id);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);
 
@@ -31,39 +27,16 @@ export default function PlanosPage() {
     setDialogOpen(true);
   }
 
-  // TODO(backend): trocar por plansService.create/update quando as rotas existirem.
   async function handleSave(payload: CreatePlanPayload) {
-    const now = new Date().toISOString();
     if (editing) {
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === editing.id ? { ...p, ...payload, updatedAt: now } : p,
-        ),
-      );
-    } else {
-      setPlans((prev) => [
-        ...prev,
-        {
-          id: `tmp_${Date.now()}`,
-          name: payload.name,
-          description: payload.description ?? null,
-          priceInCents: payload.priceInCents,
-          interval: payload.interval,
-          barbershopId: "",
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]);
+      const result = await update(editing.id, payload);
+      return result !== null;
     }
-    toast.success(
-      "Plano salvo localmente. A persistência será ativada quando o backend liberar as rotas.",
-    );
-    return true;
+    const result = await create(payload);
+    return result !== null;
   }
 
-  function handleDelete(plan: Plan) {
-    setPlans((prev) => prev.filter((p) => p.id !== plan.id));
-  }
+  const activePlans = plans.filter((p) => p.status === "ACTIVE");
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
@@ -84,35 +57,61 @@ export default function PlanosPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <SummaryCard
-          label="Planos"
-          value={String(plans.length)}
+          label="Planos ativos"
+          value={isLoading ? "—" : String(activePlans.length)}
           icon={<CreditCard className="size-3.5" />}
           tone="brand"
           emphasized
         />
       </div>
 
-      {plans.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="bg-surface-raised border-border animate-pulse">
+              <CardContent className="p-4 h-20" />
+            </Card>
+          ))}
+        </div>
+      ) : plans.length === 0 ? (
         <EmptyState message="Nenhum plano cadastrado. Crie um plano para oferecer aos seus clientes." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {plans.map((p) => (
-            <Card key={p.id} className="bg-surface-raised border-border">
+            <Card
+              key={p.id}
+              className={`bg-surface-raised border-border ${p.status === "INACTIVE" ? "opacity-50" : ""}`}
+            >
               <CardContent className="p-4 flex items-start gap-3">
-                <div className="size-10 rounded-lg bg-brand/15 text-brand grid place-items-center shrink-0">
+                <div
+                  className="size-10 rounded-lg grid place-items-center shrink-0"
+                  style={{ backgroundColor: `${p.labelColor}26`, color: p.labelColor }}
+                >
                   <CreditCard className="size-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">
-                    {p.name}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground truncate">{p.name}</p>
+                    {p.status === "INACTIVE" && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
+                        Inativo
+                      </span>
+                    )}
+                    {p.hidden && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint border border-border rounded px-1.5 py-0.5 shrink-0">
+                        Oculto
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatBRL(p.priceInCents / 100)} ·{" "}
-                    {INTERVAL_LABEL[p.interval] ?? p.interval}
+                    {formatBRL(p.priceInCents / 100)}
+                    {p.availableQuantity != null
+                      ? ` · ${p.availableQuantity} vagas`
+                      : " · Vagas ilimitadas"}
                   </p>
-                  {p.description && (
-                    <p className="text-xs text-text-faint mt-1 line-clamp-2">
-                      {p.description}
+                  {p.planServices.length > 0 && (
+                    <p className="text-xs text-text-faint mt-1 truncate">
+                      {p.planServices.map((ps) => ps.service.name).join(", ")}
                     </p>
                   )}
                 </div>
@@ -124,13 +123,25 @@ export default function PlanosPage() {
                   >
                     <Pencil className="size-3" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(p)}
-                    className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
+                  {p.status === "ACTIVE" ? (
+                    <button
+                      type="button"
+                      onClick={() => deactivate(p.id)}
+                      title="Desativar plano"
+                      className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+                    >
+                      <PowerOff className="size-3" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => activate(p.id)}
+                      title="Ativar plano"
+                      className="size-7 rounded-md border border-border bg-transparent text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                    >
+                      <Power className="size-3" />
+                    </button>
+                  )}
                 </div>
               </CardContent>
             </Card>

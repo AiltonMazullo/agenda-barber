@@ -9,17 +9,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { SelectField } from "@/components/shared";
 import { toast } from "sonner";
 import { maskBRLInput, parseBRL } from "@/utils/format";
-import type { Plan, CreatePlanPayload } from "@/types/plan.types";
+import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 
-const INTERVALS = [
-  { value: "MONTHLY", label: "Mensal" },
-  { value: "QUARTERLY", label: "Trimestral" },
-  { value: "YEARLY", label: "Anual" },
-] as const;
+const PRESET_COLORS = [
+  "#F5A623",
+  "#4A90D9",
+  "#7B68EE",
+  "#50C878",
+  "#E74C3C",
+  "#1ABC9C",
+  "#F39C12",
+  "#8E44AD",
+];
 
 export function DialogNovoPlano({
   open,
@@ -33,19 +36,21 @@ export function DialogNovoPlano({
   onSave: (payload: CreatePlanPayload) => Promise<unknown>;
 }) {
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [interval, setInterval] = useState<string>("MONTHLY");
+  const [labelColor, setLabelColor] = useState(PRESET_COLORS[0]);
+  const [galaxId, setGalaxId] = useState("");
+  const [availableQuantity, setAvailableQuantity] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(plan?.name ?? "");
-    setDescription(plan?.description ?? "");
-    setPrice(
-      plan ? maskBRLInput(String(plan.priceInCents)) : "",
-    );
-    setInterval(plan?.interval ?? "MONTHLY");
+    setPrice(plan ? maskBRLInput(String(plan.priceInCents)) : "");
+    setLabelColor(plan?.labelColor ?? PRESET_COLORS[0]);
+    setGalaxId(plan?.galaxId ?? "");
+    setAvailableQuantity(plan?.availableQuantity != null ? String(plan.availableQuantity) : "");
+    setHidden(plan?.hidden ?? false);
   }, [open, plan]);
 
   async function handleSave() {
@@ -58,13 +63,26 @@ export function DialogNovoPlano({
       toast.error("Informe um valor válido.");
       return;
     }
+    if (!labelColor) {
+      toast.error("Selecione uma cor para o plano.");
+      return;
+    }
+
+    const qty = availableQuantity.trim() ? parseInt(availableQuantity, 10) : undefined;
+    if (qty !== undefined && (Number.isNaN(qty) || qty <= 0)) {
+      toast.error("Quantidade disponível deve ser um número positivo.");
+      return;
+    }
+
     setSaving(true);
     try {
       const result = await onSave({
         name: name.trim(),
-        description: description.trim() || undefined,
         priceInCents,
-        interval,
+        labelColor,
+        galaxId: galaxId.trim() || undefined,
+        availableQuantity: qty ?? null,
+        hidden,
       });
       if (result) onOpenChange(false);
     } finally {
@@ -103,39 +121,84 @@ export function DialogNovoPlano({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Valor
-              </label>
-              <Input
-                value={price}
-                onChange={(e) => setPrice(maskBRLInput(e.target.value))}
-                placeholder="R$ 0,00"
-                inputMode="numeric"
-                className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
-              />
-            </div>
-            <SelectField
-              id="plan-interval"
-              label="Ciclo"
-              value={interval}
-              options={INTERVALS}
-              onChange={setInterval}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Valor
+            </label>
+            <Input
+              value={price}
+              onChange={(e) => setPrice(maskBRLInput(e.target.value))}
+              placeholder="R$ 0,00"
+              inputMode="numeric"
+              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Descrição
+              Cor do plano
             </label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="O que está incluso no plano…"
-              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 resize-none min-h-[80px]"
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setLabelColor(color)}
+                  className="size-7 rounded-full border-2 transition-all"
+                  style={{
+                    backgroundColor: color,
+                    borderColor: labelColor === color ? "white" : "transparent",
+                    boxShadow: labelColor === color ? `0 0 0 2px ${color}` : "none",
+                  }}
+                />
+              ))}
+              <input
+                type="color"
+                value={labelColor}
+                onChange={(e) => setLabelColor(e.target.value)}
+                className="size-7 rounded-full cursor-pointer border border-border bg-transparent p-0"
+                title="Cor personalizada"
+              />
+            </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                ID GalaxPay
+              </label>
+              <Input
+                value={galaxId}
+                onChange={(e) => setGalaxId(e.target.value)}
+                placeholder="plan_abc123"
+                className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Qtd. disponível
+              </label>
+              <Input
+                value={availableQuantity}
+                onChange={(e) => setAvailableQuantity(e.target.value)}
+                placeholder="Ilimitado"
+                inputMode="numeric"
+                className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+              />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hidden}
+              onChange={(e) => setHidden(e.target.checked)}
+              className="size-4 rounded border-border accent-brand"
+            />
+            <span className="text-sm text-muted-foreground">
+              Ocultar no app do cliente
+            </span>
+          </label>
         </div>
 
         <div className="px-6 pb-6 pt-4 border-t border-border-subtle flex justify-end gap-3">
