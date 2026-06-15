@@ -22,7 +22,7 @@
    - `/types`: TypeScript Definitions
    - `/utils`: Pure Functions & Formatters
 
-## 📋 Operational Workflow (The Plan Mode)
+## 📋 Operational Workflow (Plan Mode)
 - **Phase 1: Analysis:** Analisar o código atual e identificar "cheiros" técnicos (code smells).
 - **Phase 2: Planning:** Propor a refatoração e a implementação da task do KANBAN.
 - **Phase 3: Execution:** Refatorar primeiro, implementar depois.
