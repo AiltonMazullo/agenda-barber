@@ -115,5 +115,24 @@ export function useServices(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { services, isLoading, create, update, remove, setFeatured };
+  const reorder = useCallback(
+    async (orderedIds: string[]) => {
+      if (!barbershopId) return;
+      setServices((prev) => {
+        const map = new Map(prev.map((s) => [s.id, s]));
+        return orderedIds.map((id) => map.get(id)!).filter(Boolean);
+      });
+      try {
+        await servicesService.reorder(barbershopId, orderedIds);
+        toast.success("Ordem dos serviços atualizada.");
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao reordenar serviços.",
+        );
+      }
+    },
+    [barbershopId],
+  );
+
+  return { services, isLoading, create, update, remove, setFeatured, reorder };
 }

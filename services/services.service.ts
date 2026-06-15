@@ -51,4 +51,12 @@ export const servicesService = {
     );
     return data;
   },
+
+  async reorder(
+    barbershopId: string,
+    orderedIds: string[],
+  ): Promise<void> {
+    const items = orderedIds.map((id, order) => ({ id, order }));
+    await api.patch<void>(`/barbershops/${barbershopId}/services/reorder`, { items });
+  },
 };

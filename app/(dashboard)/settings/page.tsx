@@ -17,7 +17,23 @@ import {
   EyeOff,
   AlertTriangle,
   Info,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -2244,13 +2260,101 @@ function DialogServico({
 
 // ─── Tab: Serviços ────────────────────────────────────────────────────────────
 
+function SortableServiceRow({
+  s,
+  onEdit,
+  onDelete,
+  onFeatured,
+}: {
+  s: Service;
+  onEdit: (s: Service) => void;
+  onDelete: (id: string) => void;
+  onFeatured: (id: string, v: boolean) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: s.id });
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className="border-border hover:bg-surface-elevated/40 transition-colors"
+    >
+      <TableCell className="px-3 py-4 w-8">
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors touch-none"
+          aria-label="Arrastar para reordenar"
+        >
+          <GripVertical className="size-4" />
+        </button>
+      </TableCell>
+      <TableCell className="px-5 py-4">
+        <div
+          className="size-4 rounded-full border border-border"
+          style={{ backgroundColor: s.hex ?? DEFAULT_HEX }}
+        />
+      </TableCell>
+      <TableCell className="px-5 py-4 font-semibold text-white text-sm">
+        {s.name}
+      </TableCell>
+      <TableCell className="px-5 py-4 text-muted-foreground text-sm max-w-70 truncate">
+        {s.description || "—"}
+      </TableCell>
+      <TableCell className="px-5 py-4 text-muted-foreground text-sm">
+        {s.durationMin} min
+      </TableCell>
+      <TableCell className="px-5 py-4 text-brand font-semibold text-sm">
+        {formatBRL(s.priceInCents)}
+      </TableCell>
+      <TableCell className="px-5 py-4">
+        <div className="flex justify-center">
+          <Checkbox
+            checked={s.featured}
+            onCheckedChange={(c) => onFeatured(s.id, c === true)}
+            aria-label="Marcar serviço como destaque"
+            className="cursor-pointer"
+          />
+        </div>
+      </TableCell>
+      <TableCell className="px-5 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(s)}
+            className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
+          >
+            <Pencil className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(s.id)}
+            className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
+          >
+            <Trash2 className="size-3" />
+          </button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function TabServicos() {
   const { barbershop } = useAuth();
-  const { services, isLoading, create, update, remove, setFeatured } =
+  const { services, isLoading, create, update, remove, setFeatured, reorder } =
     useServices(barbershop?.id);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const pag = usePagination(services, 10);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   async function handleSave(payload: CreateServicePayload) {
     if (editing) {
@@ -2265,6 +2369,24 @@ function TabServicos() {
       return;
     }
     await remove(id);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const pageIds = pag.pageItems.map((s) => s.id);
+    const oldIndex = pageIds.indexOf(active.id as string);
+    const newIndex = pageIds.indexOf(over.id as string);
+    const reorderedPage = arrayMove(pag.pageItems, oldIndex, newIndex);
+
+    const start = (pag.page - 1) * pag.pageSize;
+    const newAll = [...services];
+    reorderedPage.forEach((item, i) => {
+      newAll[start + i] = item;
+    });
+
+    reorder(newAll.map((s) => s.id));
   }
 
   return (
@@ -2289,7 +2411,7 @@ function TabServicos() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {["", "Serviço", "Descrição", "Duração", "Preço", "Destaque", ""].map(
+                {["", "", "Serviço", "Descrição", "Duração", "Preço", "Destaque", ""].map(
                   (h, i) => (
                     <TableHead
                       key={i}
@@ -2303,81 +2425,48 @@ function TabServicos() {
                 )}
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="py-4">
-                    <Loading />
-                  </td>
-                </tr>
-              ) : services.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="py-12 text-center text-sm text-text-faint"
-                  >
-                    Nenhum serviço cadastrado.
-                  </td>
-                </tr>
-              ) : (
-                pag.pageItems.map((s) => (
-                  <TableRow
-                    key={s.id}
-                    className="border-border hover:bg-surface-elevated/40 transition-colors"
-                  >
-                    <TableCell className="px-5 py-4">
-                      <div
-                        className="size-4 rounded-full border border-border"
-                        style={{ backgroundColor: s.hex ?? DEFAULT_HEX }}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={pag.pageItems.map((s) => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <TableBody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-4">
+                        <Loading />
+                      </td>
+                    </tr>
+                  ) : services.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="py-12 text-center text-sm text-text-faint"
+                      >
+                        Nenhum serviço cadastrado.
+                      </td>
+                    </tr>
+                  ) : (
+                    pag.pageItems.map((s) => (
+                      <SortableServiceRow
+                        key={s.id}
+                        s={s}
+                        onEdit={(s) => {
+                          setEditing(s);
+                          setDialog(true);
+                        }}
+                        onDelete={handleDelete}
+                        onFeatured={setFeatured}
                       />
-                    </TableCell>
-                    <TableCell className="px-5 py-4 font-semibold text-white text-sm">
-                      {s.name}
-                    </TableCell>
-                    <TableCell className="px-5 py-4 text-muted-foreground text-sm max-w-70 truncate">
-                      {s.description || "—"}
-                    </TableCell>
-                    <TableCell className="px-5 py-4 text-muted-foreground text-sm">
-                      {s.durationMin} min
-                    </TableCell>
-                    <TableCell className="px-5 py-4 text-brand font-semibold text-sm">
-                      {formatBRL(s.priceInCents)}
-                    </TableCell>
-                    <TableCell className="px-5 py-4">
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={s.featured}
-                          onCheckedChange={(c) => setFeatured(s.id, c === true)}
-                          aria-label="Marcar serviço como destaque"
-                          className="cursor-pointer"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(s);
-                            setDialog(true);
-                          }}
-                          className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(s.id)}
-                          className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
+                    ))
+                  )}
+                </TableBody>
+              </SortableContext>
+            </DndContext>
           </Table>
         </div>
         {pag.total > 0 && (

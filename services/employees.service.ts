@@ -52,6 +52,14 @@ export const employeesService = {
     return data;
   },
 
+  async reorder(
+    barbershopId: string,
+    orderedIds: string[],
+  ): Promise<void> {
+    const items = orderedIds.map((id, order) => ({ id, order }));
+    await api.patch<void>(`/barbershops/${barbershopId}/employees/reorder`, { items });
+  },
+
   /** Envia a foto de perfil (campo `avatar`, JPEG/PNG/WebP até 2MB). */
   async uploadAvatar(
     barbershopId: string,

@@ -126,6 +126,27 @@ export function useEmployees(barbershopId: string | undefined) {
     [barbershopId],
   );
 
+  const reorder = useCallback(
+    async (orderedIds: string[]) => {
+      if (!barbershopId) return;
+      setEmployees((prev) => {
+        const map = new Map(prev.map((e) => [e.id, e]));
+        return orderedIds.map((id) => map.get(id)!).filter(Boolean);
+      });
+      try {
+        await employeesService.reorder(barbershopId, orderedIds);
+        toast.success("Ordem dos profissionais atualizada.");
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Falha ao reordenar profissionais.",
+        );
+      }
+    },
+    [barbershopId],
+  );
+
   const uploadAvatar = useCallback(
     async (id: string, file: File) => {
       if (!barbershopId) return null;
@@ -158,6 +179,7 @@ export function useEmployees(barbershopId: string | undefined) {
     update,
     remove,
     setFeatured,
+    reorder,
     uploadAvatar,
   };
 }
