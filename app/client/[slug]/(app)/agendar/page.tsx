@@ -186,9 +186,10 @@ export default function AgendarPage({ params }: PageProps) {
   // Profissionais da filial escolhida (Employee.branchId). Sem filiais →
   // todos os profissionais da barbearia.
   const branchEmployees = useMemo(() => {
-    if (!hasBranches) return employees;
+    const visible = employees.filter((e) => !e.hidden);
+    if (!hasBranches) return visible;
     if (!selectedBranch) return [];
-    return employees.filter((e) => e.branchId === selectedBranch.id);
+    return visible.filter((e) => e.branchId === selectedBranch.id);
   }, [employees, selectedBranch, hasBranches]);
 
   // Sem filiais: não fica parado no passo 1 (Filial).
