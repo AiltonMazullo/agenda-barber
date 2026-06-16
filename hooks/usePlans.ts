@@ -9,44 +9,41 @@ export function usePlans(barbershopId: string | undefined) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchPlans = useCallback(async () => {
+    if (!barbershopId) return;
+    setIsLoading(true);
+    try {
+      const data = await plansService.listAdmin(barbershopId);
+      setPlans(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao carregar planos.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [barbershopId]);
+
   useEffect(() => {
     if (!barbershopId) {
       setIsLoading(false);
       return;
     }
-    let active = true;
-    setIsLoading(true);
-    plansService
-      .listAdmin(barbershopId)
-      .then((data) => {
-        if (active) setPlans(data);
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        toast.error(err instanceof Error ? err.message : "Falha ao carregar planos.");
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [barbershopId]);
+    fetchPlans();
+  }, [barbershopId, fetchPlans]);
 
   const create = useCallback(
     async (payload: CreatePlanPayload) => {
       if (!barbershopId) return null;
       try {
         const created = await plansService.create(barbershopId, payload);
-        setPlans((prev) => [...prev, created]);
         toast.success("Plano criado.");
+        await fetchPlans();
         return created;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Falha ao criar plano.");
         return null;
       }
     },
-    [barbershopId],
+    [barbershopId, fetchPlans],
   );
 
   const update = useCallback(
@@ -54,47 +51,47 @@ export function usePlans(barbershopId: string | undefined) {
       if (!barbershopId) return null;
       try {
         const updated = await plansService.update(barbershopId, planId, payload);
-        setPlans((prev) => prev.map((p) => (p.id === planId ? updated : p)));
         toast.success("Plano atualizado.");
+        await fetchPlans();
         return updated;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Falha ao atualizar plano.");
         return null;
       }
     },
-    [barbershopId],
+    [barbershopId, fetchPlans],
   );
 
   const deactivate = useCallback(
     async (planId: string) => {
       if (!barbershopId) return false;
       try {
-        const updated = await plansService.updateStatus(barbershopId, planId, { status: "INACTIVE" });
-        setPlans((prev) => prev.map((p) => (p.id === planId ? updated : p)));
+        await plansService.updateStatus(barbershopId, planId, { status: "INACTIVE" });
         toast.success("Plano desativado.");
+        await fetchPlans();
         return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Falha ao desativar plano.");
         return false;
       }
     },
-    [barbershopId],
+    [barbershopId, fetchPlans],
   );
 
   const activate = useCallback(
     async (planId: string) => {
       if (!barbershopId) return false;
       try {
-        const updated = await plansService.updateStatus(barbershopId, planId, { status: "ACTIVE" });
-        setPlans((prev) => prev.map((p) => (p.id === planId ? updated : p)));
+        await plansService.updateStatus(barbershopId, planId, { status: "ACTIVE" });
         toast.success("Plano ativado.");
+        await fetchPlans();
         return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Falha ao ativar plano.");
         return false;
       }
     },
-    [barbershopId],
+    [barbershopId, fetchPlans],
   );
 
   return { plans, isLoading, create, update, deactivate, activate };

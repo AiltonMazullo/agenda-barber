@@ -15,7 +15,9 @@ import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 
 export default function PlanosPage() {
   const { barbershop } = useAuth();
-  const { plans, isLoading, create, update, deactivate, activate } = usePlans(barbershop?.id);
+  const { plans, isLoading, create, update, deactivate, activate } = usePlans(
+    barbershop?.id,
+  );
   const { services } = useServices(barbershop?.id);
   const { products } = useProducts(barbershop?.id);
   const { employees } = useEmployees(barbershop?.id);
@@ -74,7 +76,10 @@ export default function PlanosPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="bg-surface-raised border-border animate-pulse">
+            <Card
+              key={i}
+              className="bg-surface-raised border-border animate-pulse"
+            >
               <CardContent className="p-4 h-20" />
             </Card>
           ))}
@@ -91,13 +96,18 @@ export default function PlanosPage() {
               <CardContent className="p-4 flex items-start gap-3">
                 <div
                   className="size-10 rounded-lg grid place-items-center shrink-0"
-                  style={{ backgroundColor: `${p.labelColor}26`, color: p.labelColor }}
+                  style={{
+                    backgroundColor: `${p.labelColor}26`,
+                    color: p.labelColor,
+                  }}
                 >
                   <CreditCard className="size-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-bold text-foreground truncate">{p.name}</p>
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {p.name}
+                    </p>
                     {p.status === "INACTIVE" && (
                       <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
                         Inativo
@@ -115,9 +125,9 @@ export default function PlanosPage() {
                       ? ` · ${p.availableQuantity} vagas`
                       : " · Vagas ilimitadas"}
                   </p>
-                  {p.planServices.length > 0 && (
+                  {p.planServices?.length > 0 && (
                     <p className="text-xs text-text-faint mt-1 truncate">
-                      {p.planServices.map((ps) => ps.service.name).join(", ")}
+                      {p.planServices?.map((ps) => ps.service.name).join(", ")}
                     </p>
                   )}
                 </div>

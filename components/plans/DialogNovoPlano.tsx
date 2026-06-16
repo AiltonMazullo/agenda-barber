@@ -110,7 +110,7 @@ export function DialogNovoPlano({
     setLockDays(String(plan?.subscriptionLockDays ?? 0));
     setFrequencyDays(String(plan?.serviceFrequencyDays ?? 0));
     setServiceRows(
-      plan?.planServices.map((ps) => ({
+      plan?.planServices?.map((ps) => ({
         serviceId: ps.serviceId,
         discountPercent: String(ps.discountPercent),
       })) ?? [],
