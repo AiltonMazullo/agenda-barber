@@ -30,6 +30,16 @@ interface ProductRow {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
+const WEEK_DAYS = [
+  { value: 1, short: "Seg" },
+  { value: 2, short: "Ter" },
+  { value: 3, short: "Qua" },
+  { value: 4, short: "Qui" },
+  { value: 5, short: "Sex" },
+  { value: 6, short: "Sáb" },
+  { value: 7, short: "Dom" },
+] as const;
+
 function isValidHex(value: string) {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
 }
@@ -62,6 +72,12 @@ export function DialogNovoPlano({
   const [availableQuantity, setAvailableQuantity] = useState("");
   const [hidden, setHidden] = useState(false);
 
+  // regras operacionais
+  const [freeDays, setFreeDays] = useState<number[]>([]);
+  const [maxSimultaneous, setMaxSimultaneous] = useState("1");
+  const [lockDays, setLockDays] = useState("0");
+  const [frequencyDays, setFrequencyDays] = useState("0");
+
   // serviços
   const [serviceRows, setServiceRows] = useState<ServiceRow[]>([]);
   const [pendingServiceId, setPendingServiceId] = useState("");
@@ -89,6 +105,10 @@ export function DialogNovoPlano({
       plan?.availableQuantity != null ? String(plan.availableQuantity) : "",
     );
     setHidden(plan?.hidden ?? false);
+    setFreeDays(plan?.freeDays ?? []);
+    setMaxSimultaneous(String(plan?.maxSimultaneousServices ?? 1));
+    setLockDays(String(plan?.subscriptionLockDays ?? 0));
+    setFrequencyDays(String(plan?.serviceFrequencyDays ?? 0));
     setServiceRows(
       plan?.planServices.map((ps) => ({
         serviceId: ps.serviceId,
@@ -125,7 +145,9 @@ export function DialogNovoPlano({
   // ─── serviços ───────────────────────────────────────────────────────────────
 
   const selectedServiceIds = new Set(serviceRows.map((r) => r.serviceId));
-  const availableServices = services.filter((s) => !selectedServiceIds.has(s.id));
+  const availableServices = services.filter(
+    (s) => !selectedServiceIds.has(s.id),
+  );
 
   function addService() {
     if (!pendingServiceId) return;
@@ -142,14 +164,18 @@ export function DialogNovoPlano({
 
   function updateDiscount(serviceId: string, value: string) {
     setServiceRows((prev) =>
-      prev.map((r) => (r.serviceId === serviceId ? { ...r, discountPercent: value } : r)),
+      prev.map((r) =>
+        r.serviceId === serviceId ? { ...r, discountPercent: value } : r,
+      ),
     );
   }
 
   // ─── produtos ───────────────────────────────────────────────────────────────
 
   const selectedProductIds = new Set(productRows.map((r) => r.productId));
-  const availableProducts = products.filter((p) => !selectedProductIds.has(p.id));
+  const availableProducts = products.filter(
+    (p) => !selectedProductIds.has(p.id),
+  );
 
   function addProduct() {
     if (!pendingProductId) return;
@@ -171,7 +197,9 @@ export function DialogNovoPlano({
   function updateProductPrice(productId: string, value: string) {
     setProductRows((prev) =>
       prev.map((r) =>
-        r.productId === productId ? { ...r, priceInCents: maskBRLInput(value) } : r,
+        r.productId === productId
+          ? { ...r, priceInCents: maskBRLInput(value) }
+          : r,
       ),
     );
   }
@@ -208,9 +236,27 @@ export function DialogNovoPlano({
       toast.error("Informe uma cor hexadecimal válida (ex.: #F5A623).");
       return;
     }
-    const qty = availableQuantity.trim() ? parseInt(availableQuantity, 10) : undefined;
+    const qty = availableQuantity.trim()
+      ? parseInt(availableQuantity, 10)
+      : undefined;
     if (qty !== undefined && (Number.isNaN(qty) || qty <= 0)) {
       toast.error("Quantidade disponível deve ser um número positivo.");
+      return;
+    }
+
+    const maxSimultaneousNum = parseInt(maxSimultaneous, 10);
+    if (Number.isNaN(maxSimultaneousNum) || maxSimultaneousNum < 1) {
+      toast.error("Serviços simultâneos deve ser no mínimo 1.");
+      return;
+    }
+    const lockDaysNum = parseInt(lockDays, 10);
+    if (Number.isNaN(lockDaysNum) || lockDaysNum < 0) {
+      toast.error("Bloqueio de assinatura deve ser 0 ou mais dias.");
+      return;
+    }
+    const frequencyDaysNum = parseInt(frequencyDays, 10);
+    if (Number.isNaN(frequencyDaysNum) || frequencyDaysNum < 0) {
+      toast.error("Periodicidade deve ser 0 ou mais dias.");
       return;
     }
 
@@ -245,6 +291,10 @@ export function DialogNovoPlano({
         galaxId: galaxId.trim() || undefined,
         availableQuantity: qty ?? null,
         hidden,
+        freeDays,
+        maxSimultaneousServices: maxSimultaneousNum,
+        subscriptionLockDays: lockDaysNum,
+        serviceFrequencyDays: frequencyDaysNum,
         services: serviceRows.map((r) => ({
           serviceId: r.serviceId,
           discountPercent: parseFloat(r.discountPercent.replace(",", ".")) || 0,
@@ -283,7 +333,6 @@ export function DialogNovoPlano({
 
         {/* scrollable body */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
-
           {/* ── informações principais ── */}
           <Section label="Informações principais">
             <div className="space-y-3">
@@ -324,13 +373,19 @@ export function DialogNovoPlano({
                     {/* swatch clicável que abre o color picker nativo */}
                     <label
                       className="size-10 rounded-md border border-border shrink-0 cursor-pointer"
-                      style={{ backgroundColor: isValidHex(labelColor) ? labelColor : "#888" }}
+                      style={{
+                        backgroundColor: isValidHex(labelColor)
+                          ? labelColor
+                          : "#888",
+                      }}
                       title="Abrir seletor de cor"
                     >
                       <input
                         type="color"
                         value={isValidHex(labelColor) ? labelColor : "#888888"}
-                        onChange={(e) => handleColorPickerChange(e.target.value)}
+                        onChange={(e) =>
+                          handleColorPickerChange(e.target.value)
+                        }
                         className="sr-only"
                       />
                     </label>
@@ -369,6 +424,69 @@ export function DialogNovoPlano({
             </div>
           </Section>
 
+          {/* ── regras operacionais ── */}
+          <Section label="Regras operacionais">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Serviços simultâneos">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={maxSimultaneous}
+                    onChange={(e) => setMaxSimultaneous(e.target.value)}
+                    className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+                  />
+                </Field>
+                <Field label="Bloqueio (dias)">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={lockDays}
+                    onChange={(e) => setLockDays(e.target.value)}
+                    className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+                  />
+                </Field>
+                <Field label="Periodicidade (dias)">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={frequencyDays}
+                    onChange={(e) => setFrequencyDays(e.target.value)}
+                    className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+                  />
+                </Field>
+              </div>
+
+              <Field label="Dias de gratuidade">
+                <div className="flex gap-1.5 flex-nowrap">
+                  {WEEK_DAYS.map(({ value, short }) => {
+                    const active = freeDays.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() =>
+                          setFreeDays((prev) =>
+                            active
+                              ? prev.filter((d) => d !== value)
+                              : [...prev, value].sort((a, b) => a - b),
+                          )
+                        }
+                        className={`w-full h-9 rounded-md text-xs font-bold border transition-colors ${
+                          active
+                            ? "bg-brand text-brand-foreground border-brand"
+                            : "bg-surface-base text-muted-foreground border-border hover:border-brand/40 hover:text-foreground"
+                        }`}
+                      >
+                        {short}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+            </div>
+          </Section>
+
           {/* ── serviços inclusos ── */}
           <Section label="Serviços inclusos">
             <div className="space-y-2">
@@ -387,11 +505,15 @@ export function DialogNovoPlano({
                         <div className="flex items-center gap-1 shrink-0">
                           <Input
                             value={row.discountPercent}
-                            onChange={(e) => updateDiscount(row.serviceId, e.target.value)}
+                            onChange={(e) =>
+                              updateDiscount(row.serviceId, e.target.value)
+                            }
                             inputMode="decimal"
                             className="w-16 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 text-right px-2"
                           />
-                          <span className="text-xs text-muted-foreground">%</span>
+                          <span className="text-xs text-muted-foreground">
+                            %
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -431,9 +553,13 @@ export function DialogNovoPlano({
                   </button>
                 </div>
               ) : services.length > 0 ? (
-                <p className="text-xs text-text-faint">Todos os serviços já foram adicionados.</p>
+                <p className="text-xs text-text-faint">
+                  Todos os serviços já foram adicionados.
+                </p>
               ) : (
-                <p className="text-xs text-text-faint">Nenhum serviço cadastrado na barbearia.</p>
+                <p className="text-xs text-text-faint">
+                  Nenhum serviço cadastrado na barbearia.
+                </p>
               )}
             </div>
           </Section>
@@ -497,9 +623,13 @@ export function DialogNovoPlano({
                   </button>
                 </div>
               ) : employees.length > 0 ? (
-                <p className="text-xs text-text-faint">Todos os profissionais já foram adicionados.</p>
+                <p className="text-xs text-text-faint">
+                  Todos os profissionais já foram adicionados.
+                </p>
               ) : (
-                <p className="text-xs text-text-faint">Nenhum profissional cadastrado na barbearia.</p>
+                <p className="text-xs text-text-faint">
+                  Nenhum profissional cadastrado na barbearia.
+                </p>
               )}
             </div>
           </Section>
@@ -526,7 +656,9 @@ export function DialogNovoPlano({
                         )}
                         <Input
                           value={row.priceInCents}
-                          onChange={(e) => updateProductPrice(row.productId, e.target.value)}
+                          onChange={(e) =>
+                            updateProductPrice(row.productId, e.target.value)
+                          }
                           inputMode="numeric"
                           placeholder="R$ 0,00"
                           className="w-28 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 px-2"
@@ -569,9 +701,13 @@ export function DialogNovoPlano({
                   </button>
                 </div>
               ) : products.length > 0 ? (
-                <p className="text-xs text-text-faint">Todos os produtos já foram adicionados.</p>
+                <p className="text-xs text-text-faint">
+                  Todos os produtos já foram adicionados.
+                </p>
               ) : (
-                <p className="text-xs text-text-faint">Nenhum produto cadastrado na barbearia.</p>
+                <p className="text-xs text-text-faint">
+                  Nenhum produto cadastrado na barbearia.
+                </p>
               )}
             </div>
           </Section>
@@ -602,7 +738,13 @@ export function DialogNovoPlano({
 
 // ─── sub-componentes locais ──────────────────────────────────────────────────
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -613,7 +755,13 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
