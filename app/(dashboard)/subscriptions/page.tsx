@@ -8,11 +8,17 @@ import { DialogNovoPlano } from "@/components/plans/DialogNovoPlano";
 import { formatBRL } from "@/utils/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlans } from "@/hooks/usePlans";
+import { useServices } from "@/hooks/useServices";
+import { useProducts } from "@/hooks/useProducts";
+import { useEmployees } from "@/hooks/useEmployees";
 import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 
 export default function PlanosPage() {
   const { barbershop } = useAuth();
   const { plans, isLoading, create, update, deactivate, activate } = usePlans(barbershop?.id);
+  const { services } = useServices(barbershop?.id);
+  const { products } = useProducts(barbershop?.id);
+  const { employees } = useEmployees(barbershop?.id);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);
@@ -154,6 +160,9 @@ export default function PlanosPage() {
         onOpenChange={setDialogOpen}
         plan={editing}
         onSave={handleSave}
+        services={services}
+        products={products}
+        employees={employees}
       />
     </div>
   );
