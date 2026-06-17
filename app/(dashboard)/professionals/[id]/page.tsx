@@ -8,6 +8,7 @@ import { ProfessionalForm, type ProfessionalBasic } from "@/components/professio
 import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useServices } from "@/hooks/useServices";
+import { useCategories } from "@/hooks/useCategories";
 import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
 import { apiAssetUrl } from "@/lib/api";
 import type { ProfessionalConfig } from "@/types/professional-config.types";
@@ -22,6 +23,7 @@ export default function ProfessionalEditPage() {
   const { employees, isLoading, update, setFeatured, setHidden, uploadAvatar } =
     useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 
   const employee = employees.find((e) => e.id === id);
@@ -92,6 +94,7 @@ export default function ProfessionalEditPage() {
       key={employee.id}
       initialBasic={initialBasic}
       services={services}
+      categories={categories}
       initialConfig={config}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}

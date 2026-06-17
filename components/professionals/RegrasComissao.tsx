@@ -4,7 +4,7 @@ import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared";
 import { maskBRLInput, parseBRL } from "@/utils/format";
-import { CATEGORY_LABEL, CATEGORY_OPTIONS } from "@/components/inventory";
+import type { Category } from "@/types/category.types";
 import type {
   CommissionTier,
   DifferentiatedCommission,
@@ -19,18 +19,15 @@ function clampPct(raw: string): number {
   return Math.min(100, Number(raw.replace(/\D/g, "")) || 0);
 }
 
-const CATEGORY_SELECT = [
-  { value: "", label: "Todas as categorias" },
-  ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: CATEGORY_LABEL[c] })),
-];
-
 export function RegrasComissao({
   productCommission,
   differentiated,
+  categories,
   onChange,
 }: {
   productCommission: ProductCommissionRule;
   differentiated: DifferentiatedCommission;
+  categories: Category[];
   onChange: (patch: {
     productCommission?: ProductCommissionRule;
     differentiated?: DifferentiatedCommission;
@@ -82,7 +79,10 @@ export function RegrasComissao({
               <SelectField
                 id="rc-categoria"
                 value={productCommission.category}
-                options={CATEGORY_SELECT}
+                options={[
+                  { value: "", label: "Todas as categorias" },
+                  ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ]}
                 onChange={(v) => setProduct({ category: v })}
                 className="min-w-0"
               />

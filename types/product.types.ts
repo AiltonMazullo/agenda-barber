@@ -3,13 +3,12 @@
  * Preço sempre em centavos (inteiro).
  */
 
-export type ProductCategory =
-  | "CLOTHING"
-  | "BARBERSHOP_COSMETICS"
-  | "BAR"
-  | "BARBERSHOP_ACCESSORIES";
-
 export type ProductStatus = "ACTIVE" | "INACTIVE";
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+}
 
 export interface Product {
   id: string;
@@ -19,7 +18,8 @@ export interface Product {
   ncm: string | null;
   gtin: string | null;
   cest: string | null;
-  category: ProductCategory;
+  categoryId: string | null;
+  category: ProductCategory | null;
   repurchasePeriodDays: number | null;
   status: ProductStatus;
   barbershopId: string;
@@ -34,7 +34,7 @@ export interface CreateProductPayload {
   ncm?: string;
   gtin?: string;
   cest?: string;
-  category: ProductCategory;
+  categoryId?: string | null;
   repurchasePeriodDays?: number;
   status?: ProductStatus;
 }
@@ -46,7 +46,7 @@ export interface UpdateProductPayload {
   ncm?: string;
   gtin?: string;
   cest?: string;
-  category?: ProductCategory;
+  categoryId?: string | null;
   repurchasePeriodDays?: number;
   status?: ProductStatus;
 }

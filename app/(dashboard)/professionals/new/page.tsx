@@ -10,6 +10,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useBranches } from "@/hooks/useBranches";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { useServices } from "@/hooks/useServices";
+import { useCategories } from "@/hooks/useCategories";
 import { professionalConfigStore } from "@/lib/professional-config-store";
 import {
   defaultProfessionalConfig,
@@ -35,6 +36,7 @@ export default function ProfessionalNovoPage() {
   const { branches } = useBranches(barbershop?.id);
   const { groups } = useAccessGroups(barbershop?.id);
   const { services } = useServices(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id);
 
   // Foto escolhida antes do profissional existir: preview local agora,
   // upload real logo após o create (quando há ID pra rota de avatar).
@@ -110,6 +112,7 @@ export default function ProfessionalNovoPage() {
     <ProfessionalForm
       initialBasic={EMPTY_BASIC}
       services={services}
+      categories={categories}
       initialConfig={defaultProfessionalConfig()}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}

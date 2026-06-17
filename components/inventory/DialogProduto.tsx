@@ -1,31 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { maskBRLInput } from "@/utils/format";
 import type { ProductWithStock } from "@/hooks/useProducts";
-import type {
-  CreateProductPayload,
-  ProductCategory,
-  ProductStatus,
-} from "@/types/product.types";
+import type { Category } from "@/types/category.types";
+import type { CreateProductPayload, ProductStatus } from "@/types/product.types";
 import { FormLabel } from "./FormLabel";
-import { CATEGORY_LABEL, CATEGORY_OPTIONS, parseBRLToCents } from "./helpers";
+import { parseBRLToCents } from "./helpers";
 
 interface ProductFormState {
   name: string;
   priceBRL: string;
   costBRL: string;
-  category: ProductCategory;
+  categoryId: string | null;
   sku: string;
   status: ProductStatus;
   repurchasePeriodDays: string;
@@ -35,7 +38,7 @@ const EMPTY_PRODUCT_FORM: ProductFormState = {
   name: "",
   priceBRL: "",
   costBRL: "",
-  category: "BARBERSHOP_COSMETICS",
+  categoryId: null,
   sku: "",
   status: "ACTIVE",
   repurchasePeriodDays: "",
@@ -46,6 +49,7 @@ export function DialogProduto({
   onOpenChange,
   product,
   initialCostInCents,
+  categories,
   onSave,
 }: {
   open: boolean;
@@ -53,6 +57,7 @@ export function DialogProduto({
   product: ProductWithStock | null;
   /** Custo unitário atual do produto (centavos), vindo da camada local. */
   initialCostInCents: number;
+  categories: Category[];
   onSave: (
     payload: CreateProductPayload,
     costInCents: number,
@@ -70,7 +75,7 @@ export function DialogProduto({
         costBRL: initialCostInCents
           ? maskBRLInput(String(initialCostInCents))
           : "",
-        category: product.category,
+        categoryId: product.categoryId,
         sku: product.sku ?? "",
         status: product.status,
         repurchasePeriodDays: product.repurchasePeriodDays
@@ -117,7 +122,7 @@ export function DialogProduto({
         {
           name: form.name.trim(),
           priceInCents,
-          category: form.category,
+          categoryId: form.categoryId ?? undefined,
           sku: form.sku.trim() || undefined,
           status: form.status,
           repurchasePeriodDays: repurchaseDays,
@@ -132,6 +137,8 @@ export function DialogProduto({
 
   const inputCls =
     "bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10";
+
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -215,24 +222,40 @@ export function DialogProduto({
           </div>
 
           <div className="space-y-1.5">
-            <FormLabel required>Categoria</FormLabel>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORY_OPTIONS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => update("category", c)}
+            <FormLabel>Categoria</FormLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-full">
+                <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm flex items-center justify-between gap-2 text-left">
+                  <span className={selectedCategory ? "text-foreground" : "text-text-faint"}>
+                    {selectedCategory?.name ?? "Sem categoria"}
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto w-[var(--radix-dropdown-menu-trigger-width)]">
+                <DropdownMenuItem
+                  onClick={() => update("categoryId", null)}
                   className={cn(
-                    "h-9 rounded-md border text-xs font-semibold transition-colors",
-                    form.category === c
-                      ? "bg-brand/15 border-brand/60 text-brand"
-                      : "border-border bg-surface-base text-muted-foreground hover:border-brand/30",
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    !form.categoryId && "text-brand",
                   )}
                 >
-                  {CATEGORY_LABEL[c]}
-                </button>
-              ))}
-            </div>
+                  Sem categoria
+                </DropdownMenuItem>
+                {categories.map((c) => (
+                  <DropdownMenuItem
+                    key={c.id}
+                    onClick={() => update("categoryId", c.id)}
+                    className={cn(
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      form.categoryId === c.id && "text-brand",
+                    )}
+                  >
+                    {c.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="space-y-1.5">

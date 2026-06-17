@@ -17,10 +17,12 @@ import { HorariosAtendimento } from "./HorariosAtendimento";
 import { Intervalos } from "./Intervalos";
 import { Folgas } from "./Folgas";
 import { RegrasComissao } from "./RegrasComissao";
+import type { Category } from "@/types/category.types";
 
 export function ProfessionalForm({
   initialBasic,
   services,
+  categories,
   initialConfig,
   onSave,
   onBack,
@@ -33,6 +35,7 @@ export function ProfessionalForm({
 }: {
   initialBasic: ProfessionalBasic;
   services: Service[];
+  categories: Category[];
   initialConfig: ProfessionalConfig;
   onSave: (basic: ProfessionalBasic, config: ProfessionalConfig) => Promise<void>;
   onBack: () => void;
@@ -179,6 +182,7 @@ export function ProfessionalForm({
             <RegrasComissao
               productCommission={config.productCommission}
               differentiated={config.differentiated}
+              categories={categories}
               onChange={updateConfig}
             />
           </>

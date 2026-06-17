@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge, EmptyState, Loading } from "@/components/shared";
 import type { ProductWithStock } from "@/hooks/useProducts";
-import { CATEGORY_LABEL, formatBRLFromCents } from "./helpers";
+import { formatBRLFromCents } from "./helpers";
 
 const COLS = ["Produto", "Categoria", "SKU", "Custo", "Preço", "Status", ""];
 
@@ -68,7 +68,7 @@ export function TabProdutos({
                     {p.name}
                   </TableCell>
                   <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                    {CATEGORY_LABEL[p.category]}
+                    {p.category?.name ?? "—"}
                   </TableCell>
                   <TableCell className="px-4 py-4 text-muted-foreground text-xs font-mono">
                     {p.sku ?? "—"}

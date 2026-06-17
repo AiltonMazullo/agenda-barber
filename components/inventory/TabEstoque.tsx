@@ -9,7 +9,6 @@ import {
 import { StatusBadge, EmptyState, Loading } from "@/components/shared";
 import type { ProductWithStock } from "@/hooks/useProducts";
 import {
-  CATEGORY_LABEL,
   STOCK_LABEL,
   STOCK_TONE,
   deriveStatus,
@@ -77,7 +76,7 @@ export function TabEstoque({
                     {p.name}
                   </TableCell>
                   <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                    {CATEGORY_LABEL[p.category]}
+                    {p.category?.name ?? "—"}
                   </TableCell>
                   <TableCell className="px-4 py-4 text-muted-foreground text-sm">
                     {p.totalCurrent}

@@ -3,6 +3,11 @@
  * Preço sempre em centavos (inteiro).
  */
 
+export interface ServiceCategory {
+  id: string;
+  name: string;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -12,6 +17,8 @@ export interface Service {
   hex: string | null;
   /** Serviço marcado como destaque (aparece primeiro e com badge "Em alta"). */
   featured: boolean;
+  categoryId: string | null;
+  category: ServiceCategory | null;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +30,7 @@ export interface CreateServicePayload {
   durationMin: number;
   priceInCents: number;
   hex?: string;
+  categoryId?: string | null;
 }
 
 export interface UpdateServicePayload {
@@ -31,4 +39,5 @@ export interface UpdateServicePayload {
   durationMin?: number;
   priceInCents?: number;
   hex?: string;
+  categoryId?: string | null;
 }

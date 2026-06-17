@@ -48,7 +48,12 @@ interface NavItem {
 
 const navOperacional: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Agenda", href: "/schedule", icon: Calendar, module: "appointments" },
+  {
+    title: "Agenda",
+    href: "/schedule",
+    icon: Calendar,
+    module: "appointments",
+  },
   { title: "Clientes", href: "/clients", icon: Users, module: "clients" },
   {
     title: "Profissionais",

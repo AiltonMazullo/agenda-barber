@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   Info,
   GripVertical,
+  Tags,
+  ChevronDown,
 } from "lucide-react";
 import {
   DndContext,
@@ -58,7 +60,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DatePickerField, DataTablePagination, Loading } from "@/components/shared";
+import {
+  DatePickerField,
+  DataTablePagination,
+  Loading,
+} from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -69,6 +75,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { usePaymentData } from "@/hooks/usePaymentData";
 import { useServices } from "@/hooks/useServices";
+import { useCategories } from "@/hooks/useCategories";
 import { barbershopsService } from "@/services/barbershops.service";
 import {
   companyConfigStore,
@@ -84,15 +91,10 @@ import {
   PAYMENT_METHOD_LABELS,
   type PaymentMethod,
 } from "@/types/cash-register.types";
-import type {
-  CreateEmployeePayload,
-  Employee,
-} from "@/types/employee.types";
+import type { CreateEmployeePayload, Employee } from "@/types/employee.types";
 import type { AccessGroup } from "@/types/access-group.types";
-import type {
-  CreateServicePayload,
-  Service,
-} from "@/types/service.types";
+import type { CreateServicePayload, Service } from "@/types/service.types";
+import type { Category } from "@/types/category.types";
 import {
   maskBRLInput,
   maskCep,
@@ -107,17 +109,26 @@ type TabKey =
   | "filiais"
   | "profissionais"
   | "servicos"
+  | "categorias"
   | "pagamento";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "empresa", label: "Empresa", icon: <Building2 className="size-3.5" /> },
+  {
+    key: "empresa",
+    label: "Empresa",
+    icon: <Building2 className="size-3.5" />,
+  },
   { key: "filiais", label: "Filiais", icon: <MapPin className="size-3.5" /> },
   {
-    key: "profissionais",
-    label: "Profissionais",
-    icon: <Users className="size-3.5" />,
+    key: "servicos",
+    label: "Serviços",
+    icon: <Scissors className="size-3.5" />,
   },
-  { key: "servicos", label: "Serviços", icon: <Scissors className="size-3.5" /> },
+  {
+    key: "categorias",
+    label: "Categorias",
+    icon: <Tags className="size-3.5" />,
+  },
   {
     key: "pagamento",
     label: "Pagamento",
@@ -209,13 +220,16 @@ function TabEmpresa() {
     setBannerUrls(barbershop?.bannerUrls ?? []);
     if (barbershop) {
       setConfig(companyConfigStore.get(barbershop.id));
-      setLogoCentered(barbershopAppearanceStore.get(barbershop.id).logoCentered);
+      setLogoCentered(
+        barbershopAppearanceStore.get(barbershop.id).logoCentered,
+      );
     }
   }, [barbershop]);
 
   function toggleLogoCentered(value: boolean) {
     setLogoCentered(value);
-    if (barbershop) barbershopAppearanceStore.set(barbershop.id, { logoCentered: value });
+    if (barbershop)
+      barbershopAppearanceStore.set(barbershop.id, { logoCentered: value });
   }
 
   function toggleConfig(patch: Partial<CompanyConfig>) {
@@ -285,9 +299,7 @@ function TabEmpresa() {
   }
 
   if (!barbershop) {
-    return (
-      <Loading label="Carregando informações" />
-    );
+    return <Loading label="Carregando informações" />;
   }
 
   return (
@@ -420,7 +432,9 @@ function TabEmpresa() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-foreground font-medium">
-                    {logoUrl ? "Clique para substituir" : "Clique para selecionar"}
+                    {logoUrl
+                      ? "Clique para substituir"
+                      : "Clique para selecionar"}
                   </p>
                   <p className="text-[11px] text-text-faint mt-0.5">
                     PNG, JPG ou WebP · recomendado 400×400
@@ -665,7 +679,11 @@ function TabEmpresa() {
 
           <div className="px-6 py-5 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Esta ação <span className="text-danger-foreground font-bold">não pode ser desfeita</span>. Todos os dados serão removidos permanentemente.
+              Esta ação{" "}
+              <span className="text-danger-foreground font-bold">
+                não pode ser desfeita
+              </span>
+              . Todos os dados serão removidos permanentemente.
             </p>
 
             <div className="bg-danger/5 border border-danger/20 rounded-md px-3 py-2.5 text-xs text-muted-foreground space-y-1">
@@ -818,7 +836,7 @@ function DialogFilial({
       // para que a unidade principal já inicie configurada.
       setForm({
         ...EMPTY_BRANCH_FORM,
-        name: isFirstBranch ? companyDefaults?.name ?? "" : "",
+        name: isFirstBranch ? (companyDefaults?.name ?? "") : "",
         cnpj: companyDefaults?.cnpj ? maskCnpj(companyDefaults.cnpj) : "",
         email: companyDefaults?.email ?? "",
         phone: companyDefaults?.phone ?? "",
@@ -842,9 +860,7 @@ function DialogFilial({
       const others = prev.paymentConfigs.filter((p) => p.method !== method);
       return {
         ...prev,
-        paymentConfigs: on
-          ? [...others, { method, feePercent: 0 }]
-          : others,
+        paymentConfigs: on ? [...others, { method, feePercent: 0 }] : others,
       };
     });
   }
@@ -857,7 +873,9 @@ function DialogFilial({
     }));
   }
   function feeOf(method: PaymentMethod): number {
-    return form.paymentConfigs.find((p) => p.method === method)?.feePercent ?? 0;
+    return (
+      form.paymentConfigs.find((p) => p.method === method)?.feePercent ?? 0
+    );
   }
 
   async function handleCepChange(raw: string) {
@@ -897,9 +915,7 @@ function DialogFilial({
     if (!form.number.trim()) return toast.error("Informe o número.");
     // Parametrização (ref. CashB): filial de recebimentos exige conta bancária.
     if (form.isReceivingBranch && !form.bankAccount.trim())
-      return toast.error(
-        "Filial de recebimentos requer uma conta bancária.",
-      );
+      return toast.error("Filial de recebimentos requer uma conta bancária.");
 
     const deadline = form.receiptDeadlineDays
       ? parseInt(form.receiptDeadlineDays, 10)
@@ -1162,9 +1178,7 @@ function DialogFilial({
             <label className="flex items-start gap-3 cursor-pointer select-none rounded-md border border-border-subtle bg-surface-base p-3">
               <Checkbox
                 checked={form.isReceivingBranch}
-                onCheckedChange={(c) =>
-                  update("isReceivingBranch", c === true)
-                }
+                onCheckedChange={(c) => update("isReceivingBranch", c === true)}
                 className="mt-0.5"
               />
               <div>
@@ -1642,7 +1656,11 @@ function DialogProfissional({
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
-                  placeholder={employee ? "Deixe em branco para manter" : "Mín. 6 caracteres"}
+                  placeholder={
+                    employee
+                      ? "Deixe em branco para manter"
+                      : "Mín. 6 caracteres"
+                  }
                   className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10 pr-9"
                 />
                 <button
@@ -1689,7 +1707,10 @@ function DialogProfissional({
             <div className="space-y-1.5">
               <FormLabel required>Grupo de acesso</FormLabel>
               <DropdownMenu>
-                <DropdownMenuTrigger className="w-full" disabled={groups.length === 0}>
+                <DropdownMenuTrigger
+                  className="w-full"
+                  disabled={groups.length === 0}
+                >
                   <div
                     className={cn(
                       "w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 transition-colors",
@@ -1725,8 +1746,8 @@ function DialogProfissional({
               </DropdownMenu>
               {groups.length === 0 && (
                 <p className="text-[11px] text-warning-foreground">
-                  Crie um grupo de acesso em Controle de Acesso antes de cadastrar
-                  profissionais.
+                  Crie um grupo de acesso em Controle de Acesso antes de
+                  cadastrar profissionais.
                 </p>
               )}
             </div>
@@ -1735,7 +1756,11 @@ function DialogProfissional({
               <DropdownMenu>
                 <DropdownMenuTrigger className="w-full">
                   <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
-                    <span className={form.branchId ? "text-white" : "text-text-faint"}>
+                    <span
+                      className={
+                        form.branchId ? "text-white" : "text-text-faint"
+                      }
+                    >
                       {branches.find((b) => b.id === form.branchId)?.name ??
                         "Selecione uma filial"}
                     </span>
@@ -1912,7 +1937,9 @@ function TabProfissionais() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Remover este profissional? Essa ação não pode ser desfeita.")) {
+    if (
+      !confirm("Remover este profissional? Essa ação não pode ser desfeita.")
+    ) {
       return;
     }
     await remove(id);
@@ -2071,6 +2098,7 @@ interface ServiceFormState {
   durationMin: string;
   priceBRL: string;
   hex: string;
+  categoryId: string | null;
 }
 
 const EMPTY_SERVICE_FORM: ServiceFormState = {
@@ -2079,17 +2107,20 @@ const EMPTY_SERVICE_FORM: ServiceFormState = {
   durationMin: "30",
   priceBRL: "",
   hex: DEFAULT_HEX,
+  categoryId: null,
 };
 
 function DialogServico({
   open,
   onOpenChange,
   service,
+  categories,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   service: Service | null;
+  categories: Category[];
   onSave: (payload: CreateServicePayload) => Promise<void>;
 }) {
   const [form, setForm] = useState<ServiceFormState>(EMPTY_SERVICE_FORM);
@@ -2104,6 +2135,7 @@ function DialogServico({
         durationMin: String(service.durationMin),
         priceBRL: maskBRLInput(String(service.priceInCents)),
         hex: service.hex ?? DEFAULT_HEX,
+        categoryId: service.categoryId ?? null,
       });
     } else {
       setForm(EMPTY_SERVICE_FORM);
@@ -2128,12 +2160,15 @@ function DialogServico({
         durationMin,
         priceInCents,
         hex: form.hex,
+        categoryId: form.categoryId,
       });
       onOpenChange(false);
     } finally {
       setSaving(false);
     }
   }
+
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -2157,9 +2192,7 @@ function DialogServico({
             <FormLabel required>Nome</FormLabel>
             <Input
               value={form.name}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, name: e.target.value }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               placeholder="Ex: Corte Masculino"
               className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
             />
@@ -2207,6 +2240,46 @@ function DialogServico({
                 className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <FormLabel>Categoria</FormLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-full">
+                <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm flex items-center justify-between gap-2 text-left">
+                  <span
+                    className={
+                      selectedCategory ? "text-white" : "text-text-faint"
+                    }
+                  >
+                    {selectedCategory?.name ?? "Sem categoria"}
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto w-[var(--radix-dropdown-menu-trigger-width)]">
+                <DropdownMenuItem
+                  onClick={() => setForm((p) => ({ ...p, categoryId: null }))}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    !form.categoryId && "text-brand",
+                  )}
+                >
+                  Sem categoria
+                </DropdownMenuItem>
+                {categories.map((c) => (
+                  <DropdownMenuItem
+                    key={c.id}
+                    onClick={() => setForm((p) => ({ ...p, categoryId: c.id }))}
+                    className={cn(
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      form.categoryId === c.id && "text-brand",
+                    )}
+                  >
+                    {c.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="space-y-1.5">
             <FormLabel>Cor de Identificação</FormLabel>
@@ -2271,8 +2344,14 @@ function SortableServiceRow({
   onDelete: (id: string) => void;
   onFeatured: (id: string, v: boolean) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: s.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: s.id });
   return (
     <TableRow
       ref={setNodeRef}
@@ -2348,6 +2427,7 @@ function TabServicos() {
   const { barbershop } = useAuth();
   const { services, isLoading, create, update, remove, setFeatured, reorder } =
     useServices(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const pag = usePagination(services, 10);
@@ -2411,18 +2491,25 @@ function TabServicos() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {["", "", "Serviço", "Descrição", "Duração", "Preço", "Destaque", ""].map(
-                  (h, i) => (
-                    <TableHead
-                      key={i}
-                      className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto ${
-                        h === "Destaque" ? "text-center" : ""
-                      }`}
-                    >
-                      {h}
-                    </TableHead>
-                  ),
-                )}
+                {[
+                  "",
+                  "",
+                  "Serviço",
+                  "Descrição",
+                  "Duração",
+                  "Preço",
+                  "Destaque",
+                  "",
+                ].map((h, i) => (
+                  <TableHead
+                    key={i}
+                    className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto ${
+                      h === "Destaque" ? "text-center" : ""
+                    }`}
+                  >
+                    {h}
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <DndContext
@@ -2486,6 +2573,217 @@ function TabServicos() {
         open={dialog}
         onOpenChange={setDialog}
         service={editing}
+        categories={categories}
+        onSave={handleSave}
+      />
+    </Card>
+  );
+}
+
+// ─── Dialog: Categoria ────────────────────────────────────────────────────────
+
+function DialogCategoria({
+  open,
+  onOpenChange,
+  category,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  category: Category | null;
+  onSave: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(category?.name ?? "");
+  }, [open, category]);
+
+  async function handleSave() {
+    if (name.trim().length < 2)
+      return toast.error("Informe o nome da categoria.");
+    setSaving(true);
+    try {
+      await onSave(name.trim());
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-sm p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-base font-bold">
+              {category ? "Editar Categoria" : "Nova Categoria"}
+            </DialogTitle>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </DialogHeader>
+        <div className="px-6 py-5">
+          <div className="space-y-1.5">
+            <FormLabel required>Nome</FormLabel>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              placeholder="Ex: Cortes, Cosméticos…"
+              className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+            />
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-white hover:bg-surface-elevated transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleSave}
+            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+          >
+            {saving ? "Salvando…" : category ? "Salvar" : "Criar Categoria"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Tab: Categorias ─────────────────────────────────────────────────────────
+
+function TabCategorias() {
+  const { barbershop } = useAuth();
+  const { categories, isLoading, create, update, remove } = useCategories(
+    barbershop?.id,
+  );
+  const [dialog, setDialog] = useState(false);
+  const [editing, setEditing] = useState<Category | null>(null);
+
+  async function handleSave(name: string) {
+    if (editing) {
+      await update(editing.id, { name });
+    } else {
+      await create({ name });
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (
+      !confirm(
+        "Remover esta categoria? Serviços e produtos vinculados serão desvinculados automaticamente.",
+      )
+    )
+      return;
+    await remove(id);
+  }
+
+  return (
+    <Card className="bg-surface-raised border-border">
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
+          <h2 className="text-sm font-bold text-white">Categorias</h2>
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setDialog(true);
+            }}
+            className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
+          >
+            <Plus className="size-3.5" />
+            Nova Categoria
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                {["Nome", "Criada em", ""].map((h, i) => (
+                  <TableHead
+                    key={i}
+                    className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
+                  >
+                    {h}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={3} className="py-4">
+                    <Loading />
+                  </td>
+                </tr>
+              ) : categories.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="py-12 text-center text-sm text-text-faint"
+                  >
+                    Nenhuma categoria cadastrada.
+                  </td>
+                </tr>
+              ) : (
+                categories.map((c) => (
+                  <TableRow
+                    key={c.id}
+                    className="border-border hover:bg-surface-elevated/40 transition-colors"
+                  >
+                    <TableCell className="px-5 py-4 font-semibold text-white text-sm">
+                      {c.name}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-muted-foreground text-sm">
+                      {new Date(c.createdAt).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditing(c);
+                            setDialog(true);
+                          }}
+                          className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(c.id)}
+                          className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+      <DialogCategoria
+        open={dialog}
+        onOpenChange={setDialog}
+        category={editing}
         onSave={handleSave}
       />
     </Card>
@@ -2691,6 +2989,7 @@ export default function ConfiguracoesPage() {
             {activeTab === "filiais" && <TabFiliais />}
             {activeTab === "profissionais" && <TabProfissionais />}
             {activeTab === "servicos" && <TabServicos />}
+            {activeTab === "categorias" && <TabCategorias />}
             {activeTab === "pagamento" && <TabPagamento />}
           </div>
         </CardContent>

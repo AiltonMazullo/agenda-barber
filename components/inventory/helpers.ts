@@ -1,6 +1,5 @@
 import { formatBRL } from "@/utils/format";
 import type { ProductWithStock } from "@/hooks/useProducts";
-import type { ProductCategory } from "@/types/product.types";
 import type { StockMovementType } from "@/types/inventory.types";
 import type { Tone } from "@/types/common.types";
 
@@ -37,22 +36,6 @@ export function parseBRLToCents(input: string): number {
   const num = parseFloat(cleaned);
   return Number.isFinite(num) ? Math.round(num * 100) : 0;
 }
-
-// ─── Categorias ─────────────────────────────────────────────────────────────
-
-export const CATEGORY_LABEL: Record<ProductCategory, string> = {
-  CLOTHING: "Vestuário",
-  BARBERSHOP_COSMETICS: "Cosméticos",
-  BAR: "Bar",
-  BARBERSHOP_ACCESSORIES: "Acessórios",
-};
-
-export const CATEGORY_OPTIONS: ProductCategory[] = [
-  "CLOTHING",
-  "BARBERSHOP_COSMETICS",
-  "BAR",
-  "BARBERSHOP_ACCESSORIES",
-];
 
 // ─── Situação do estoque ────────────────────────────────────────────────────
 

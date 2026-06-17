@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { usePagination } from "@/hooks/usePagination";
 import { useProducts, type ProductWithStock } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { useProductCosts } from "@/hooks/useProductCosts";
 import { useStockMovements } from "@/hooks/useStockMovements";
 import type { CreateProductPayload } from "@/types/product.types";
@@ -39,6 +40,7 @@ export default function EstoquePage() {
   const { barbershop } = useAuth();
   const { products, isLoading, create, update, remove, upsertStock } =
     useProducts(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id);
   const { branches } = useBranches(barbershop?.id);
   const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
   const { movements, addMovement } = useStockMovements(barbershop?.id);
@@ -317,6 +319,7 @@ export default function EstoquePage() {
         onOpenChange={setProductDialog}
         product={editingProduct}
         initialCostInCents={editingProduct ? costOf(editingProduct.id) : 0}
+        categories={categories}
         onSave={handleProductSave}
       />
 
