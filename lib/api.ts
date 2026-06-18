@@ -13,10 +13,12 @@
 import axios, {
   AxiosError,
   type AxiosInstance,
+  type AxiosRequestConfig,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from "axios";
 import { translateApiError } from "@/utils/api-errors";
+import { acquireSlot, releaseSlot } from "@/lib/request-queue";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ;
@@ -128,9 +130,13 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
 export const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
+  // Evita que uma requisição travada bloqueie a fila indefinidamente.
+  timeout: 30000,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
+  // Serializa as chamadas (uma por vez) para não estourar o rate limit.
+  await acquireSlot();
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -139,8 +145,12 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    releaseSlot();
+    return response;
+  },
   async (error: AxiosError<ApiErrorBody>) => {
+    releaseSlot();
     const originalConfig = error.config as RetriableConfig | undefined;
 
     // 401 → tenta refresh uma única vez
@@ -177,6 +187,24 @@ api.interceptors.response.use(
     return Promise.reject(toApiError(error));
   },
 );
+
+// ─── Deduplicação de GETs em voo ──────────────────────────────────────────────
+// Em dev o StrictMode dispara os effects duas vezes; telas também podem montar
+// o mesmo hook em paralelo. Para não repetir a mesma chamada, GETs idênticos
+// (mesma URL + params) compartilham a promise enquanto uma está em voo. Some do
+// mapa ao resolver/rejeitar — é dedupe de requisições concorrentes, não cache.
+const inflightGets = new Map<string, Promise<AxiosResponse>>();
+const rawGet = api.get.bind(api);
+api.get = function dedupGet(url: string, config?: AxiosRequestConfig) {
+  const key = `${url}|${JSON.stringify(config?.params ?? null)}`;
+  const existing = inflightGets.get(key);
+  if (existing) return existing;
+  const promise = rawGet(url, config).finally(() => {
+    inflightGets.delete(key);
+  });
+  inflightGets.set(key, promise as Promise<AxiosResponse>);
+  return promise;
+} as typeof api.get;
 
 // ─── Helpers de mock (mantidos enquanto migração não terminou) ────────────────
 
