@@ -38,23 +38,6 @@ export function TwoFactorButton({ clientId }: TwoFactorButtonProps) {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setOpen(true)}
-        className="cursor-pointer"
-      >
-        <ShieldCheck
-          className={`size-4 mr-1.5 ${enabled ? "text-green-500" : ""}`}
-        />
-        Senha em 2FA
-        {enabled && (
-          <span className="ml-1.5 inline-flex items-center rounded-full border border-green-500/40 bg-green-500/10 px-1.5 text-[10px] font-semibold text-green-500">
-            Ativo
-          </span>
-        )}
-      </Button>
-
       <Dialog open={open} onOpenChange={(o) => setOpen(o)}>
         <DialogContent>
           <DialogHeader>
