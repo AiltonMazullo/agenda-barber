@@ -267,16 +267,24 @@ function TabEmpresa() {
       return;
     }
     const toUpload = files.slice(0, available);
-    setBannerUrls((prev) => [...prev, ...toUpload.map((f) => URL.createObjectURL(f))]);
+    setBannerUrls((prev) => [
+      ...prev,
+      ...toUpload.map((f) => URL.createObjectURL(f)),
+    ]);
     setCarouselUploading(true);
     try {
-      const updated = await barbershopsService.addCarouselImages(barbershop.id, toUpload);
+      const updated = await barbershopsService.addCarouselImages(
+        barbershop.id,
+        toUpload,
+      );
       updateBarbershop(updated);
       setBannerUrls(updated.carouselImages ?? []);
       toast.success("Imagens adicionadas.");
     } catch (err) {
       setBannerUrls(barbershop.carouselImages ?? []);
-      toast.error(err instanceof Error ? err.message : "Falha ao enviar imagens.");
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao enviar imagens.",
+      );
     } finally {
       setCarouselUploading(false);
     }
@@ -287,12 +295,17 @@ function TabEmpresa() {
     const snapshot = [...bannerUrls];
     setBannerUrls((prev) => prev.filter((_, i) => i !== index));
     try {
-      const updated = await barbershopsService.removeCarouselImage(barbershop.id, index);
+      const updated = await barbershopsService.removeCarouselImage(
+        barbershop.id,
+        index,
+      );
       updateBarbershop(updated);
       setBannerUrls(updated.carouselImages ?? []);
     } catch (err) {
       setBannerUrls(snapshot);
-      toast.error(err instanceof Error ? err.message : "Falha ao remover imagem.");
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao remover imagem.",
+      );
     }
   }
 
@@ -466,10 +479,17 @@ function TabEmpresa() {
             {/* Logo */}
             <div className="space-y-1.5">
               <FormLabel>Logo</FormLabel>
-              <label className={cn("flex items-center gap-3 cursor-pointer group", logoUploading && "pointer-events-none opacity-60")}>
+              <label
+                className={cn(
+                  "flex items-center gap-3 cursor-pointer group",
+                  logoUploading && "pointer-events-none opacity-60",
+                )}
+              >
                 <div className="size-16 rounded-xl bg-surface-base border-2 border-dashed border-border group-hover:border-brand/50 flex items-center justify-center overflow-hidden shrink-0 transition-colors">
                   {logoUploading ? (
-                    <span className="text-[9px] text-text-faint animate-pulse">Enviando…</span>
+                    <span className="text-[9px] text-text-faint animate-pulse">
+                      Enviando…
+                    </span>
                   ) : logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -502,17 +522,6 @@ function TabEmpresa() {
                     e.target.value = "";
                   }}
                 />
-              </label>
-              <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                <Checkbox
-                  checked={logoCentered}
-                  onCheckedChange={(c) => toggleLogoCentered(c === true)}
-                  className="cursor-pointer mt-0.5"
-                />
-                <span className="text-[11px] text-muted-foreground">
-                  Exibir logo centralizada no topo da vitrine, isolada e sem
-                  fundo.
-                </span>
               </label>
             </div>
 
@@ -556,7 +565,12 @@ function TabEmpresa() {
                   </span>
                 </FormLabel>
                 {bannerUrls.length < 3 && (
-                  <label className={cn("text-xs text-brand hover:underline font-semibold flex items-center gap-1 cursor-pointer", carouselUploading && "pointer-events-none opacity-60")}>
+                  <label
+                    className={cn(
+                      "text-xs text-brand hover:underline font-semibold flex items-center gap-1 cursor-pointer",
+                      carouselUploading && "pointer-events-none opacity-60",
+                    )}
+                  >
                     <Plus className="size-3" />
                     {carouselUploading ? "Enviando…" : "Adicionar"}
                     <input
