@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Bell, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Popover,
   PopoverTrigger,
@@ -40,13 +41,25 @@ export function NotificationsMenu() {
   }
 
   function handleClearAll() {
+    const count = items.length;
     clearAll();
     setSelected(new Set());
+    toast.success(
+      count === 1
+        ? "Notificação limpa."
+        : `Todas as ${count} notificações foram limpas.`,
+    );
   }
 
   function handleClearSelected() {
+    const count = selected.size;
     clearMany([...selected]);
     setSelected(new Set());
+    toast.success(
+      count === 1
+        ? "1 notificação removida."
+        : `${count} notificações removidas.`,
+    );
   }
 
   const hasItems = items.length > 0;

@@ -38,7 +38,21 @@ function withAggregates(product: Product, stock: ProductStock[]): ProductWithSto
   };
 }
 
-export function useProducts(barbershopId: string | undefined) {
+interface UseProductsOptions {
+  /**
+   * Carrega o estoque por filial de cada produto já no load (1 GET por
+   * produto). Use apenas em telas que **exibem** estoque (ex.: aba Estoque,
+   * relatório de estoque). Padrão `false` — telas que só usam nome/preço do
+   * produto (ex.: assinaturas) não disparam essas chamadas. Estoque sob
+   * demanda fica disponível via `loadStock(productId)`.
+   */
+  withStock?: boolean;
+}
+
+export function useProducts(
+  barbershopId: string | undefined,
+  { withStock = false }: UseProductsOptions = {},
+) {
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,11 +67,16 @@ export function useProducts(barbershopId: string | undefined) {
     (async () => {
       try {
         const list = await productsService.list(barbershopId);
-        const stockArrays = await Promise.all(
-          list.map((p) => loadStockSafe(barbershopId, p.id)),
-        );
         if (!active) return;
-        setProducts(list.map((p, i) => withAggregates(p, stockArrays[i])));
+        if (withStock) {
+          const stockArrays = await Promise.all(
+            list.map((p) => loadStockSafe(barbershopId, p.id)),
+          );
+          if (!active) return;
+          setProducts(list.map((p, i) => withAggregates(p, stockArrays[i])));
+        } else {
+          setProducts(list.map((p) => withAggregates(p, [])));
+        }
       } catch (err) {
         if (!active) return;
         toast.error(
@@ -71,7 +90,19 @@ export function useProducts(barbershopId: string | undefined) {
     return () => {
       active = false;
     };
-  }, [barbershopId]);
+  }, [barbershopId, withStock]);
+
+  /** Carrega o estoque de um produto sob demanda (ex.: ao abrir o produto). */
+  const loadStock = useCallback(
+    async (productId: string) => {
+      if (!barbershopId) return;
+      const stock = await loadStockSafe(barbershopId, productId);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId ? withAggregates(p, stock) : p)),
+      );
+    },
+    [barbershopId],
+  );
 
   const create = useCallback(
     async (payload: CreateProductPayload) => {
@@ -171,5 +202,5 @@ export function useProducts(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { products, isLoading, create, update, remove, upsertStock };
+  return { products, isLoading, loadStock, create, update, remove, upsertStock };
 }

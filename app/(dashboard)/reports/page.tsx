@@ -771,7 +771,9 @@ function RelClientesPorServico() {
 
 function RelEstoqueAtual() {
   const { barbershop } = useAuth();
-  const { products, isLoading } = useProducts(barbershop?.id);
+  const { products, isLoading } = useProducts(barbershop?.id, {
+    withStock: true,
+  });
 
   if (isLoading) return <LoadingState />;
   if (products.length === 0)

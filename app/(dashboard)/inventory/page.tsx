@@ -39,7 +39,7 @@ import {
 export default function EstoquePage() {
   const { barbershop } = useAuth();
   const { products, isLoading, create, update, remove, upsertStock } =
-    useProducts(barbershop?.id);
+    useProducts(barbershop?.id, { withStock: true });
   const { categories } = useCategories(barbershop?.id);
   const { branches } = useBranches(barbershop?.id);
   const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
