@@ -66,6 +66,7 @@ import {
   Loading,
 } from "@/components/shared";
 import { cn } from "@/lib/utils";
+import { apiAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
 
 import { usePagination } from "@/hooks/usePagination";
@@ -201,9 +202,11 @@ function TabEmpresa() {
   const [subtitle, setSubtitle] = useState(barbershop?.subtitle ?? "");
   const [description, setDescription] = useState(barbershop?.description ?? "");
   const [bannerUrls, setBannerUrls] = useState<string[]>(
-    barbershop?.bannerUrls ?? [],
+    barbershop?.carouselImages ?? [],
   );
   const [logoCentered, setLogoCentered] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [carouselUploading, setCarouselUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -217,7 +220,7 @@ function TabEmpresa() {
     setTitle(barbershop?.title ?? "");
     setSubtitle(barbershop?.subtitle ?? "");
     setDescription(barbershop?.description ?? "");
-    setBannerUrls(barbershop?.bannerUrls ?? []);
+    setBannerUrls(barbershop?.carouselImages ?? []);
     if (barbershop) {
       setConfig(companyConfigStore.get(barbershop.id));
       setLogoCentered(
@@ -240,8 +243,57 @@ function TabEmpresa() {
     });
   }
 
-  function removeBanner(i: number) {
-    setBannerUrls((prev) => prev.filter((_, idx) => idx !== i));
+  async function handleLogoUpload(file: File) {
+    if (!barbershop) return;
+    setLogoUrl(URL.createObjectURL(file));
+    setLogoUploading(true);
+    try {
+      const updated = await barbershopsService.uploadLogo(barbershop.id, file);
+      updateBarbershop(updated);
+      toast.success("Logo atualizada.");
+    } catch (err) {
+      setLogoUrl(barbershop.logoUrl ?? "");
+      toast.error(err instanceof Error ? err.message : "Falha ao enviar logo.");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function handleCarouselAdd(files: File[]) {
+    if (!barbershop) return;
+    const available = 3 - bannerUrls.length;
+    if (available <= 0) {
+      toast.error("Limite de 3 imagens atingido.");
+      return;
+    }
+    const toUpload = files.slice(0, available);
+    setBannerUrls((prev) => [...prev, ...toUpload.map((f) => URL.createObjectURL(f))]);
+    setCarouselUploading(true);
+    try {
+      const updated = await barbershopsService.addCarouselImages(barbershop.id, toUpload);
+      updateBarbershop(updated);
+      setBannerUrls(updated.carouselImages ?? []);
+      toast.success("Imagens adicionadas.");
+    } catch (err) {
+      setBannerUrls(barbershop.carouselImages ?? []);
+      toast.error(err instanceof Error ? err.message : "Falha ao enviar imagens.");
+    } finally {
+      setCarouselUploading(false);
+    }
+  }
+
+  async function handleCarouselRemove(index: number) {
+    if (!barbershop) return;
+    const snapshot = [...bannerUrls];
+    setBannerUrls((prev) => prev.filter((_, i) => i !== index));
+    try {
+      const updated = await barbershopsService.removeCarouselImage(barbershop.id, index);
+      updateBarbershop(updated);
+      setBannerUrls(updated.carouselImages ?? []);
+    } catch (err) {
+      setBannerUrls(snapshot);
+      toast.error(err instanceof Error ? err.message : "Falha ao remover imagem.");
+    }
   }
 
   async function handleSave() {
@@ -256,11 +308,9 @@ function TabEmpresa() {
         name: name.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        logoUrl: logoUrl.trim(),
         title: title.trim(),
         subtitle: subtitle.trim(),
         description: description.trim(),
-        bannerUrls: bannerUrls.map((b) => b.trim()).filter(Boolean),
       });
       updateBarbershop(updated);
       toast.success("Dados atualizados.");
@@ -313,7 +363,7 @@ function TabEmpresa() {
                 {logoUrl.trim() ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={logoUrl}
+                    src={apiAssetUrl(logoUrl) ?? ""}
                     alt="logo"
                     className="size-16 object-cover rounded-xl"
                   />
@@ -409,20 +459,21 @@ function TabEmpresa() {
               </h3>
               <p className="text-[11px] text-text-faint mt-1">
                 Esses dados aparecem na página da barbearia que o cliente
-                acessa. O upload será salvo quando o backend disponibilizar a
-                rota.
+                acessa. Logo e carrossel são enviados imediatamente ao servidor.
               </p>
             </div>
 
             {/* Logo */}
             <div className="space-y-1.5">
               <FormLabel>Logo</FormLabel>
-              <label className="flex items-center gap-3 cursor-pointer group">
+              <label className={cn("flex items-center gap-3 cursor-pointer group", logoUploading && "pointer-events-none opacity-60")}>
                 <div className="size-16 rounded-xl bg-surface-base border-2 border-dashed border-border group-hover:border-brand/50 flex items-center justify-center overflow-hidden shrink-0 transition-colors">
-                  {logoUrl ? (
+                  {logoUploading ? (
+                    <span className="text-[9px] text-text-faint animate-pulse">Enviando…</span>
+                  ) : logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={logoUrl}
+                      src={apiAssetUrl(logoUrl) ?? ""}
                       alt="logo preview"
                       className="size-16 object-cover rounded-xl"
                     />
@@ -447,22 +498,11 @@ function TabEmpresa() {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) =>
-                      setLogoUrl(ev.target?.result as string);
-                    reader.readAsDataURL(file);
+                    void handleLogoUpload(file);
+                    e.target.value = "";
                   }}
                 />
               </label>
-              {logoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setLogoUrl("")}
-                  className="text-[11px] text-danger-foreground hover:underline"
-                >
-                  Remover logo
-                </button>
-              )}
               <label className="flex items-start gap-2 pt-1 cursor-pointer">
                 <Checkbox
                   checked={logoCentered}
@@ -509,30 +549,29 @@ function TabEmpresa() {
             {/* Carrossel */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <FormLabel>Imagens do carrossel</FormLabel>
-                <label className="text-xs text-brand hover:underline font-semibold flex items-center gap-1 cursor-pointer">
-                  <Plus className="size-3" />
-                  Adicionar
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files ?? []);
-                      files.forEach((file) => {
-                        const reader = new FileReader();
-                        reader.onload = (ev) =>
-                          setBannerUrls((prev) => [
-                            ...prev,
-                            ev.target?.result as string,
-                          ]);
-                        reader.readAsDataURL(file);
-                      });
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
+                <FormLabel>
+                  Imagens do carrossel
+                  <span className="ml-1 font-normal normal-case tracking-normal text-text-faint">
+                    ({bannerUrls.length}/3)
+                  </span>
+                </FormLabel>
+                {bannerUrls.length < 3 && (
+                  <label className={cn("text-xs text-brand hover:underline font-semibold flex items-center gap-1 cursor-pointer", carouselUploading && "pointer-events-none opacity-60")}>
+                    <Plus className="size-3" />
+                    {carouselUploading ? "Enviando…" : "Adicionar"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        if (files.length > 0) void handleCarouselAdd(files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
               </div>
               {bannerUrls.length === 0 ? (
                 <p className="text-[11px] text-text-faint">
@@ -545,14 +584,15 @@ function TabEmpresa() {
                     <div key={i} className="relative group">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={url}
+                        src={apiAssetUrl(url) ?? ""}
                         alt={`banner ${i + 1}`}
                         className="w-full aspect-video object-cover rounded-md border border-border"
                       />
                       <button
                         type="button"
-                        onClick={() => removeBanner(i)}
-                        className="absolute top-1 right-1 size-6 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger"
+                        onClick={() => void handleCarouselRemove(i)}
+                        disabled={carouselUploading}
+                        className="absolute top-1 right-1 size-6 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger disabled:cursor-not-allowed"
                       >
                         <Trash2 className="size-3" />
                       </button>

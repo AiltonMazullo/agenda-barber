@@ -1,9 +1,26 @@
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, getAccessToken } from "@/lib/api";
 import { clientApi, getClientAccessToken } from "@/lib/client-api";
 import type {
   Barbershop,
   UpdateBarbershopPayload,
 } from "@/types/barbershop.types";
+
+async function multipartPatch<T>(path: string, form: FormData): Promise<T> {
+  const token = getAccessToken();
+  const resp = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL ?? ""}${path}`,
+    {
+      method: "PATCH",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    },
+  );
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({})) as { message?: string };
+    throw new ApiError(body?.message ?? "Erro no servidor.", resp.status);
+  }
+  return resp.json() as Promise<T>;
+}
 
 /**
  * As rotas `GET /barbershops` e `GET /barbershops/:slug` exigem token. Usa o
@@ -49,6 +66,23 @@ export const barbershopsService = {
 
   async update(id: string, payload: UpdateBarbershopPayload): Promise<Barbershop> {
     const { data } = await api.put<Barbershop>(`/barbershops/${id}`, payload);
+    return data;
+  },
+
+  async uploadLogo(id: string, file: File): Promise<Barbershop> {
+    const form = new FormData();
+    form.append("logo", file);
+    return multipartPatch<Barbershop>(`/barbershops/${id}/logo`, form);
+  },
+
+  async addCarouselImages(id: string, files: File[]): Promise<Barbershop> {
+    const form = new FormData();
+    files.forEach((f) => form.append("images[]", f));
+    return multipartPatch<Barbershop>(`/barbershops/${id}/carousel`, form);
+  },
+
+  async removeCarouselImage(id: string, imageIndex: number): Promise<Barbershop> {
+    const { data } = await api.delete<Barbershop>(`/barbershops/${id}/carousel/${imageIndex}`);
     return data;
   },
 

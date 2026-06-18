@@ -16,7 +16,7 @@ export interface Barbershop {
   cnpj: string | null;
   // ─── Branding (opcional — backend ainda não expõe estes campos) ──────────
   logoUrl?: string | null;
-  bannerUrls?: string[] | null;
+  carouselImages?: string[] | null;
   title?: string | null;
   subtitle?: string | null;
   description?: string | null;
@@ -64,8 +64,6 @@ export interface UpdateBarbershopPayload {
   name?: string;
   phone?: string;
   address?: string;
-  logoUrl?: string;
-  bannerUrls?: string[];
   title?: string;
   subtitle?: string;
   description?: string;

@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { barbershopAppearanceStore } from "@/lib/barbershop-appearance-store";
+import { apiAssetUrl } from "@/lib/api";
 import type { Barbershop } from "@/types/barbershop.types";
 
 interface BarbershopHeroProps {
@@ -14,7 +15,9 @@ interface BarbershopHeroProps {
 const AUTOPLAY_MS = 5000;
 
 export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
-  const banners = (barbershop.bannerUrls ?? []).filter((u) => u && u.trim());
+  const banners = (barbershop.carouselImages ?? [])
+    .filter((u) => u && u.trim())
+    .map((u) => apiAssetUrl(u) ?? u);
   const [index, setIndex] = useState(0);
   const [logoCentered, setLogoCentered] = useState(false);
 
@@ -65,7 +68,7 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
           {/* Logo centralizada no topo (isolada, sem fundo) */}
           {logoCentered && barbershop.logoUrl?.trim() && (
             <img
-              src={barbershop.logoUrl}
+              src={apiAssetUrl(barbershop.logoUrl) ?? ""}
               alt={`Logo ${barbershop.name}`}
               className="absolute top-4 left-1/2 -translate-x-1/2 h-12 sm:h-16 w-auto object-contain drop-shadow-lg"
             />
@@ -75,7 +78,7 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
           <div className="absolute inset-x-0 bottom-0 p-5 flex items-end gap-4">
             {!logoCentered && barbershop.logoUrl?.trim() && (
               <img
-                src={barbershop.logoUrl}
+                src={apiAssetUrl(barbershop.logoUrl) ?? ""}
                 alt={`Logo ${barbershop.name}`}
                 className="size-16 sm:size-20 rounded-xl object-cover border-2 border-white/20 shadow-lg shrink-0 bg-surface-base"
               />

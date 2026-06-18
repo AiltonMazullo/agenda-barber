@@ -27,7 +27,7 @@ const BASE_URL =
  */
 export function apiAssetUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http") || path.startsWith("blob:")) return path;
   return `${BASE_URL ?? ""}${path}`;
 }
 
