@@ -27,7 +27,10 @@ const BASE_URL =
  */
 export function apiAssetUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith("http") || path.startsWith("blob:")) return path;
+  if (path.startsWith("blob:")) return path;
+  // Proxy /uploads via Next.js API route to bypass Cross-Origin-Resource-Policy
+  if (path.startsWith("/uploads/")) return `/api/img${path.slice("/uploads".length)}`;
+  if (path.startsWith("http")) return path;
   return `${BASE_URL ?? ""}${path}`;
 }
 

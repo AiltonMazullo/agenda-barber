@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
+import { SwCleanup } from "@/components/SwCleanup";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body
         className={`${inter.className} min-h-full bg-background text-foreground`}
       >
+        <SwCleanup />
         <AuthProvider>{children}</AuthProvider>
         <Toaster />
       </body>
