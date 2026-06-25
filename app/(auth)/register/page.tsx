@@ -10,6 +10,7 @@ import {
   MapPin,
   IdCard,
   Building2,
+  Hash,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,8 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { maskCnpj, maskCpf, maskPhone } from "@/utils/format";
+import { maskCnpj, maskCpf, maskPhone, maskCep } from "@/utils/format";
+import { fetchAddressByCep } from "@/utils/cep";
 import type {
   CreateBarbershopFisicaPayload,
   CreateBarbershopJuridicaPayload,
@@ -46,7 +48,12 @@ interface FormState {
   email: string;
   password: string;
   phone: string;
-  address: string;
+  cep: string;
+  street: string;
+  neighborhood: string;
+  city: string;
+  uf: string;
+  number: string;
   personType: PersonType;
   cpf: string;
   cnpj: string;
@@ -58,7 +65,12 @@ const INITIAL: FormState = {
   email: "",
   password: "",
   phone: "",
-  address: "",
+  cep: "",
+  street: "",
+  neighborhood: "",
+  city: "",
+  uf: "",
+  number: "",
   personType: "FISICA",
   cpf: "",
   cnpj: "",
@@ -71,6 +83,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState<FormState>(INITIAL);
   const [slugTouched, setSlugTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
 
   const autoSlug = useMemo(() => toSlug(form.name), [form.name]);
   const effectiveSlug = slugTouched ? form.slug : autoSlug;
@@ -78,19 +91,52 @@ export default function RegisterPage() {
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  async function handleCepBlur() {
+    if (form.cep.replace(/\D/g, "").length !== 8) return;
+    setCepLoading(true);
+    try {
+      const address = await fetchAddressByCep(form.cep);
+      if (address) {
+        setForm((prev) => ({
+          ...prev,
+          street: address.street,
+          neighborhood: address.neighborhood,
+          city: address.city,
+          uf: address.uf,
+        }));
+      } else {
+        toast.error("CEP não encontrado.");
+      }
+    } finally {
+      setCepLoading(false);
+    }
+  }
+
   function validate(): string | null {
     if (form.name.trim().length < 2)
       return "Informe o nome da barbearia (mínimo 2 caracteres).";
     if (!SLUG_REGEX.test(effectiveSlug))
       return "Slug inválido. Use apenas letras minúsculas, números e hífens.";
     if (effectiveSlug.length < 2) return "Slug muito curto.";
-    if (form.password.length < 6) return "A senha deve ter ao menos 6 caracteres.";
+    if (form.password.length < 6)
+      return "A senha deve ter ao menos 6 caracteres.";
     if (!PHONE_REGEX.test(form.phone))
       return "Telefone inválido. Formato esperado: (81) 99999-0000.";
-    if (form.address.trim().length === 0) return "Informe o endereço.";
-    if (form.personType === "FISICA" && form.cpf.replace(/\D/g, "").length !== 11)
+    if (form.cep.replace(/\D/g, "").length !== 8) return "CEP inválido.";
+    if (form.street.trim().length === 0) return "Informe o logradouro.";
+    if (form.neighborhood.trim().length === 0) return "Informe o bairro.";
+    if (form.city.trim().length === 0) return "Informe a cidade.";
+    if (form.uf.trim().length !== 2) return "UF inválida.";
+    if (form.number.trim().length === 0) return "Informe o número.";
+    if (
+      form.personType === "FISICA" &&
+      form.cpf.replace(/\D/g, "").length !== 11
+    )
       return "CPF inválido.";
-    if (form.personType === "JURIDICA" && form.cnpj.replace(/\D/g, "").length !== 14)
+    if (
+      form.personType === "JURIDICA" &&
+      form.cnpj.replace(/\D/g, "").length !== 14
+    )
       return "CNPJ inválido.";
     return null;
   }
@@ -109,12 +155,26 @@ export default function RegisterPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
         phone: form.phone.trim(),
-        address: form.address.trim(),
+        cep: form.cep,
+        street: form.street.trim(),
+        neighborhood: form.neighborhood.trim(),
+        city: form.city.trim(),
+        uf: form.uf.trim().toUpperCase(),
+        number: form.number.trim(),
+        address: form.street.trim(),
       };
       const payload =
         form.personType === "FISICA"
-          ? ({ ...base, personType: "FISICA", cpf: form.cpf } satisfies CreateBarbershopFisicaPayload)
-          : ({ ...base, personType: "JURIDICA", cnpj: form.cnpj } satisfies CreateBarbershopJuridicaPayload);
+          ? ({
+              ...base,
+              personType: "FISICA",
+              cpf: form.cpf,
+            } satisfies CreateBarbershopFisicaPayload)
+          : ({
+              ...base,
+              personType: "JURIDICA",
+              cnpj: form.cnpj,
+            } satisfies CreateBarbershopJuridicaPayload);
 
       await register(payload);
       toast.success("Conta criada com sucesso!");
@@ -207,17 +267,92 @@ export default function RegisterPage() {
           maxLength={15}
         />
 
+        {/* Endereço */}
         <AuthInput
-          id="address"
-          label="Endereço"
+          id="cep"
+          label="CEP"
           type="text"
           icon={<MapPin className="size-4" />}
-          placeholder="Rua, número, bairro, cidade"
-          value={form.address}
-          onChange={(e) => update("address", e.target.value)}
+          placeholder="00000-000"
+          value={form.cep}
+          onChange={(e) => update("cep", maskCep(e.target.value))}
+          onBlur={() => void handleCepBlur()}
           required
-          autoComplete="street-address"
+          inputMode="numeric"
+          maxLength={9}
+          disabled={cepLoading}
         />
+
+        <AuthInput
+          id="street"
+          label="Logradouro"
+          type="text"
+          icon={<MapPin className="size-4" />}
+          placeholder="Rua, Av., ..."
+          value={form.street}
+          onChange={(e) => update("street", e.target.value)}
+          required
+          autoComplete="address-line1"
+          disabled={cepLoading}
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <AuthInput
+            id="neighborhood"
+            label="Bairro"
+            type="text"
+            icon={<MapPin className="size-4" />}
+            placeholder="Bairro"
+            value={form.neighborhood}
+            onChange={(e) => update("neighborhood", e.target.value)}
+            required
+            autoComplete="address-level3"
+            disabled={cepLoading}
+          />
+
+          <AuthInput
+            id="number"
+            label="Número"
+            type="text"
+            icon={<Hash className="size-4" />}
+            placeholder="123"
+            value={form.number}
+            onChange={(e) => update("number", e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <AuthInput
+              id="city"
+              label="Cidade"
+              type="text"
+              icon={<MapPin className="size-4" />}
+              placeholder="Cidade"
+              value={form.city}
+              onChange={(e) => update("city", e.target.value)}
+              required
+              autoComplete="address-level2"
+              disabled={cepLoading}
+            />
+          </div>
+
+          <AuthInput
+            id="uf"
+            label="UF"
+            type="text"
+            icon={<MapPin className="size-4" />}
+            placeholder="SP"
+            value={form.uf}
+            onChange={(e) =>
+              update("uf", e.target.value.toUpperCase().slice(0, 2))
+            }
+            required
+            maxLength={2}
+            disabled={cepLoading}
+          />
+        </div>
 
         {/* Tipo de pessoa */}
         <div className="space-y-1.5">

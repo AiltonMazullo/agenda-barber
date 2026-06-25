@@ -40,9 +40,14 @@ export interface CreateBarbershopFisicaPayload {
   email: string;
   password: string;
   phone: string;
-  address: string;
   personType: "FISICA";
   cpf: string;
+  cep: string;
+  street: string;
+  neighborhood: string;
+  city: string;
+  uf: string;
+  number: string;
 }
 
 export interface CreateBarbershopJuridicaPayload {
@@ -51,9 +56,14 @@ export interface CreateBarbershopJuridicaPayload {
   email: string;
   password: string;
   phone: string;
-  address: string;
   personType: "JURIDICA";
   cnpj: string;
+  cep: string;
+  street: string;
+  neighborhood: string;
+  city: string;
+  uf: string;
+  number: string;
 }
 
 export type CreateBarbershopPayload =
