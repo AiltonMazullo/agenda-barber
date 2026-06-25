@@ -52,7 +52,7 @@ const CLIENT_PROTECTED_SUBS = [
   "plano",
   "perfil",
 ];
-const CLIENT_PUBLIC_AUTH_SUBS = ["login", "register"];
+const CLIENT_PUBLIC_AUTH_SUBS = ["login", "register", "forgot-password"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

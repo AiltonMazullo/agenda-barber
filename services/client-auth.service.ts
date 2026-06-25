@@ -155,4 +155,12 @@ export const clientAuthService = {
     setCachedClient(data);
     return data;
   },
+
+  async forgotPassword(email: string): Promise<void> {
+    await api.post("/auth/client/forgot-password", { email });
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    await api.post("/auth/client/reset-password", { token, password });
+  },
 };

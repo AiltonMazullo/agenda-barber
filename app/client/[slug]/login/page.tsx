@@ -88,6 +88,15 @@ function ClientLoginForm({ slug }: { slug: string }) {
         {isSubmitting ? "Entrando..." : "Entrar"}
       </Button>
 
+      <div className="flex justify-end -mt-1">
+        <Link
+          href={`/client/${slug}/forgot-password`}
+          className="text-[12px] text-brand hover:underline font-medium"
+        >
+          Esqueci minha senha
+        </Link>
+      </div>
+
       <p className="text-center text-xs text-muted-foreground mt-2">
         Ainda não tem conta?{" "}
         <Link
