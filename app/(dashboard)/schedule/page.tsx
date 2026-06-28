@@ -442,12 +442,7 @@ export default function SchedulePage() {
                     : "text-foreground hover:bg-surface-elevated",
                 )}
               >
-                {isToday(selectedDate)
-                  ? "Hoje"
-                  : selectedDate.toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                    })}
+                Hoje
               </button>
               <button
                 type="button"
