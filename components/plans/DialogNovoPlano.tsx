@@ -21,6 +21,7 @@ import type { Employee } from "@/types/employee.types";
 interface ServiceRow {
   serviceId: string;
   discountPercent: string; // string para edição, convertido no submit
+  monthlyLimit: string; // "" = sem limite
 }
 
 interface ProductRow {
@@ -113,6 +114,7 @@ export function DialogNovoPlano({
       plan?.planServices?.map((ps) => ({
         serviceId: ps.serviceId,
         discountPercent: String(ps.discountPercent),
+        monthlyLimit: ps.monthlyLimit != null ? String(ps.monthlyLimit) : "",
       })) ?? [],
     );
     setProductRows(
@@ -153,7 +155,7 @@ export function DialogNovoPlano({
     if (!pendingServiceId) return;
     setServiceRows((prev) => [
       ...prev,
-      { serviceId: pendingServiceId, discountPercent: "0" },
+      { serviceId: pendingServiceId, discountPercent: "0", monthlyLimit: "" },
     ]);
     setPendingServiceId("");
   }
@@ -166,6 +168,14 @@ export function DialogNovoPlano({
     setServiceRows((prev) =>
       prev.map((r) =>
         r.serviceId === serviceId ? { ...r, discountPercent: value } : r,
+      ),
+    );
+  }
+
+  function updateMonthlyLimit(serviceId: string, value: string) {
+    setServiceRows((prev) =>
+      prev.map((r) =>
+        r.serviceId === serviceId ? { ...r, monthlyLimit: value } : r,
       ),
     );
   }
@@ -260,7 +270,7 @@ export function DialogNovoPlano({
       return;
     }
 
-    // valida descontos
+    // valida descontos e limites mensais
     for (const row of serviceRows) {
       const d = parseFloat(row.discountPercent.replace(",", "."));
       if (Number.isNaN(d) || d < 0 || d > 100) {
@@ -269,6 +279,16 @@ export function DialogNovoPlano({
           `Desconto inválido para "${svc?.name ?? "serviço"}". Use 0 a 100.`,
         );
         return;
+      }
+      if (row.monthlyLimit.trim() !== "") {
+        const limit = parseInt(row.monthlyLimit, 10);
+        if (Number.isNaN(limit) || limit < 1) {
+          const svc = services.find((s) => s.id === row.serviceId);
+          toast.error(
+            `Limite mensal inválido para "${svc?.name ?? "serviço"}". Use um número maior que 0.`,
+          );
+          return;
+        }
       }
     }
 
@@ -298,6 +318,7 @@ export function DialogNovoPlano({
         services: serviceRows.map((r) => ({
           serviceId: r.serviceId,
           discountPercent: parseFloat(r.discountPercent.replace(",", ".")) || 0,
+          monthlyLimit: r.monthlyLimit.trim() ? parseInt(r.monthlyLimit, 10) : undefined,
         })),
         employees: selectedEmployeeIds.map((employeeId) => ({ employeeId })),
         products: productRows.map((r) => ({
@@ -502,6 +523,20 @@ export function DialogNovoPlano({
                         <span className="flex-1 text-sm text-foreground truncate">
                           {svc?.name ?? row.serviceId}
                         </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Input
+                            value={row.monthlyLimit}
+                            onChange={(e) =>
+                              updateMonthlyLimit(row.serviceId, e.target.value)
+                            }
+                            type="number"
+                            min={1}
+                            placeholder="∞"
+                            title="Limite de usos por mês"
+                            className="w-14 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 text-right px-2"
+                          />
+                          <span className="text-xs text-muted-foreground">/mês</span>
+                        </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Input
                             value={row.discountPercent}

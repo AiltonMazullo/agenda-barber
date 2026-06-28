@@ -3,6 +3,7 @@ export interface PlanService {
   planId: string;
   serviceId: string;
   discountPercent: number;
+  monthlyLimit: number | null;
   service: {
     id: string;
     name: string;
@@ -59,6 +60,7 @@ export interface Plan {
 export interface PlanServiceInput {
   serviceId: string;
   discountPercent: number;
+  monthlyLimit?: number;
 }
 
 export interface PlanEmployeeInput {
