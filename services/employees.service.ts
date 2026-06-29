@@ -2,8 +2,11 @@ import { api } from "@/lib/api";
 import type {
   CreateEmployeePayload,
   Employee,
+  EmployeeSchedule,
   UpdateEmployeePayload,
 } from "@/types/employee.types";
+
+type ScheduleInput = Pick<EmployeeSchedule, "dayOfWeek" | "startTime" | "endTime">;
 
 export const employeesService = {
   async list(barbershopId: string): Promise<Employee[]> {
@@ -70,6 +73,24 @@ export const employeesService = {
   ): Promise<void> {
     const items = orderedIds.map((id, order) => ({ id, order }));
     await api.patch<void>(`/barbershops/${barbershopId}/employees/reorder`, { items });
+  },
+
+  async getSchedules(barbershopId: string, id: string): Promise<EmployeeSchedule[]> {
+    const { data } = await api.get<EmployeeSchedule[]>(
+      `/barbershops/${barbershopId}/employees/${id}/schedules`,
+    );
+    return data;
+  },
+
+  async updateSchedules(
+    barbershopId: string,
+    id: string,
+    schedules: ScheduleInput[],
+  ): Promise<void> {
+    await api.put<void>(
+      `/barbershops/${barbershopId}/employees/${id}/schedules`,
+      { schedules },
+    );
   },
 
   /** Envia a foto de perfil (campo `avatar`, JPEG/PNG/WebP até 2MB). */

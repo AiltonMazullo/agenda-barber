@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,8 +12,12 @@ import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
 import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
 import { apiAssetUrl } from "@/lib/api";
-import type { ProfessionalConfig } from "@/types/professional-config.types";
-import type { UpdateEmployeePayload } from "@/types/employee.types";
+import { employeesService } from "@/services/employees.service";
+import {
+  defaultWorkingHours,
+  type ProfessionalConfig,
+} from "@/types/professional-config.types";
+import type { EmployeeSchedule, UpdateEmployeePayload } from "@/types/employee.types";
 
 export default function ProfessionalEditPage() {
   const params = useParams<{ id: string }>();
@@ -26,9 +31,21 @@ export default function ProfessionalEditPage() {
   const { categories } = useCategories(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 
+  const [backendSchedules, setBackendSchedules] = useState<EmployeeSchedule[]>([]);
+  const [schedulesLoaded, setSchedulesLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!barbershop?.id || !id) return;
+    employeesService
+      .getSchedules(barbershop.id, id)
+      .then((data) => setBackendSchedules(data))
+      .catch(() => {})
+      .finally(() => setSchedulesLoaded(true));
+  }, [barbershop?.id, id]);
+
   const employee = employees.find((e) => e.id === id);
 
-  if (isLoading || !loaded) {
+  if (isLoading || !loaded || !schedulesLoaded) {
     return (
       <div className="min-h-screen bg-surface-base grid place-items-center">
         <Loading label="Carregando profissional" />
@@ -54,8 +71,21 @@ export default function ProfessionalEditPage() {
     );
   }
 
+  // Backend schedules are the source of truth for working hours.
+  // Days absent from the backend response are treated as disabled.
+  const effectiveConfig: ProfessionalConfig = {
+    ...config,
+    workingHours: defaultWorkingHours().map((wh) => {
+      const s = backendSchedules.find((bs) => bs.dayOfWeek === wh.day);
+      return s
+        ? { day: wh.day, enabled: true, start: s.startTime, end: s.endTime }
+        : { ...wh, enabled: false };
+    }),
+  };
+
   async function handleSave(basic: ProfessionalBasic, cfg: ProfessionalConfig) {
-    if (!employee) return;
+    if (!employee || !barbershop) return;
+
     const payload: UpdateEmployeePayload = {
       name: basic.name.trim(),
       appName: basic.appName.trim(),
@@ -68,13 +98,25 @@ export default function ProfessionalEditPage() {
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
     };
-    const updated = await update(employee.id, payload);
+
+    const schedulesToSave = cfg.workingHours
+      .filter((wh) => wh.enabled)
+      .map((wh) => ({ dayOfWeek: wh.day, startTime: wh.start, endTime: wh.end }));
+
+    const [updated] = await Promise.all([
+      update(employee.id, payload),
+      employeesService.updateSchedules(barbershop.id, employee.id, schedulesToSave).catch(() => {
+        toast.error("Falha ao salvar os horários de atendimento.");
+      }),
+    ]);
+
     const persisted = save(cfg);
     if (!persisted) {
       toast.error(
         "As configurações locais não couberam no armazenamento (foto muito grande?).",
       );
     }
+
     if (updated) router.push("/professionals");
   }
 
@@ -95,7 +137,7 @@ export default function ProfessionalEditPage() {
       initialBasic={initialBasic}
       services={services}
       categories={categories}
-      initialConfig={config}
+      initialConfig={effectiveConfig}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}
       featured={employee.featured}

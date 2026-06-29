@@ -2,6 +2,14 @@
  * Tipos espelhando o modelo `Employee` do backend.
  */
 
+export interface EmployeeSchedule {
+  id: string;
+  employeeId: string;
+  dayOfWeek: number;
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
+}
+
 export interface Employee {
   id: string;
   name: string;

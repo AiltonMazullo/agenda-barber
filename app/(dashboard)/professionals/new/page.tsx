@@ -16,6 +16,7 @@ import {
   defaultProfessionalConfig,
   type ProfessionalConfig,
 } from "@/types/professional-config.types";
+import { employeesService } from "@/services/employees.service";
 import type { CreateEmployeePayload } from "@/types/employee.types";
 
 const EMPTY_BASIC: ProfessionalBasic = {
@@ -95,8 +96,14 @@ export default function ProfessionalNovoPage() {
 
     const created = await create(payload);
     if (created) {
-      // Preview local vai junto na config — fallback de exibição caso o
-      // upload pra API falhe (ex.: rota ainda não deployada).
+      const schedulesToSave = config.workingHours
+        .filter((wh) => wh.enabled)
+        .map((wh) => ({ dayOfWeek: wh.day, startTime: wh.start, endTime: wh.end }));
+
+      await employeesService
+        .updateSchedules(barbershop.id, created.id, schedulesToSave)
+        .catch(() => {});
+
       professionalConfigStore.set(barbershop.id, created.id, {
         ...config,
         photoDataUrl: photoPreview ?? config.photoDataUrl,
