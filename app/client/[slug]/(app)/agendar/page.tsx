@@ -280,7 +280,10 @@ export default function AgendarPage({ params }: PageProps) {
 
     const [hh, mm] = time.split(":").map((n) => parseInt(n, 10));
     const baseStart = new Date(date);
-    baseStart.setHours(hh, mm, 0, 0);
+    // setUTCHours garante que "09:00" fica armazenado como 09:00Z,
+    // independente do timezone do browser — alinhado com o que o backend
+    // lê via getUTCHours() ao calcular conflitos de disponibilidade.
+    baseStart.setUTCHours(hh, mm, 0, 0);
 
     if (baseStart.getTime() < Date.now()) {
       toast.error("Não é possível agendar em um horário que já passou.");
