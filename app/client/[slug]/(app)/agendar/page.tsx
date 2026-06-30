@@ -120,6 +120,9 @@ export default function AgendarPage({ params }: PageProps) {
   const [time, setTime] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Mapa slot → [employeeIds livres] — usado quando "sem preferência" está ativo.
+  const [freeEmployeesBySlot, setFreeEmployeesBySlot] = useState<Map<string, string[]>>(new Map());
+
   useEffect(() => {
     if (!barbershop) return;
     let active = true;
@@ -216,32 +219,67 @@ export default function AgendarPage({ params }: PageProps) {
     if (step !== 4 || !barbershop || !firstService || !date) return;
     let active = true;
     setLoadingSlots(true);
-    availabilityService
-      .getAvailableSlots(barbershop.id, {
-        employeeId: anyEmployee ? undefined : selectedEmployee?.id,
-        serviceId: firstService.id,
-        date: dateToISODate(date),
-      })
-      .then((s) => {
-        if (active) setAvailableSlots(s);
-      })
-      .catch(() => {
-        if (active) setAvailableSlots(generateSlots());
-      })
-      .finally(() => {
+
+    if (anyEmployee) {
+      // "Sem preferência": consulta cada profissional da filial e une os slots livres.
+      // Mantém o mapa slot → [empIds] para sortear um profissional livre na confirmação.
+      Promise.allSettled(
+        branchEmployees.map(async (emp) => ({
+          empId: emp.id,
+          slots: await availabilityService.getAvailableSlots(barbershop.id, {
+            employeeId: emp.id,
+            serviceId: firstService.id,
+            date: dateToISODate(date),
+          }),
+        })),
+      ).then((results) => {
+        if (!active) return;
+        const slotMap = new Map<string, string[]>();
+        for (const r of results) {
+          if (r.status === "fulfilled") {
+            for (const slot of r.value.slots) {
+              const list = slotMap.get(slot) ?? [];
+              list.push(r.value.empId);
+              slotMap.set(slot, list);
+            }
+          }
+        }
+        setFreeEmployeesBySlot(slotMap);
+        setAvailableSlots(Array.from(slotMap.keys()).sort());
+      }).finally(() => {
         if (active) setLoadingSlots(false);
       });
+    } else {
+      setFreeEmployeesBySlot(new Map());
+      availabilityService
+        .getAvailableSlots(barbershop.id, {
+          employeeId: selectedEmployee?.id,
+          serviceId: firstService.id,
+          date: dateToISODate(date),
+        })
+        .then((s) => {
+          if (active) setAvailableSlots(s);
+        })
+        .catch(() => {
+          if (active) setAvailableSlots(generateSlots());
+        })
+        .finally(() => {
+          if (active) setLoadingSlots(false);
+        });
+    }
+
     return () => {
       active = false;
     };
-  }, [step, barbershop, selectedServices, selectedEmployee, anyEmployee, date]);
+  }, [step, barbershop, selectedServices, selectedEmployee, anyEmployee, date, branchEmployees]);
 
   // Salvaguarda: se a data é hoje, desabilita horários que já passaram.
+  // Slots são UTC ("09:00" = 09:00Z), então comparamos com UTC agora.
   const busy = useMemo(() => {
     const s = new Set<string>();
     if (date && isSameDay(date, new Date())) {
       const now = new Date();
-      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
       for (const slot of availableSlots) {
         if (slotToMinutes(slot) <= nowMin) s.add(slot);
       }
@@ -259,10 +297,17 @@ export default function AgendarPage({ params }: PageProps) {
   async function handleConfirm() {
     if (!barbershop || selectedServices.length === 0 || !date || !time) return;
 
-    // "Sem preferência" → sorteia um profissional da filial (o backend exige
-    // employeeId). Caso específico → usa o escolhido.
+    // "Sem preferência" → sorteia entre os profissionais que estão livres
+    // no slot escolhido (freeEmployeesBySlot). Se o mapa não tiver dados
+    // (fallback), sorteia entre todos da filial.
     const effectiveEmployee = anyEmployee
-      ? branchEmployees[Math.floor(Math.random() * branchEmployees.length)]
+      ? (() => {
+          const freeIds = time ? (freeEmployeesBySlot.get(time) ?? []) : [];
+          const pool = freeIds.length > 0
+            ? branchEmployees.filter((e) => freeIds.includes(e.id))
+            : branchEmployees;
+          return pool[Math.floor(Math.random() * pool.length)];
+        })()
       : selectedEmployee;
     if (!effectiveEmployee) {
       toast.error("Selecione um profissional.");
