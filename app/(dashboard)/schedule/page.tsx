@@ -374,7 +374,7 @@ export default function SchedulePage() {
         .schedule-scroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
       `}</style>
 
-      <div className="flex flex-col flex-1 min-h-0 bg-surface-base text-foreground overflow-hidden">
+      <div className="flex flex-col bg-surface-base text-foreground overflow-x-hidden md:flex-1 md:min-h-0 md:overflow-hidden">
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
@@ -623,7 +623,7 @@ export default function SchedulePage() {
             </p>
           </div>
         ) : viewMode === "kanban" ? (
-          <div className="flex-1 overflow-y-auto overflow-x-hidden schedule-scroll">
+          <div className="overflow-x-auto schedule-scroll md:flex-1 md:overflow-y-auto md:overflow-x-hidden">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -692,7 +692,7 @@ export default function SchedulePage() {
             </DndContext>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden">
+          <div className="md:flex-1 md:overflow-hidden">
             <ModoLista
               agendamentos={agendamentos}
               servicos={servicos}
