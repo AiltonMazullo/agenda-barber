@@ -682,34 +682,6 @@ function TabEmpresa() {
       </div>
 
       {/* Danger zone */}
-      <Card className="bg-surface-raised border-danger/30">
-        <CardContent className="p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="size-4 text-danger-foreground" />
-            <h3 className="text-sm font-bold text-danger-foreground">
-              Zona de Perigo
-            </h3>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-white">Excluir conta</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Remove a barbearia e todos os dados associados (filiais,
-                profissionais, serviços, agendamentos, estoque). Essa ação não
-                pode ser desfeita.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={openDeleteDialog}
-              className="h-9 px-4 rounded-md border border-danger/40 bg-danger/10 text-sm font-semibold text-danger-foreground hover:bg-danger/20 transition-colors flex items-center gap-1.5 shrink-0"
-            >
-              <Trash2 className="size-3.5" />
-              Excluir
-            </button>
-          </div>
-        </CardContent>
-      </Card>
 
       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <DialogContent className="bg-surface-raised border border-danger/40 text-white max-w-md p-0 gap-0">
