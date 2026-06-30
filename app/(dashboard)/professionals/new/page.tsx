@@ -84,6 +84,7 @@ export default function ProfessionalNovoPage() {
         ? new Date(`${basic.birthDate}T00:00:00`).toISOString()
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
+      permissions: config.permissions,
       accessGroupId: groups[0]?.id,
       cep: branch.cep,
       street: branch.street,
@@ -100,9 +101,21 @@ export default function ProfessionalNovoPage() {
         .filter((wh) => wh.enabled)
         .map((wh) => ({ dayOfWeek: wh.day, startTime: wh.start, endTime: wh.end }));
 
-      await employeesService
-        .updateSchedules(barbershop.id, created.id, schedulesToSave)
-        .catch(() => {});
+      await Promise.all([
+        employeesService.updateSchedules(barbershop.id, created.id, schedulesToSave).catch(() => {}),
+        config.services.length > 0
+          ? employeesService.updateServices(barbershop.id, created.id, config.services).catch(() => {})
+          : Promise.resolve(),
+        config.timeOff.length > 0
+          ? employeesService
+              .updateTimeOff(
+                barbershop.id,
+                created.id,
+                config.timeOff.map((t) => ({ startDate: t.start, endDate: t.end })),
+              )
+              .catch(() => {})
+          : Promise.resolve(),
+      ]);
 
       professionalConfigStore.set(barbershop.id, created.id, {
         ...config,

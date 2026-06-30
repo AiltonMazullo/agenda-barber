@@ -3,6 +3,8 @@ import type {
   CreateEmployeePayload,
   Employee,
   EmployeeSchedule,
+  EmployeeService,
+  EmployeeTimeOff,
   UpdateEmployeePayload,
 } from "@/types/employee.types";
 
@@ -90,6 +92,42 @@ export const employeesService = {
     await api.put<void>(
       `/barbershops/${barbershopId}/employees/${id}/schedules`,
       { schedules },
+    );
+  },
+
+  async getServices(barbershopId: string, id: string): Promise<EmployeeService[]> {
+    const { data } = await api.get<EmployeeService[]>(
+      `/barbershops/${barbershopId}/employees/${id}/services`,
+    );
+    return data;
+  },
+
+  async updateServices(
+    barbershopId: string,
+    id: string,
+    services: EmployeeService[],
+  ): Promise<void> {
+    await api.put<void>(
+      `/barbershops/${barbershopId}/employees/${id}/services`,
+      { services },
+    );
+  },
+
+  async getTimeOff(barbershopId: string, id: string): Promise<EmployeeTimeOff[]> {
+    const { data } = await api.get<EmployeeTimeOff[]>(
+      `/barbershops/${barbershopId}/employees/${id}/time-off`,
+    );
+    return data;
+  },
+
+  async updateTimeOff(
+    barbershopId: string,
+    id: string,
+    timeOff: { startDate: string; endDate: string }[],
+  ): Promise<void> {
+    await api.put<void>(
+      `/barbershops/${barbershopId}/employees/${id}/time-off`,
+      { timeOff },
     );
   },
 

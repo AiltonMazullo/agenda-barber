@@ -2,12 +2,33 @@
  * Tipos espelhando o modelo `Employee` do backend.
  */
 
+export interface EmployeePermissions {
+  cadastroAgendamento: boolean;
+  edicaoAgendamento: boolean;
+  gerenciarProdutosComanda: boolean;
+  gerenciarServicosComanda: boolean;
+  bloquearHorario: boolean;
+  removerFolgas: boolean;
+  edicaoNotas: boolean;
+}
+
 export interface EmployeeSchedule {
   id: string;
   employeeId: string;
   dayOfWeek: number;
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
+}
+
+export interface EmployeeService {
+  serviceId: string;
+  commissionPercent: number;
+}
+
+export interface EmployeeTimeOff {
+  id: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string;   // "YYYY-MM-DD"
 }
 
 export interface Employee {
@@ -34,11 +55,15 @@ export interface Employee {
   featured: boolean;
   /** Quando true, o profissional não aparece para clientes no app. */
   hidden: boolean;
+  /** Permissões do sistema (JSON nullable — null = todas habilitadas por padrão). */
+  permissions?: EmployeePermissions | null;
   /** Caminho relativo da foto de perfil (ex.: "/uploads/.../foto.jpg"). */
   avatarUrl?: string | null;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
+  /** Serviços que este profissional realiza (incluso no catálogo público). */
+  employeeServices?: { serviceId: string }[];
 }
 
 export interface CreateEmployeePayload {
@@ -54,6 +79,7 @@ export interface CreateEmployeePayload {
   cnpj?: string;
   birthDate?: string;
   hasBranchAccess?: boolean;
+  permissions?: EmployeePermissions;
   cep: string;
   street: string;
   neighborhood: string;
@@ -76,6 +102,7 @@ export interface UpdateEmployeePayload {
   cnpj?: string;
   birthDate?: string;
   hasBranchAccess?: boolean;
+  permissions?: EmployeePermissions;
   cep?: string;
   street?: string;
   neighborhood?: string;

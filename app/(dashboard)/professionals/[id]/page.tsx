@@ -14,10 +14,11 @@ import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
 import { apiAssetUrl } from "@/lib/api";
 import { employeesService } from "@/services/employees.service";
 import {
+  defaultPermissions,
   defaultWorkingHours,
   type ProfessionalConfig,
 } from "@/types/professional-config.types";
-import type { EmployeeSchedule, UpdateEmployeePayload } from "@/types/employee.types";
+import type { EmployeeSchedule, EmployeeService, EmployeeTimeOff, UpdateEmployeePayload } from "@/types/employee.types";
 
 export default function ProfessionalEditPage() {
   const params = useParams<{ id: string }>();
@@ -33,6 +34,10 @@ export default function ProfessionalEditPage() {
 
   const [backendSchedules, setBackendSchedules] = useState<EmployeeSchedule[]>([]);
   const [schedulesLoaded, setSchedulesLoaded] = useState(false);
+  const [backendServices, setBackendServices] = useState<EmployeeService[]>([]);
+  const [servicesLoaded, setServicesLoaded] = useState(false);
+  const [backendTimeOff, setBackendTimeOff] = useState<EmployeeTimeOff[]>([]);
+  const [timeOffLoaded, setTimeOffLoaded] = useState(false);
 
   useEffect(() => {
     if (!barbershop?.id || !id) return;
@@ -41,11 +46,21 @@ export default function ProfessionalEditPage() {
       .then((data) => setBackendSchedules(data))
       .catch(() => {})
       .finally(() => setSchedulesLoaded(true));
+    employeesService
+      .getServices(barbershop.id, id)
+      .then((data) => setBackendServices(data))
+      .catch(() => {})
+      .finally(() => setServicesLoaded(true));
+    employeesService
+      .getTimeOff(barbershop.id, id)
+      .then((data) => setBackendTimeOff(data))
+      .catch(() => {})
+      .finally(() => setTimeOffLoaded(true));
   }, [barbershop?.id, id]);
 
   const employee = employees.find((e) => e.id === id);
 
-  if (isLoading || !loaded || !schedulesLoaded) {
+  if (isLoading || !loaded || !schedulesLoaded || !servicesLoaded || !timeOffLoaded) {
     return (
       <div className="min-h-screen bg-surface-base grid place-items-center">
         <Loading label="Carregando profissional" />
@@ -81,6 +96,11 @@ export default function ProfessionalEditPage() {
         ? { day: wh.day, enabled: true, start: s.startTime, end: s.endTime }
         : { ...wh, enabled: false };
     }),
+    services: backendServices,
+    timeOff: backendTimeOff.map((t) => ({ id: t.id, start: t.startDate, end: t.endDate })),
+    permissions: employee.permissions
+      ? { ...defaultPermissions(), ...employee.permissions }
+      : config.permissions,
   };
 
   async function handleSave(basic: ProfessionalBasic, cfg: ProfessionalConfig) {
@@ -97,6 +117,7 @@ export default function ProfessionalEditPage() {
         ? new Date(`${basic.birthDate}T00:00:00`).toISOString()
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
+      permissions: cfg.permissions,
     };
 
     const schedulesToSave = cfg.workingHours
@@ -108,6 +129,18 @@ export default function ProfessionalEditPage() {
       employeesService.updateSchedules(barbershop.id, employee.id, schedulesToSave).catch(() => {
         toast.error("Falha ao salvar os horários de atendimento.");
       }),
+      employeesService.updateServices(barbershop.id, employee.id, cfg.services).catch(() => {
+        toast.error("Falha ao salvar os serviços do profissional.");
+      }),
+      employeesService
+        .updateTimeOff(
+          barbershop.id,
+          employee.id,
+          cfg.timeOff.map((t) => ({ startDate: t.start, endDate: t.end })),
+        )
+        .catch(() => {
+          toast.error("Falha ao salvar as folgas do profissional.");
+        }),
     ]);
 
     const persisted = save(cfg);

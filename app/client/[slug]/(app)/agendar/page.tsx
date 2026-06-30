@@ -192,6 +192,16 @@ export default function AgendarPage({ params }: PageProps) {
     return visible.filter((e) => e.branchId === selectedBranch.id);
   }, [employees, selectedBranch, hasBranches]);
 
+  // Serviços disponíveis para o profissional escolhido. Se "sem preferência"
+  // ou o profissional ainda não tem serviços configurados, exibe todos.
+  const visibleServices = useMemo(() => {
+    if (anyEmployee || !selectedEmployee) return services;
+    const linked = selectedEmployee.employeeServices;
+    if (!linked || linked.length === 0) return services;
+    const ids = new Set(linked.map((es) => es.serviceId));
+    return services.filter((s) => ids.has(s.id));
+  }, [services, selectedEmployee, anyEmployee]);
+
   // Sem filiais: não fica parado no passo 1 (Filial).
   useEffect(() => {
     if (!loadingCatalog && !hasBranches && step === 1) setStep(2);
@@ -371,6 +381,8 @@ export default function AgendarPage({ params }: PageProps) {
                     onSelect={() => {
                       setAnyEmployee(true);
                       setSelectedEmployee(null);
+                      // "Sem preferência" → todos os serviços disponíveis
+                      setSelectedServices([]);
                     }}
                   />
                   {branchEmployees.map((e) => (
@@ -384,6 +396,16 @@ export default function AgendarPage({ params }: PageProps) {
                       onSelect={() => {
                         setAnyEmployee(false);
                         setSelectedEmployee(e);
+                        // Mantém apenas serviços que este profissional realiza
+                        const linked = e.employeeServices;
+                        if (linked && linked.length > 0) {
+                          const ids = new Set(linked.map((es) => es.serviceId));
+                          setSelectedServices((prev) =>
+                            prev.filter((s) => ids.has(s.id)),
+                          );
+                        } else {
+                          setSelectedServices([]);
+                        }
                       }}
                     />
                   ))}
@@ -397,8 +419,14 @@ export default function AgendarPage({ params }: PageProps) {
               icon={<Scissors className="size-4" />}
               title="Escolha os serviços"
             >
-              {services.length === 0 ? (
-                <EmptyState message="Esta barbearia ainda não cadastrou serviços." />
+              {visibleServices.length === 0 ? (
+                <EmptyState
+                  message={
+                    services.length === 0
+                      ? "Esta barbearia ainda não cadastrou serviços."
+                      : "Este profissional ainda não tem serviços configurados."
+                  }
+                />
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
                   <div className="space-y-3">
@@ -411,7 +439,7 @@ export default function AgendarPage({ params }: PageProps) {
                     {isSubscriber && <AssinanteBanner planName={plan.name} />}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {services.map((s) => (
+                      {visibleServices.map((s) => (
                         <ServicoSelectCard
                           key={s.id}
                           service={s}
