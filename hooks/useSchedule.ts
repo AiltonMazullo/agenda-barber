@@ -29,11 +29,10 @@ interface Overlay {
 
 function sameDay(iso: string, date: Date): boolean {
   const d = new Date(iso);
-  // Compara em UTC para consistência com scheduledAt armazenado em UTC.
   return (
-    d.getUTCFullYear() === date.getUTCFullYear() &&
-    d.getUTCMonth() === date.getUTCMonth() &&
-    d.getUTCDate() === date.getUTCDate()
+    d.getFullYear() === date.getFullYear() &&
+    d.getMonth() === date.getMonth() &&
+    d.getDate() === date.getDate()
   );
 }
 
