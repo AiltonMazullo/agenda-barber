@@ -136,7 +136,7 @@ export default function SchedulePage() {
         return;
       }
       const now = new Date();
-      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
       if (nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60) {
         setNowTopPx(((nowMin - START_HOUR * 60) / slotSize) * SLOT_HEIGHT_PX);
       } else setNowTopPx(null);

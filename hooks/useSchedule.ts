@@ -29,10 +29,11 @@ interface Overlay {
 
 function sameDay(iso: string, date: Date): boolean {
   const d = new Date(iso);
+  // Compara em UTC para consistência com scheduledAt armazenado em UTC.
   return (
-    d.getFullYear() === date.getFullYear() &&
-    d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate()
+    d.getUTCFullYear() === date.getUTCFullYear() &&
+    d.getUTCMonth() === date.getUTCMonth() &&
+    d.getUTCDate() === date.getUTCDate()
   );
 }
 
@@ -150,8 +151,8 @@ export function useSchedule(
 
       for (const sv of input.servicos) {
         const dt = new Date(input.data);
-        dt.setHours(0, 0, 0, 0);
-        dt.setMinutes(cursorMin);
+        dt.setUTCHours(0, 0, 0, 0);
+        dt.setUTCMinutes(cursorMin);
         const created = await create({
           clientId: input.clientId,
           serviceId: sv.servicoId,

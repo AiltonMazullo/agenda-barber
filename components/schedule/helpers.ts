@@ -43,10 +43,10 @@ export function initials(name: string): string {
   );
 }
 
-/** Minutos desde meia-noite de uma data ISO (no fuso local). */
+/** Minutos desde meia-noite UTC de uma data ISO. */
 export function isoToMin(iso: string): number {
   const d = new Date(iso);
-  return d.getHours() * 60 + d.getMinutes();
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
 }
 
 /** True se dois intervalos [inicio, inicio+dur) se sobrepõem. */
