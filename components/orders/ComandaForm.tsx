@@ -422,7 +422,7 @@ export function ComandaForm({ comanda, onSubmit }: ComandaFormProps) {
             <motion.div whileTap={{ scale: 0.96 }}>
               <Button
                 type="button"
-                onClick={() => router.push("/ordere")}
+                onClick={() => router.push("/orders")}
                 className="cursor-pointer bg-[#ec4899] text-white hover:bg-[#db2777]"
               >
                 <ArrowLeft className="size-4" />
