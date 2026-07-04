@@ -2,25 +2,32 @@
 
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared";
-import { ComandaForm } from "@/components/orders/ComandaForm";
-import { mockComandasStore } from "@/components/orders/mocks";
-import type { ComandaFormValues } from "@/types/orders.types";
+import { ComandaForm } from "@/components/orders";
+import { useAuth } from "@/hooks/useAuth";
+import { useComandas } from "@/hooks/useComandas";
+import type { ComandaDraft } from "@/types/orders.types";
 
 export default function NovaComandaPage() {
   const router = useRouter();
+  const { barbershop } = useAuth();
+  const { create } = useComandas(barbershop?.id);
 
-  function handleSubmit(values: ComandaFormValues) {
-    const criada = mockComandasStore.create(values);
-    router.push(`/orders?criada=${criada.numero}`);
+  function handleSubmit(draft: ComandaDraft) {
+    const criada = create(draft);
+    if (criada) router.push("/orders");
   }
 
   return (
-    <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Nova Comanda"
-        subtitle="Vincule um agendamento e adicione os produtos e serviços consumidos"
+        subtitle="Vincule os agendamentos e registre os produtos e serviços consumidos"
       />
-      <ComandaForm onSubmit={handleSubmit} />
+      <ComandaForm
+        barbershopId={barbershop?.id}
+        submitLabel="Criar comanda"
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }

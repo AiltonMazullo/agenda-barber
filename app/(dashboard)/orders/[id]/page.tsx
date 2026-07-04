@@ -1,56 +1,88 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { PageHeader, Loading } from "@/components/shared";
-import { ComandaForm } from "@/components/orders/ComandaForm";
-import { mockComandasStore } from "@/components/orders/mocks";
-import type { Comanda, ComandaFormValues } from "@/types/orders.types";
+import { ArrowLeft } from "lucide-react";
+import { Loading, PageHeader, StatusBadge } from "@/components/shared";
+import { ComandaForm } from "@/components/orders";
+import { useAuth } from "@/hooks/useAuth";
+import { useComandas } from "@/hooks/useComandas";
+import type { ComandaDraft, ComandaStatus } from "@/types/orders.types";
+import type { Tone } from "@/types/common.types";
+
+const STATUS_LABEL: Record<ComandaStatus, string> = {
+  ABERTA: "Aberta",
+  FECHADA: "Fechada",
+  CANCELADA: "Cancelada",
+};
+
+const STATUS_TONE: Record<ComandaStatus, Tone> = {
+  ABERTA: "brand",
+  FECHADA: "success",
+  CANCELADA: "danger",
+};
 
 export default function EditarComandaPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const [comanda, setComanda] = useState<Comanda | null | undefined>(
-    undefined,
+  const { barbershop } = useAuth();
+  const { comandas, isLoading, update } = useComandas(barbershop?.id);
+
+  const comanda = useMemo(
+    () => comandas.find((c) => c.id === params.id) ?? null,
+    [comandas, params.id],
   );
 
-  useEffect(() => {
-    setComanda(mockComandasStore.get(params.id) ?? null);
-  }, [params.id]);
-
-  function handleSubmit(values: ComandaFormValues) {
-    mockComandasStore.update(params.id, values);
-    router.push(`/orders?atualizada=${params.id}`);
+  function handleSubmit(draft: ComandaDraft) {
+    const atualizada = update(params.id, draft);
+    if (atualizada) router.push("/orders");
   }
 
-  if (comanda === undefined) {
+  if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6 bg-surface-base min-h-screen">
         <Loading />
       </div>
     );
   }
 
-  if (comanda === null) {
+  if (!comanda) {
     return (
-      <div className="space-y-4 p-6 bg-surface-base min-h-screen text-foreground">
-        <PageHeader title="Comanda não encontrada" />
-        <p className="text-sm text-muted-foreground">
-          Essa comanda pode ter sido excluída. Volte para a listagem e
-          tente novamente.
-        </p>
+      <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
+        <PageHeader
+          title="Comanda não encontrada"
+          subtitle="Essa comanda pode ter sido excluída."
+        />
+        <Link
+          href="/orders"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+        >
+          <ArrowLeft className="size-4" />
+          Voltar para as comandas
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
-        title={`Editar Comanda #${comanda.numero}`}
-        subtitle="Atualize os produtos e serviços vinculados a este agendamento"
+        title={`Comanda #${comanda.numero}`}
+        subtitle="Atualize os agendamentos, produtos e serviços desta comanda"
+        actions={
+          <StatusBadge tone={STATUS_TONE[comanda.status]}>
+            {STATUS_LABEL[comanda.status]}
+          </StatusBadge>
+        }
       />
-      <ComandaForm comanda={comanda} onSubmit={handleSubmit} />
+      <ComandaForm
+        key={comanda.id}
+        barbershopId={barbershop?.id}
+        comanda={comanda}
+        submitLabel="Salvar alterações"
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }

@@ -1,45 +1,56 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import {
+  CheckCircle2,
   ClipboardList,
+  EllipsisVertical,
   Pencil,
   Plus,
+  RotateCcw,
+  Search,
   Trash2,
   Wallet,
-  CheckCircle2,
   XCircle,
 } from "lucide-react";
-import {
-  PageHeader,
-  SummaryCard,
-  StatusBadge,
-  Loading,
-} from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  getAgendamento,
-  mockComandasStore,
-  calcularTotal,
-} from "@/components/orders/mocks";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ConfirmDialog,
+  DataTablePagination,
+  EmptyState,
+  Loading,
+  PageHeader,
+  SelectField,
+  StatusBadge,
+  SummaryCard,
+} from "@/components/shared";
+import { useAuth } from "@/hooks/useAuth";
+import { useComandas } from "@/hooks/useComandas";
+import { usePagination } from "@/hooks/usePagination";
+import { comandaClienteLabel, comandaTotalInCents } from "@/utils/comanda";
+import { formatBRL, formatDate } from "@/utils/format";
+import type { Tone } from "@/types/common.types";
 import type { Comanda, ComandaStatus } from "@/types/orders.types";
 
-const currency = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+type StatusFilter = "ALL" | ComandaStatus;
 
 const STATUS_LABEL: Record<ComandaStatus, string> = {
   ABERTA: "Aberta",
@@ -47,264 +58,298 @@ const STATUS_LABEL: Record<ComandaStatus, string> = {
   CANCELADA: "Cancelada",
 };
 
-const STATUS_TONE: Record<ComandaStatus, "brand" | "success" | "danger"> = {
+const STATUS_TONE: Record<ComandaStatus, Tone> = {
   ABERTA: "brand",
   FECHADA: "success",
   CANCELADA: "danger",
 };
 
-const MotionTableRow = motion(TableRow);
-
-const cardEntrance = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-};
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "ALL", label: "Todos os status" },
+  { value: "ABERTA", label: "Abertas" },
+  { value: "FECHADA", label: "Fechadas" },
+  { value: "CANCELADA", label: "Canceladas" },
+];
 
 export default function ComandasPage() {
-  const [comandas, setComandas] = useState<Comanda[] | null>(null);
-  const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(
-    null,
+  const { barbershop } = useAuth();
+  const { comandas, isLoading, setStatus, remove } = useComandas(
+    barbershop?.id,
   );
 
-  useEffect(() => {
-    setComandas(mockComandasStore.list());
-  }, []);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [deleteTarget, setDeleteTarget] = useState<Comanda | null>(null);
 
   const stats = useMemo(() => {
-    const list = comandas ?? [];
-    const abertas = list.filter((c) => c.status === "ABERTA").length;
-    const fechadas = list.filter((c) => c.status === "FECHADA").length;
-    const canceladas = list.filter((c) => c.status === "CANCELADA").length;
-    const faturado = list
+    const abertas = comandas.filter((c) => c.status === "ABERTA").length;
+    const fechadas = comandas.filter((c) => c.status === "FECHADA").length;
+    const canceladas = comandas.filter((c) => c.status === "CANCELADA").length;
+    const faturadoInCents = comandas
       .filter((c) => c.status === "FECHADA")
-      .reduce((acc, c) => acc + calcularTotal(c), 0);
-    return { abertas, fechadas, canceladas, faturado };
+      .reduce((acc, c) => acc + comandaTotalInCents(c.itens), 0);
+    return { abertas, fechadas, canceladas, faturadoInCents };
   }, [comandas]);
 
-  function handleDelete(id: string) {
-    mockComandasStore.remove(id);
-    setComandas(mockComandasStore.list());
-    setConfirmandoExclusao(null);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return comandas.filter((c) => {
+      if (statusFilter !== "ALL" && c.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        String(c.numero).includes(q) ||
+        comandaClienteLabel(c).toLowerCase().includes(q)
+      );
+    });
+  }, [comandas, search, statusFilter]);
+
+  const pag = usePagination(filtered, 10);
+
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    remove(deleteTarget.id);
+    setDeleteTarget(null);
   }
 
-  const summaryCards = [
-    {
-      label: "Abertas",
-      value: comandas ? String(stats.abertas) : "…",
-      icon: <ClipboardList className="size-4" />,
-    },
-    {
-      label: "Fechadas",
-      value: comandas ? String(stats.fechadas) : "…",
-      icon: <CheckCircle2 className="size-4" />,
-    },
-    {
-      label: "Canceladas",
-      value: comandas ? String(stats.canceladas) : "…",
-      icon: <XCircle className="size-4" />,
-    },
-    {
-      label: "Faturado (fechadas)",
-      value: comandas ? currency.format(stats.faturado) : "…",
-      icon: <Wallet className="size-4" />,
-      emphasized: true,
-    },
-  ];
-
   return (
-    <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Comandas"
-        subtitle="Gerencie as comandas vinculadas aos agendamentos"
+        subtitle="Consumo de produtos e serviços vinculado aos agendamentos"
         actions={
-          <motion.div whileTap={{ scale: 0.96 }} className="inline-block">
-            <Button className="cursor-pointer">
-              <Link href="/orders/new" className="flex items-center gap-2">
-                <Plus className="size-4" />
-                Nova Comanda
-              </Link>
-            </Button>
-          </motion.div>
+          <Button
+            render={<Link href="/orders/new" />}
+            className="cursor-pointer bg-brand hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.35)] text-brand-foreground font-bold h-9 text-xs transition-all"
+          >
+            <Plus className="size-3.5 mr-1.5" />
+            Nova Comanda
+          </Button>
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {summaryCards.map((card, index) => (
-          <motion.div
-            key={card.label}
-            initial={cardEntrance.initial}
-            animate={cardEntrance.animate}
-            transition={{ duration: 0.3, delay: index * 0.05, ease: "easeOut" }}
-          >
-            <SummaryCard
-              label={card.label}
-              value={card.value}
-              icon={card.icon}
-              tone="brand"
-              emphasized={card.emphasized}
-            />
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <SummaryCard
+          label="Abertas"
+          value={isLoading ? "…" : String(stats.abertas)}
+          icon={<ClipboardList className="size-4" />}
+          tone="brand"
+        />
+        <SummaryCard
+          label="Fechadas"
+          value={isLoading ? "…" : String(stats.fechadas)}
+          icon={<CheckCircle2 className="size-4" />}
+          tone="success"
+        />
+        <SummaryCard
+          label="Canceladas"
+          value={isLoading ? "…" : String(stats.canceladas)}
+          icon={<XCircle className="size-4" />}
+          tone="danger"
+        />
+        <SummaryCard
+          label="Faturado (fechadas)"
+          value={isLoading ? "…" : formatBRL(stats.faturadoInCents / 100)}
+          icon={<Wallet className="size-4" />}
+          tone="brand"
+          emphasized
+        />
       </div>
 
-      <motion.div
-        initial={cardEntrance.initial}
-        animate={cardEntrance.animate}
-        transition={{ duration: 0.3, delay: 0.2, ease: "easeOut" }}
-      >
-        <Card className="bg-surface-raised border-border">
-          <CardContent className="pt-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">
-                Todas as comandas
-              </h2>
-            </div>
+      <Card className="bg-surface-raised border-border py-0 gap-0">
+        <div className="flex flex-col sm:flex-row gap-3 p-4 border-b border-border-subtle">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente ou número..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-surface-base border-border text-foreground placeholder:text-muted-foreground h-9 text-sm focus-visible:ring-brand/40"
+            />
+          </div>
+          <SelectField
+            id="filtro-status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            className="sm:max-w-45 flex-none"
+          />
+        </div>
 
-            {!comandas ? (
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="py-10">
               <Loading />
-            ) : comandas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                <ClipboardList className="size-6 mb-2" />
-                <p className="text-sm">Nenhuma comanda encontrada.</p>
-                <Link
-                  href="/orders/new"
-                  className="mt-2 cursor-pointer text-xs font-semibold text-brand hover:underline"
-                >
-                  Criar a primeira comanda
-                </Link>
-              </div>
-            ) : (
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<ClipboardList className="size-10" />}
+              message={
+                comandas.length === 0
+                  ? "Nenhuma comanda registrada ainda."
+                  : "Nenhuma comanda encontrada com esses filtros."
+              }
+              action={
+                comandas.length === 0 ? (
+                  <Link
+                    href="/orders/new"
+                    className="text-xs font-semibold text-brand hover:underline"
+                  >
+                    Criar a primeira comanda
+                  </Link>
+                ) : undefined
+              }
+            />
+          ) : (
+            <>
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="border-border-subtle hover:bg-transparent">
                     <TableHead>Comanda</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Profissional</TableHead>
-                    <TableHead>Itens</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Agendamentos
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Itens
+                    </TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="w-12 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    {comandas.map((comanda, index) => {
-                      const agendamento = getAgendamento(comanda.agendamentoId);
-                      return (
-                        <MotionTableRow
-                          key={comanda.id}
-                          layout
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{
-                            opacity: 0,
-                            x: -16,
-                            transition: { duration: 0.15 },
-                          }}
-                          transition={{
-                            duration: 0.25,
-                            delay: index * 0.03,
-                            ease: "easeOut",
-                          }}
-                        >
-                          <TableCell className="font-mono text-xs text-muted-foreground">
-                            #{comanda.numero}
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">
-                            {agendamento?.clienteNome ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {agendamento?.profissionalNome ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {comanda.itens.length}
-                          </TableCell>
-                          <TableCell className="font-semibold text-foreground">
-                            {currency.format(calcularTotal(comanda))}
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge tone={STATUS_TONE[comanda.status]}>
-                              {STATUS_LABEL[comanda.status]}
-                            </StatusBadge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="cursor-pointer"
-                              >
-                                <Link
-                                  href={`/orders/${comanda.id}`}
-                                  aria-label="Editar comanda"
+                  {pag.pageItems.map((comanda) => (
+                    <TableRow
+                      key={comanda.id}
+                      className="border-border-subtle"
+                    >
+                      <TableCell>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          #{comanda.numero}
+                        </p>
+                        <p className="text-xs text-text-faint">
+                          {formatDate(comanda.createdAt)}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium text-foreground">
+                          {comandaClienteLabel(comanda)}
+                        </p>
+                        {comanda.tipo === "AVULSA" && (
+                          <p className="text-xs text-muted-foreground">
+                            Consumo avulso
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
+                        {comanda.tipo === "AVULSA"
+                          ? "—"
+                          : comanda.agendamentos.length}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {comanda.itens.length}
+                      </TableCell>
+                      <TableCell className="font-semibold text-foreground">
+                        {formatBRL(comandaTotalInCents(comanda.itens) / 100)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge tone={STATUS_TONE[comanda.status]}>
+                          {STATUS_LABEL[comanda.status]}
+                        </StatusBadge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            aria-label={`Ações da comanda #${comanda.numero}`}
+                            className="size-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-surface-elevated hover:text-foreground transition-colors cursor-pointer outline-none"
+                          >
+                            <EllipsisVertical className="size-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="bg-surface-raised border-border text-foreground min-w-44"
+                          >
+                            <DropdownMenuItem
+                              render={<Link href={`/orders/${comanda.id}`} />}
+                              className="text-xs cursor-pointer hover:bg-surface-elevated"
+                            >
+                              <Pencil className="size-3.5" />
+                              Editar
+                            </DropdownMenuItem>
+                            {comanda.status === "ABERTA" ? (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setStatus(comanda.id, "FECHADA")
+                                  }
+                                  className="text-xs cursor-pointer hover:bg-surface-elevated"
                                 >
-                                  <Pencil className="size-4" />
-                                </Link>
-                              </Button>
-
-                              <AnimatePresence mode="wait" initial={false}>
-                                {confirmandoExclusao === comanda.id ? (
-                                  <motion.div
-                                    key="confirm"
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="flex items-center gap-1"
-                                  >
-                                    <Button
-                                      variant="destructive"
-                                      size="sm"
-                                      className="cursor-pointer"
-                                      onClick={() => handleDelete(comanda.id)}
-                                    >
-                                      Confirmar
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="cursor-pointer"
-                                      onClick={() =>
-                                        setConfirmandoExclusao(null)
-                                      }
-                                    >
-                                      Cancelar
-                                    </Button>
-                                  </motion.div>
-                                ) : (
-                                  <motion.div
-                                    key="trigger"
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ duration: 0.15 }}
-                                  >
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="cursor-pointer text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                                      onClick={() =>
-                                        setConfirmandoExclusao(comanda.id)
-                                      }
-                                      aria-label="Excluir comanda"
-                                    >
-                                      <Trash2 className="size-4" />
-                                    </Button>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          </TableCell>
-                        </MotionTableRow>
-                      );
-                    })}
-                  </AnimatePresence>
+                                  <CheckCircle2 className="size-3.5" />
+                                  Fechar comanda
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setStatus(comanda.id, "CANCELADA")
+                                  }
+                                  className="text-xs cursor-pointer hover:bg-surface-elevated"
+                                >
+                                  <XCircle className="size-3.5" />
+                                  Cancelar comanda
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => setStatus(comanda.id, "ABERTA")}
+                                className="text-xs cursor-pointer hover:bg-surface-elevated"
+                              >
+                                <RotateCcw className="size-3.5" />
+                                Reabrir comanda
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator className="bg-border-subtle" />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTarget(comanda)}
+                              className="text-xs cursor-pointer text-danger-foreground hover:bg-danger/10"
+                            >
+                              <Trash2 className="size-3.5" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+
+              <DataTablePagination
+                page={pag.page}
+                pageSize={pag.pageSize}
+                totalPages={pag.totalPages}
+                total={pag.total}
+                from={pag.from}
+                to={pag.to}
+                onPageChange={pag.setPage}
+                onPageSizeChange={pag.setPageSize}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        title="Excluir comanda?"
+        description={
+          deleteTarget
+            ? `A comanda #${deleteTarget.numero} será excluída permanentemente. Essa ação não pode ser desfeita.`
+            : undefined
+        }
+        confirmLabel="Excluir"
+        tone="danger"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

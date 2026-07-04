@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { SelectOption } from "@/types/common.types";
 
 interface WrapperProps {
   label: string;
@@ -26,7 +27,7 @@ function LabeledFieldWrapper({
     <div className="space-y-1.5">
       <Label
         htmlFor={htmlFor}
-        className="text-xs font-medium text-muted-foreground"
+        className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
       >
         {label}
         {required ? " *" : ""}
@@ -36,11 +37,6 @@ function LabeledFieldWrapper({
   );
 }
 
-interface LabeledSelectOption {
-  value: string;
-  label: string;
-}
-
 interface LabeledSelectProps {
   label: string;
   required?: boolean;
@@ -48,7 +44,7 @@ interface LabeledSelectProps {
   value: string;
   onValueChange: (value: string) => void;
   disabled?: boolean;
-  options: LabeledSelectOption[];
+  options: SelectOption<string>[];
 }
 
 export function LabeledSelect({
@@ -64,7 +60,7 @@ export function LabeledSelect({
     <LabeledFieldWrapper label={label} required={required}>
       {/*
         `items` é o que faz o Select.Value do Base UI resolver o label
-        certo no trigger (sem isso ele mostra o value cru, tipo "ag-3").
+        certo no trigger (sem isso ele mostra o value cru).
       */}
       <Select
         items={options}
@@ -72,27 +68,32 @@ export function LabeledSelect({
         onValueChange={(val) => onValueChange((val as string) ?? "")}
         disabled={disabled}
       >
-        <SelectTrigger className="w-full cursor-pointer">
+        <SelectTrigger className="h-10 w-full cursor-pointer bg-surface-base border-border text-sm data-disabled:opacity-50">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         {/*
-          alignItemWithTrigger=false: sem isso o popup abre alinhando o
-          item selecionado por cima do trigger (estilo <select> nativo),
-          que foi o "negócio estranho" sobreposto nos prints.
+          alignItemWithTrigger=false: sem isso o popup abre alinhando o item
+          selecionado por cima do trigger (estilo <select> nativo).
         */}
         <SelectContent
           alignItemWithTrigger={false}
           className="border border-border bg-surface-raised text-foreground shadow-xl"
         >
-          {options.map((opt) => (
-            <SelectItem
-              key={opt.value}
-              value={opt.value}
-              className="cursor-pointer"
-            >
-              {opt.label}
-            </SelectItem>
-          ))}
+          {options.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              Nenhuma opção disponível.
+            </p>
+          ) : (
+            options.map((opt) => (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                className="cursor-pointer"
+              >
+                {opt.label}
+              </SelectItem>
+            ))
+          )}
         </SelectContent>
       </Select>
     </LabeledFieldWrapper>
@@ -110,11 +111,16 @@ export function LabeledInput({
   label,
   required,
   id,
+  className,
   ...props
 }: LabeledInputProps) {
   return (
     <LabeledFieldWrapper label={label} required={required} htmlFor={id}>
-      <Input id={id} {...props} />
+      <Input
+        id={id}
+        className={`h-10 bg-surface-base border-border placeholder:text-text-faint focus-visible:ring-brand/30 ${className ?? ""}`}
+        {...props}
+      />
     </LabeledFieldWrapper>
   );
 }
