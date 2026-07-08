@@ -1,9 +1,8 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { comandasStore } from "@/lib/comandas-store";
+import { comandasService } from "@/services/comandas.service";
 import type {
   Comanda,
   ComandaDraft,
@@ -16,73 +15,106 @@ const STATUS_TOAST: Record<ComandaStatus, string> = {
   CANCELADA: "Comanda cancelada.",
 };
 
-/**
- * CRUD de comandas da barbearia (persistência local — ver comandas-store).
- * Mesma interface dos hooks de API: quando o backend expor as rotas, só a
- * implementação interna muda.
- */
+/** CRUD de comandas da barbearia, integrado com a API real. */
 export function useComandas(barbershopId: string | undefined) {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchComandas = useCallback(async () => {
+    if (!barbershopId) return;
+    setIsLoading(true);
+    try {
+      const data = await comandasService.list(barbershopId);
+      setComandas(data);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao carregar comandas.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [barbershopId]);
 
   useEffect(() => {
     if (!barbershopId) {
       setIsLoading(false);
       return;
     }
-    setComandas(comandasStore.list(barbershopId));
-    setIsLoading(false);
-  }, [barbershopId]);
+    fetchComandas();
+  }, [barbershopId, fetchComandas]);
 
   const create = useCallback(
-    (draft: ComandaDraft): Comanda | null => {
+    async (draft: ComandaDraft): Promise<Comanda | null> => {
       if (!barbershopId) return null;
-      const created = comandasStore.create(barbershopId, draft);
-      setComandas(comandasStore.list(barbershopId));
-      toast.success(`Comanda #${created.numero} criada.`);
-      return created;
+      try {
+        const created = await comandasService.create(barbershopId, draft);
+        toast.success(`Comanda #${created.numero} criada.`);
+        await fetchComandas();
+        return created;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao criar comanda.",
+        );
+        return null;
+      }
     },
-    [barbershopId],
+    [barbershopId, fetchComandas],
   );
 
   const update = useCallback(
-    (id: string, draft: ComandaDraft): Comanda | null => {
+    async (id: string, draft: ComandaDraft): Promise<Comanda | null> => {
       if (!barbershopId) return null;
-      const updated = comandasStore.update(barbershopId, id, draft);
-      if (!updated) {
-        toast.error("Comanda não encontrada.");
+      try {
+        const updated = await comandasService.update(barbershopId, id, draft);
+        toast.success(`Comanda #${updated.numero} atualizada.`);
+        await fetchComandas();
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao atualizar comanda.",
+        );
         return null;
       }
-      setComandas(comandasStore.list(barbershopId));
-      toast.success(`Comanda #${updated.numero} atualizada.`);
-      return updated;
     },
-    [barbershopId],
+    [barbershopId, fetchComandas],
   );
 
   const setStatus = useCallback(
-    (id: string, status: ComandaStatus): Comanda | null => {
+    async (id: string, status: ComandaStatus): Promise<Comanda | null> => {
       if (!barbershopId) return null;
-      const updated = comandasStore.setStatus(barbershopId, id, status);
-      if (!updated) {
-        toast.error("Comanda não encontrada.");
+      try {
+        const updated = await comandasService.setStatus(
+          barbershopId,
+          id,
+          status,
+        );
+        toast.success(STATUS_TOAST[status]);
+        await fetchComandas();
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao atualizar status.",
+        );
         return null;
       }
-      setComandas(comandasStore.list(barbershopId));
-      toast.success(STATUS_TOAST[status]);
-      return updated;
     },
-    [barbershopId],
+    [barbershopId, fetchComandas],
   );
 
   const remove = useCallback(
-    (id: string): void => {
+    async (id: string): Promise<void> => {
       if (!barbershopId) return;
-      comandasStore.remove(barbershopId, id);
-      setComandas(comandasStore.list(barbershopId));
-      toast.success("Comanda excluída.");
+      try {
+        await comandasService.remove(barbershopId, id);
+        toast.success("Comanda excluída.");
+        await fetchComandas();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao excluir comanda.",
+        );
+      }
     },
-    [barbershopId],
+    [barbershopId, fetchComandas],
   );
 
   return { comandas, isLoading, create, update, setStatus, remove };

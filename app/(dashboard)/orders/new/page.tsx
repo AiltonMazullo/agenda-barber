@@ -12,8 +12,8 @@ export default function NovaComandaPage() {
   const { barbershop } = useAuth();
   const { create } = useComandas(barbershop?.id);
 
-  function handleSubmit(draft: ComandaDraft) {
-    const criada = create(draft);
+  async function handleSubmit(draft: ComandaDraft) {
+    const criada = await create(draft);
     if (criada) router.push("/orders");
   }
 

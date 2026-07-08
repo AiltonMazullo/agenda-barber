@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog, Loading } from "@/components/shared";
 import { useComandaForm } from "@/hooks/useComandaForm";
 import { formatBRL } from "@/utils/format";
-import { AgendamentosSection } from "./AgendamentosSection";
+import { TipoSection } from "./TipoSection";
 import { ItensSection } from "./ItensSection";
 import { FormSection } from "./FormSection";
 import type { Comanda, ComandaDraft, ComandaTipo } from "@/types/orders.types";
@@ -32,19 +32,18 @@ export function ComandaForm({
   const form = useComandaForm(barbershopId, comanda);
   const [tipoPendente, setTipoPendente] = useState<ComandaTipo | null>(null);
 
-  function handleTipoChange(tipo: ComandaTipo) {
-    if (tipo === form.tipo) return;
-    // Trocar o tipo descarta agendamentos e itens — confirma se há algo.
-    if (form.hasComposicao) {
-      setTipoPendente(tipo);
-      return;
-    }
-    form.setTipo(tipo);
-  }
-
   function handleSubmit() {
     const draft = form.buildDraft();
     if (draft) onSubmit(draft);
+  }
+
+  function handleTipoChange(next: ComandaTipo) {
+    if (next === form.tipo) return;
+    if (form.hasComposicao) {
+      setTipoPendente(next);
+    } else {
+      form.setTipo(next);
+    }
   }
 
   if (form.isLoadingCatalog) {
@@ -53,22 +52,17 @@ export function ComandaForm({
 
   return (
     <div className="space-y-5">
-      <AgendamentosSection
+      <TipoSection
         tipo={form.tipo}
         onTipoChange={handleTipoChange}
         clienteAvulso={form.clienteAvulso}
         onClienteAvulsoChange={form.setClienteAvulso}
-        options={form.agendamentoOptions}
-        agendamentos={form.agendamentos}
-        onAdd={form.addAgendamento}
-        onRemove={form.removeAgendamento}
-        linkedItemCount={form.linkedItemCount}
       />
 
       <ItensSection
         tipo="PRODUTO"
         comandaTipo={form.tipo}
-        agendamentos={form.agendamentosVinculados}
+        agendamentos={form.agendamentoOptions}
         categorias={form.categoriasProdutos}
         catalogo={form.produtos}
         itens={form.itens}
@@ -79,7 +73,7 @@ export function ComandaForm({
       <ItensSection
         tipo="SERVICO"
         comandaTipo={form.tipo}
-        agendamentos={form.agendamentosVinculados}
+        agendamentos={form.agendamentoOptions}
         categorias={form.categoriasServicos}
         catalogo={form.servicos}
         itens={form.itens}
@@ -147,7 +141,7 @@ export function ComandaForm({
         open={tipoPendente !== null}
         onOpenChange={(v) => !v && setTipoPendente(null)}
         title="Trocar o tipo da comanda?"
-        description="Os agendamentos vinculados e os itens adicionados serão descartados."
+        description="Os itens adicionados serão descartados."
         confirmLabel="Trocar tipo"
         tone="danger"
         onConfirm={() => {

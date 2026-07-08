@@ -50,8 +50,12 @@ function categoriasDe(catalogo: CatalogoOption[]): SelectOption<string>[] {
  * Estado e regras do formulário de comanda (criação e edição).
  *
  * Compõe os hooks reais de agendamentos/produtos/serviços e expõe apenas o
- * que a UI precisa: opções para os selects, a composição atual (agendamentos
- * vinculados + itens) e as ações com validação. Nenhuma regra fica no JSX.
+ * que a UI precisa: opções para os selects, a composição atual (itens, cada
+ * um podendo apontar direto para um agendamento real do backend) e as ações
+ * com validação. O snapshot de agendamentos da comanda (`agendamentos`) é
+ * derivado automaticamente dos agendamentos referenciados pelos itens — não
+ * existe um passo separado de "vincular agendamento". Nenhuma regra fica no
+ * JSX.
  */
 export function useComandaForm(
   barbershopId: string | undefined,
@@ -69,9 +73,6 @@ export function useComandaForm(
   const [clienteAvulso, setClienteAvulso] = useState(
     comanda?.clienteAvulso ?? "",
   );
-  const [agendamentos, setAgendamentos] = useState<ComandaAgendamento[]>(
-    comanda?.agendamentos ?? [],
-  );
   const [itens, setItens] = useState<ComandaItem[]>(comanda?.itens ?? []);
   const [observacoes, setObservacoes] = useState(comanda?.observacoes ?? "");
   const [erro, setErro] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export function useComandaForm(
   const isLoadingCatalog =
     loadingAppointments || loadingProducts || loadingServices;
 
-  // ─── Agendamentos ───────────────────────────────────────────────────────────
+  // ─── Agendamentos (vêm direto do backend, um seletor por item) ─────────────
   const employeeNameById = useMemo(() => {
     const m = new Map<string, string>();
     employees.forEach((e) => m.set(e.id, e.appName || e.name));
@@ -101,68 +102,29 @@ export function useComandaForm(
     [employeeNameById],
   );
 
-  /** Agendamentos disponíveis para vincular (exclui cancelados e já vinculados). */
-  const agendamentoOptions = useMemo<SelectOption<string>[]>(() => {
-    const vinculados = new Set(agendamentos.map((a) => a.appointmentId));
-    return appointments
-      .filter((a) => a.status !== "CANCELLED" && !vinculados.has(a.id))
-      .sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt))
-      .map((a) => ({
-        value: a.id,
-        label: `${a.client?.name ?? "Cliente"} · ${a.service?.name ?? "Serviço"} · ${formatDate(
-          a.scheduledAt,
-          { day: "2-digit", month: "2-digit" },
-        )} ${formatTime(a.scheduledAt)}`,
-      }));
-  }, [appointments, agendamentos]);
-
-  /** Agendamentos já vinculados, como opções para atrelar itens. */
-  const agendamentosVinculados = useMemo<SelectOption<string>[]>(
+  /** Agendamentos reais da barbearia disponíveis para atrelar a um item (exclui cancelados). */
+  const agendamentoOptions = useMemo<SelectOption<string>[]>(
     () =>
-      agendamentos.map((a) => ({
-        value: a.appointmentId,
-        label: `${a.clienteNome} · ${a.servicoNome}`,
-      })),
-    [agendamentos],
+      appointments
+        .filter((a) => a.status !== "CANCELLED")
+        .sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt))
+        .map((a) => ({
+          value: a.id,
+          label: `${a.client?.name ?? "Cliente"} · ${a.service?.name ?? "Serviço"} · ${formatDate(
+            a.scheduledAt,
+            { day: "2-digit", month: "2-digit" },
+          )} ${formatTime(a.scheduledAt)}`,
+        })),
+    [appointments],
   );
-
-  const addAgendamento = useCallback(
-    (appointmentId: string) => {
-      const appt = appointments.find((a) => a.id === appointmentId);
-      if (!appt) return;
-      setAgendamentos((prev) =>
-        prev.some((a) => a.appointmentId === appointmentId)
-          ? prev
-          : [...prev, toSnapshot(appt)],
-      );
-      setErro(null);
-    },
-    [appointments, toSnapshot],
-  );
-
-  /** Quantos itens estão atrelados a um agendamento (para confirmar remoção). */
-  const linkedItemCount = useCallback(
-    (appointmentId: string) =>
-      itens.filter((i) => i.appointmentId === appointmentId).length,
-    [itens],
-  );
-
-  /** Remove o agendamento e, em cascata, os itens atrelados a ele. */
-  const removeAgendamento = useCallback((appointmentId: string) => {
-    setAgendamentos((prev) =>
-      prev.filter((a) => a.appointmentId !== appointmentId),
-    );
-    setItens((prev) => prev.filter((i) => i.appointmentId !== appointmentId));
-  }, []);
 
   // ─── Tipo da comanda ────────────────────────────────────────────────────────
-  /** Há algo que seria perdido ao trocar o tipo? (a UI confirma antes) */
-  const hasComposicao = agendamentos.length > 0 || itens.length > 0;
+  /** Há itens que seriam perdidos ao trocar o tipo? (a UI confirma antes) */
+  const hasComposicao = itens.length > 0;
 
-  /** Troca o tipo zerando a composição — os vínculos deixam de fazer sentido. */
+  /** Troca o tipo zerando os itens — os vínculos deixam de fazer sentido. */
   const setTipo = useCallback((next: ComandaTipo) => {
     setTipoState(next);
-    setAgendamentos([]);
     setItens([]);
     setErro(null);
   }, []);
@@ -204,10 +166,10 @@ export function useComandaForm(
       const ref = catalogo.find((c) => c.id === input.refId);
       if (!ref || input.quantidade < 1) return false;
       // Em comanda de agendamento, o item precisa apontar para um
-      // agendamento efetivamente vinculado.
+      // agendamento real (não cancelado) da barbearia.
       if (
         tipo === "AGENDAMENTO" &&
-        !agendamentos.some((a) => a.appointmentId === input.appointmentId)
+        !agendamentoOptions.some((a) => a.value === input.appointmentId)
       ) {
         return false;
       }
@@ -227,7 +189,7 @@ export function useComandaForm(
       setErro(null);
       return true;
     },
-    [produtos, servicos, tipo, agendamentos],
+    [produtos, servicos, tipo, agendamentoOptions],
   );
 
   const removeItem = useCallback((id: string) => {
@@ -239,23 +201,41 @@ export function useComandaForm(
   // ─── Submissão ──────────────────────────────────────────────────────────────
   /** Valida e monta o draft; em caso de erro, define `erro` e retorna null. */
   const buildDraft = useCallback((): ComandaDraft | null => {
-    if (tipo === "AGENDAMENTO" && agendamentos.length === 0) {
-      setErro("Adicione ao menos um agendamento à comanda.");
-      return null;
-    }
     if (itens.length === 0) {
       setErro("Adicione ao menos um produto ou serviço.");
       return null;
     }
     setErro(null);
+
+    if (tipo === "AVULSA") {
+      return {
+        tipo,
+        clienteAvulso: clienteAvulso.trim() || null,
+        agendamentos: [],
+        itens,
+        observacoes: observacoes.trim(),
+      };
+    }
+
+    // O snapshot de agendamentos da comanda é derivado dos agendamentos
+    // efetivamente referenciados pelos itens (cada item já aponta para um
+    // agendamento real, escolhido direto no seletor).
+    const uniqueIds = [...new Set(itens.map((i) => i.appointmentId))].filter(
+      (id): id is string => id !== null,
+    );
+    const agendamentos = uniqueIds
+      .map((id) => appointments.find((a) => a.id === id))
+      .filter((a): a is Appointment => a !== undefined)
+      .map(toSnapshot);
+
     return {
       tipo,
-      clienteAvulso: tipo === "AVULSA" ? clienteAvulso.trim() || null : null,
+      clienteAvulso: null,
       agendamentos,
       itens,
       observacoes: observacoes.trim(),
     };
-  }, [tipo, clienteAvulso, agendamentos, itens, observacoes]);
+  }, [tipo, clienteAvulso, itens, observacoes, appointments, toSnapshot]);
 
   return {
     // estado
@@ -264,7 +244,6 @@ export function useComandaForm(
     setClienteAvulso,
     observacoes,
     setObservacoes,
-    agendamentos,
     itens,
     erro,
     totalInCents,
@@ -272,16 +251,12 @@ export function useComandaForm(
     hasComposicao,
     // opções
     agendamentoOptions,
-    agendamentosVinculados,
     produtos,
     servicos,
     categoriasProdutos,
     categoriasServicos,
     // ações
     setTipo,
-    addAgendamento,
-    removeAgendamento,
-    linkedItemCount,
     addItem,
     removeItem,
     buildDraft,

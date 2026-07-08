@@ -34,8 +34,8 @@ export default function EditarComandaPage() {
     [comandas, params.id],
   );
 
-  function handleSubmit(draft: ComandaDraft) {
-    const atualizada = update(params.id, draft);
+  async function handleSubmit(draft: ComandaDraft) {
+    const atualizada = await update(params.id, draft);
     if (atualizada) router.push("/orders");
   }
 

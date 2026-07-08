@@ -38,7 +38,7 @@ const COPY: Record<
 interface ItensSectionProps {
   tipo: ComandaItemTipo;
   comandaTipo: ComandaTipo;
-  /** Agendamentos já vinculados à comanda (para atrelar o item). */
+  /** Agendamentos reais da barbearia, para atrelar o item diretamente. */
   agendamentos: SelectOption<string>[];
   categorias: SelectOption<string>[];
   catalogo: CatalogoOption[];
@@ -66,16 +66,6 @@ export function ItensSection({
   const isProduto = tipo === "PRODUTO";
   const vinculaAgendamento = comandaTipo === "AGENDAMENTO";
   const copy = COPY[tipo];
-
-  // Com um único agendamento vinculado, ele já vem pré-selecionado. Se o
-  // selecionado foi removido da comanda, o valor é descartado (não pode
-  // sobrar item apontando para agendamento que saiu da lista).
-  const appointmentValue = useMemo(() => {
-    if (appointmentId && agendamentos.some((a) => a.value === appointmentId)) {
-      return appointmentId;
-    }
-    return agendamentos.length === 1 ? agendamentos[0].value : "";
-  }, [appointmentId, agendamentos]);
 
   const categoriaOptions = useMemo<SelectOption<string>[]>(
     () => [{ value: TODAS, label: "Todas" }, ...categorias],
@@ -119,7 +109,7 @@ export function ItensSection({
 
   const podeAdicionar =
     refId !== "" &&
-    (!vinculaAgendamento || appointmentValue !== "") &&
+    (!vinculaAgendamento || appointmentId !== "") &&
     (!isProduto || quantidade >= 1);
 
   function handleAdd() {
@@ -128,7 +118,7 @@ export function ItensSection({
     const ok = onAdd({
       tipo,
       refId,
-      appointmentId: vinculaAgendamento ? appointmentValue : null,
+      appointmentId: vinculaAgendamento ? appointmentId : null,
       quantidade: isProduto ? quantidade : 1,
       valorUnitarioInCents: isProduto
         ? Math.round(parseBRL(valorText) * 100)
@@ -172,10 +162,10 @@ export function ItensSection({
             required
             placeholder={
               agendamentos.length === 0
-                ? "Vincule um agendamento primeiro"
-                : "Selecione..."
+                ? "Nenhum agendamento disponível"
+                : "Selecione o agendamento..."
             }
-            value={appointmentValue}
+            value={appointmentId}
             onValueChange={setAppointmentId}
             options={agendamentos}
           />
