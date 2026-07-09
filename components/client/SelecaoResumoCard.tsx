@@ -4,17 +4,17 @@ import { ShoppingBag, Clock, CircleDollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { priceServiceUnderPlan } from "@/utils/plan-pricing";
+import { priceServiceUnderSubscription } from "@/utils/plan-pricing";
 import type { Service } from "@/types/service.types";
-import type { ClientPlan } from "@/types/client-plan.types";
+import type { MySubscription } from "@/types/subscription.types";
 
 interface SelecaoResumoCardProps {
   /** Serviços selecionados, na ordem de seleção. */
   services: Service[];
   /** Remove um serviço da seleção (desmarcar no resumo). */
   onRemove?: (id: string) => void;
-  /** Plano ativo → preços recalculados pelas regras do plano. */
-  plan?: ClientPlan | null;
+  /** Assinatura ativa → preços recalculados pelas regras do plano. */
+  subscription?: MySubscription["subscription"] | null;
 }
 
 function formatBRLFromCents(cents: number): string {
@@ -28,14 +28,14 @@ function formatBRLFromCents(cents: number): string {
 export function SelecaoResumoCard({
   services,
   onRemove,
-  plan,
+  subscription,
 }: SelecaoResumoCardProps) {
   const totalMin = services.reduce((acc, s) => acc + s.durationMin, 0);
   const totalCents = services.reduce(
-    (acc, s) => acc + priceServiceUnderPlan(s, plan).effectiveCents,
+    (acc, s) => acc + priceServiceUnderSubscription(s, subscription).effectiveCents,
     0,
   );
-  const planActive = !!plan?.active;
+  const planActive = !!subscription;
 
   return (
     <Card className="bg-surface-raised border border-border-subtle ring-0">
@@ -73,7 +73,9 @@ export function SelecaoResumoCard({
                   </p>
                 </div>
                 <span className="text-sm font-bold text-brand whitespace-nowrap">
-                  {formatBRLFromCents(priceServiceUnderPlan(s, plan).effectiveCents)}
+                  {formatBRLFromCents(
+                    priceServiceUnderSubscription(s, subscription).effectiveCents,
+                  )}
                 </span>
               </div>
             ))}

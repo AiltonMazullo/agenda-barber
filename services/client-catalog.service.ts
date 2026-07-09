@@ -3,6 +3,7 @@ import type { Barbershop } from "@/types/barbershop.types";
 import type { Service } from "@/types/service.types";
 import type { Employee } from "@/types/employee.types";
 import type { Branch } from "@/types/branch.types";
+import type { Holiday } from "@/types/holiday.types";
 
 /**
  * Catálogo (filiais + serviços + profissionais) do fluxo de agendamento do
@@ -37,12 +38,14 @@ export const clientCatalogService = {
     branches: Branch[];
     services: Service[];
     employees: Employee[];
+    holidays: Holiday[];
   }> {
     const shop = await fetchBySlug(slug);
     return {
       branches: shop.branches ?? [],
       services: shop.services ?? [],
       employees: shop.employees ?? [],
+      holidays: shop.holidays ?? [],
     };
   },
 };

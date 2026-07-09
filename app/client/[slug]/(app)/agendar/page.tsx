@@ -30,8 +30,8 @@ import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
-import { useClientPlan } from "@/hooks/useClientPlan";
-import { priceServiceUnderPlan } from "@/utils/plan-pricing";
+import { useClientSubscription } from "@/hooks/useClientSubscription";
+import { priceServiceUnderSubscription } from "@/utils/plan-pricing";
 import { apiAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { DatePickerField } from "@/components/shared";
@@ -40,6 +40,7 @@ import { getClientIdFromToken } from "@/lib/client-api";
 import type { Service } from "@/types/service.types";
 import type { Employee } from "@/types/employee.types";
 import type { Branch } from "@/types/branch.types";
+import type { Holiday } from "@/types/holiday.types";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -105,6 +106,7 @@ export default function AgendarPage({ params }: PageProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [branchesError, setBranchesError] = useState<string | null>(null);
   const [employeesError, setEmployeesError] = useState<string | null>(null);
@@ -138,6 +140,7 @@ export default function AgendarPage({ params }: PageProps) {
       let brs = bs.branches ?? [];
       let svc = bs.services ?? [];
       let emp = bs.employees ?? [];
+      let hol = bs.holidays ?? [];
 
       if (brs.length === 0 || svc.length === 0 || emp.length === 0) {
         try {
@@ -145,6 +148,7 @@ export default function AgendarPage({ params }: PageProps) {
           if (brs.length === 0) brs = catalog.branches;
           if (svc.length === 0) svc = catalog.services;
           if (emp.length === 0) emp = catalog.employees;
+          if (hol.length === 0) hol = catalog.holidays;
         } catch (err) {
           const msg =
             err instanceof Error ? err.message : "Falha ao carregar o catálogo.";
@@ -157,6 +161,7 @@ export default function AgendarPage({ params }: PageProps) {
       setBranches(brs);
       setServices(svc);
       setEmployees(emp);
+      setHolidays(hol);
       // Se só há uma filial, já seleciona.
       if (brs.length === 1) setSelectedBranch(brs[0]);
       setLoadingCatalog(false);
@@ -176,10 +181,11 @@ export default function AgendarPage({ params }: PageProps) {
     employees.map((e) => e.id),
   );
 
-  // Plano/assinatura simulado (localStorage) — ajusta preços e regras do passo
-  // Serviço quando o cliente é assinante ativo.
-  const { plan } = useClientPlan(barbershop?.id);
-  const isSubscriber = plan.active;
+  // Assinatura ativa do cliente — ajusta preços e regras do passo Serviço.
+  const { mySubscription } = useClientSubscription(barbershop?.id);
+  const isSubscriber = mySubscription !== null;
+  const subscription = mySubscription?.subscription ?? null;
+  const usage = mySubscription?.usage ?? [];
 
   // Há filiais? Se não (caso raro), o passo "Filial" é pulado e todos os
   // profissionais ficam disponíveis.
@@ -209,6 +215,21 @@ export default function AgendarPage({ params }: PageProps) {
   useEffect(() => {
     if (!loadingCatalog && !hasBranches && step === 1) setStep(2);
   }, [loadingCatalog, hasBranches, step]);
+
+  // Datas totalmente fechadas (feriado) pra filial escolhida — desabilitadas
+  // no calendário do passo 4, além do fallback de slots vazios da API.
+  const isDateClosed = useMemo(() => {
+    const closedIsoDates = new Set(
+      holidays
+        .filter(
+          (h) =>
+            h.status === "CLOSED" &&
+            (h.branchId === null || h.branchId === selectedBranch?.id),
+        )
+        .map((h) => h.date),
+    );
+    return (date: Date) => closedIsoDates.has(dateToISODate(date));
+  }, [holidays, selectedBranch]);
 
   // Horários livres vindos da API (por profissional + serviço + dia).
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -484,7 +505,9 @@ export default function AgendarPage({ params }: PageProps) {
                         : "Selecione um ou mais serviços. O tempo e o valor são somados automaticamente."}
                     </p>
 
-                    {isSubscriber && <AssinanteBanner planName={plan.name} />}
+                    {isSubscriber && subscription && (
+                      <AssinanteBanner planName={subscription.plan.name} />
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {visibleServices.map((s) => (
@@ -494,7 +517,7 @@ export default function AgendarPage({ params }: PageProps) {
                           selected={selectedServices.some((x) => x.id === s.id)}
                           pricing={
                             isSubscriber
-                              ? priceServiceUnderPlan(s, plan)
+                              ? priceServiceUnderSubscription(s, subscription)
                               : undefined
                           }
                           onSelect={() =>
@@ -517,11 +540,11 @@ export default function AgendarPage({ params }: PageProps) {
                           prev.filter((x) => x.id !== id),
                         )
                       }
-                      plan={isSubscriber ? plan : null}
+                      subscription={isSubscriber ? subscription : null}
                     />
-                    {isSubscriber ? (
+                    {isSubscriber && subscription ? (
                       <>
-                        <PlanoRegrasCard plan={plan} />
+                        <PlanoRegrasCard plan={subscription.plan} usage={usage} />
                         <UpgradeCard href={`/client/${slug}/plano`} />
                       </>
                     ) : (
@@ -548,7 +571,7 @@ export default function AgendarPage({ params }: PageProps) {
                       setDate(d);
                       setTime(null);
                     }}
-                    disabled={{ before: startOfToday() }}
+                    disabled={[{ before: startOfToday() }, isDateClosed]}
                     defaultMonth={date}
                   />
                 </div>
@@ -632,9 +655,9 @@ export default function AgendarPage({ params }: PageProps) {
                       selectedServices.reduce(
                         (a, s) =>
                           a +
-                          priceServiceUnderPlan(
+                          priceServiceUnderSubscription(
                             s,
-                            isSubscriber ? plan : null,
+                            isSubscriber ? subscription : null,
                           ).effectiveCents,
                         0,
                       ),

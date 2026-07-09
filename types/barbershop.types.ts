@@ -1,6 +1,7 @@
 import type { Service } from "@/types/service.types";
 import type { Employee } from "@/types/employee.types";
 import type { Branch } from "@/types/branch.types";
+import type { Holiday } from "@/types/holiday.types";
 
 export type PersonType = "FISICA" | "JURIDICA";
 
@@ -32,6 +33,7 @@ export interface Barbershop {
   services?: Service[];
   employees?: Employee[];
   branches?: Branch[];
+  holidays?: Holiday[];
 }
 
 export interface CreateBarbershopFisicaPayload {

@@ -23,6 +23,7 @@ import {
   LayoutList,
   LayoutGrid,
   Building2,
+  CalendarOff,
 } from "lucide-react";
 // (Scissors removido — a orientação textual da legenda foi substituída)
 import {
@@ -39,6 +40,7 @@ import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useSchedule } from "@/hooks/useSchedule";
+import { useHolidays } from "@/hooks/useHolidays";
 import {
   AgendamentoCard,
   ProfissionalColuna,
@@ -75,6 +77,7 @@ import { Loading, DatePickerField } from "@/components/shared";
 export default function SchedulePage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
+  const { holidays } = useHolidays(barbershop?.id);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [filialId, setFilialId] = useState<string>("");
@@ -347,6 +350,14 @@ export default function SchedulePage() {
   const dataFormatada = format(selectedDate, "EEEE, dd MMM yyyy", {
     locale: ptBR,
   });
+
+  // Feriado (ou horário especial) cadastrado pra filial + dia selecionados.
+  const selectedDateIso = format(selectedDate, "yyyy-MM-dd");
+  const holidayHoje = holidays.find(
+    (h) =>
+      h.date === selectedDateIso &&
+      (h.branchId === filialId || h.branchId === null),
+  );
   const dataCapitalizada =
     dataFormatada.charAt(0).toUpperCase() + dataFormatada.slice(1);
 
@@ -586,17 +597,50 @@ export default function SchedulePage() {
             <button
               type="button"
               onClick={() => {
+                if (holidayHoje?.status === "CLOSED") {
+                  toast.error(
+                    `Fechado neste dia (feriado: ${holidayHoje.name}).`,
+                  );
+                  return;
+                }
                 setPrefilledHora(undefined);
                 setPrefilledProfId(undefined);
                 setDialogNovo(true);
               }}
-              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)] transition-all flex items-center gap-1.5"
+              className={cn(
+                "h-9 px-4 rounded-md text-sm font-bold transition-all flex items-center gap-1.5",
+                holidayHoje?.status === "CLOSED"
+                  ? "bg-surface-elevated text-muted-foreground cursor-not-allowed"
+                  : "bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.3)]",
+              )}
             >
               <Plus className="size-3.5" />
               Novo agendamento
             </button>
           </div>
         </div>
+
+        {/* ── Aviso de feriado / horário especial ── */}
+        {holidayHoje && (
+          <div
+            className={cn(
+              "flex items-center gap-2 px-4 md:px-6 py-2.5 text-sm font-medium border-b border-border-subtle shrink-0",
+              holidayHoje.status === "CLOSED"
+                ? "bg-red-500/10 text-red-400"
+                : "bg-amber-500/10 text-amber-400",
+            )}
+          >
+            <CalendarOff className="size-4 shrink-0" />
+            {holidayHoje.status === "CLOSED" ? (
+              <span>Fechado — Feriado: {holidayHoje.name}</span>
+            ) : (
+              <span>
+                Horário especial — {holidayHoje.name}: {holidayHoje.startTime}
+                –{holidayHoje.endTime}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* ── Resumo do Dia ── */}
         <ResumoDia agendamentos={agendamentos} />

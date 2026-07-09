@@ -1,5 +1,5 @@
 import type { Service } from "@/types/service.types";
-import type { ClientPlan } from "@/types/client-plan.types";
+import type { MySubscription } from "@/types/subscription.types";
 
 export type ServicePriceStatus = "included" | "discount" | "full";
 
@@ -7,38 +7,42 @@ export interface ServicePricing {
   originalCents: number;
   effectiveCents: number;
   status: ServicePriceStatus;
-  /** Percentual de desconto aplicado (apenas em `discount`). */
+  /** Percentual de desconto aplicado (apenas em `discount`/`included`). */
   discountPct: number;
 }
 
+type ActiveSubscription = MySubscription["subscription"] | null | undefined;
+
 /**
- * Calcula o preço de um serviço sob as regras do plano do cliente.
- * - Sem plano ativo → preço cheio.
- * - Serviço coberto pelo plano → R$ 0,00 (incluso).
- * - Fora do plano → desconto configurado no plano.
+ * Calcula o preço de um serviço sob as regras da assinatura ativa do cliente.
+ * - Sem assinatura ativa → preço cheio.
+ * - Serviço coberto pelo plano (`PlanService.discountPercent`) → desconto real
+ *   aplicado (100% = incluso/grátis).
+ * - Fora do plano → preço cheio (o plano real não define desconto genérico
+ *   para serviços que não estão nele).
  */
-export function priceServiceUnderPlan(
+export function priceServiceUnderSubscription(
   service: Service,
-  plan: ClientPlan | null | undefined,
+  subscription: ActiveSubscription,
 ): ServicePricing {
   const originalCents = service.priceInCents;
 
-  if (!plan || !plan.active) {
-    return {
-      originalCents,
-      effectiveCents: originalCents,
-      status: "full",
-      discountPct: 0,
-    };
+  const planService = subscription?.plan.planServices.find(
+    (ps) => ps.serviceId === service.id,
+  );
+
+  if (!planService) {
+    return { originalCents, effectiveCents: originalCents, status: "full", discountPct: 0 };
   }
 
-  if (plan.includedServiceIds.includes(service.id)) {
-    return { originalCents, effectiveCents: 0, status: "included", discountPct: 0 };
-  }
-
-  const pct = plan.rules.outsideDiscountPct;
+  const pct = planService.discountPercent;
   const effectiveCents = Math.round(originalCents * (1 - pct / 100));
-  return { originalCents, effectiveCents, status: "discount", discountPct: pct };
+  return {
+    originalCents,
+    effectiveCents,
+    status: pct >= 100 ? "included" : "discount",
+    discountPct: pct,
+  };
 }
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];

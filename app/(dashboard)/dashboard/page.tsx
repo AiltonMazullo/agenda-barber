@@ -21,6 +21,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { useClients } from "@/hooks/useClients";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useBranches } from "@/hooks/useBranches";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { isBirthdayInCurrentWeek } from "@/utils/birthday";
 import {
   SectionCard,
@@ -57,6 +58,9 @@ export default function DashboardPage() {
     barbershop?.id,
   );
   const { branches } = useBranches(barbershop?.id);
+  const { summary: subscriptionsSummary, isLoading: loadingSubscriptions } = useSubscriptions(
+    barbershop?.id,
+  );
 
   const today = new Date();
 
@@ -236,10 +240,22 @@ export default function DashboardPage() {
           actionHref="/subscriptions"
         >
           <div className="grid grid-cols-2 gap-4">
-            <MiniStat label="Ativos" value="0" tone="success" />
+            <MiniStat
+              label="Ativos"
+              value={loadingSubscriptions ? "…" : String(subscriptionsSummary.activeCount)}
+              tone="success"
+            />
             <MiniStat label="Inadimplentes" value="0" tone="danger" />
-            <MiniStat label="Novos no período" value="0" tone="warning" />
-            <MiniStat label="Cancelados" value="0" tone="neutral" />
+            <MiniStat
+              label="Novos no período"
+              value={loadingSubscriptions ? "…" : String(subscriptionsSummary.newThisMonth)}
+              tone="warning"
+            />
+            <MiniStat
+              label="Cancelados"
+              value={loadingSubscriptions ? "…" : String(subscriptionsSummary.cancelledCount)}
+              tone="neutral"
+            />
           </div>
         </SectionCard>
 

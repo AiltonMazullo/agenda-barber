@@ -12,8 +12,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Loading } from "@/components/shared/Loading";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { clientPlansService } from "@/services/client-plans.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { formatBRL } from "@/utils/format";
 import type { Plan } from "@/types/plan.types";
 
@@ -23,7 +25,23 @@ function formatCents(cents: number): string {
   return formatBRL(cents / 100);
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+interface PlanCardProps {
+  plan: Plan;
+  isCurrentPlan: boolean;
+  hasOtherActivePlan: boolean;
+  subscribing: boolean;
+  onSubscribe: () => void;
+  onCancel: () => void;
+}
+
+function PlanCard({
+  plan,
+  isCurrentPlan,
+  hasOtherActivePlan,
+  subscribing,
+  onSubscribe,
+  onCancel,
+}: PlanCardProps) {
   const accentColor = plan.labelColor ?? "#f5b82e";
 
   const freeDayLabels =
@@ -182,14 +200,40 @@ function PlanCard({ plan }: { plan: Plan }) {
         )}
 
         {/* CTA */}
-        <div className="mt-auto pt-1">
-          <button
-            type="button"
-            className="w-full h-10 rounded-lg text-sm font-bold transition-opacity hover:opacity-90 text-white"
-            style={{ backgroundColor: accentColor }}
-          >
-            Assinar plano
-          </button>
+        <div className="mt-auto pt-1 space-y-2">
+          {isCurrentPlan ? (
+            <>
+              <button
+                type="button"
+                disabled
+                className="w-full h-10 rounded-lg text-sm font-bold text-white opacity-60 cursor-not-allowed"
+                style={{ backgroundColor: accentColor }}
+              >
+                Plano atual
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full h-9 rounded-lg text-xs font-semibold text-danger-foreground border border-danger/30 hover:bg-danger/10 transition-colors"
+              >
+                Cancelar assinatura
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onSubscribe}
+              disabled={subscribing}
+              className="w-full h-10 rounded-lg text-sm font-bold transition-opacity hover:opacity-90 text-white disabled:opacity-60"
+              style={{ backgroundColor: accentColor }}
+            >
+              {subscribing
+                ? "Assinando…"
+                : hasOtherActivePlan
+                  ? "Trocar para este plano"
+                  : "Assinar plano"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -198,9 +242,21 @@ function PlanCard({ plan }: { plan: Plan }) {
 
 export default function PlanoClientePage() {
   const { barbershop } = usePublicBarbershop();
+  const { mySubscription, subscribe, cancel } = useClientSubscription(barbershop?.id);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [switchTarget, setSwitchTarget] = useState<Plan | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Plan | null>(null);
+
+  const activePlanId = mySubscription?.subscription.planId ?? null;
+
+  async function handleSubscribe(planId: string) {
+    setSubscribingId(planId);
+    await subscribe(planId);
+    setSubscribingId(null);
+  }
 
   useEffect(() => {
     if (!barbershop) return;
@@ -253,11 +309,46 @@ export default function PlanoClientePage() {
 
       {!loading && plans.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {plans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} />
-          ))}
+          {plans.map((plan) => {
+            const isCurrentPlan = activePlanId === plan.id;
+            const hasOtherActivePlan = activePlanId !== null && !isCurrentPlan;
+            return (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                isCurrentPlan={isCurrentPlan}
+                hasOtherActivePlan={hasOtherActivePlan}
+                subscribing={subscribingId === plan.id}
+                onSubscribe={() =>
+                  hasOtherActivePlan ? setSwitchTarget(plan) : handleSubscribe(plan.id)
+                }
+                onCancel={() => setCancelTarget(plan)}
+              />
+            );
+          })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={switchTarget !== null}
+        onOpenChange={(v) => !v && setSwitchTarget(null)}
+        title="Trocar de plano"
+        description={`Sua assinatura atual será cancelada e você passará a assinar "${switchTarget?.name}". Deseja continuar?`}
+        confirmLabel="Trocar plano"
+        onConfirm={() => {
+          if (switchTarget) void handleSubscribe(switchTarget.id);
+        }}
+      />
+
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        onOpenChange={(v) => !v && setCancelTarget(null)}
+        title="Cancelar assinatura"
+        description={`Tem certeza que deseja cancelar a assinatura do plano "${cancelTarget?.name}"?`}
+        confirmLabel="Cancelar assinatura"
+        tone="danger"
+        onConfirm={() => void cancel()}
+      />
     </div>
   );
 }
