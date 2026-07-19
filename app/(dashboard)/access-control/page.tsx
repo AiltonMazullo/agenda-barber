@@ -13,29 +13,24 @@ import { PageHeader, SummaryCard, EmptyState, Loading } from "@/components/share
 import { DialogGrupoAcesso } from "@/components/access-control/DialogGrupoAcesso";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
-import { ACCESS_MODULES } from "@/utils/constants";
+import { usePermissionsCatalog } from "@/hooks/usePermissionsCatalog";
 import type {
   AccessGroup,
   CreateAccessGroupPayload,
 } from "@/types/access-group.types";
 
-const MODULE_LABEL = new Map<string, string>(
-  ACCESS_MODULES.map((m) => [m.key, m.label]),
-);
-
-function modulesSummary(group: AccessGroup): string {
-  const active = group.modules.filter(
-    (m) => m.create || m.read || m.update || m.delete,
-  );
-  if (active.length === 0) return "Sem permissões";
-  return active
-    .map((m) => MODULE_LABEL.get(m.module) ?? m.module)
-    .join(", ");
+function permissionsSummary(group: AccessGroup): string {
+  const count = group.permissions.length;
+  if (count === 0) return "Sem permissões";
+  return count === 1 ? "1 permissão selecionada" : `${count} permissões selecionadas`;
 }
 
 export default function ControleAcessoPage() {
   const { barbershop } = useAuth();
   const { groups, isLoading, create, update, remove } = useAccessGroups(
+    barbershop?.id,
+  );
+  const { catalog, isLoading: catalogLoading } = usePermissionsCatalog(
     barbershop?.id,
   );
 
@@ -116,7 +111,7 @@ export default function ControleAcessoPage() {
                     {g.name}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {modulesSummary(g)}
+                    {permissionsSummary(g)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -145,6 +140,8 @@ export default function ControleAcessoPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         group={editing}
+        catalog={catalog}
+        catalogLoading={catalogLoading}
         onSave={handleSave}
       />
 

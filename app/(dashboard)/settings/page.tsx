@@ -1546,7 +1546,7 @@ function DialogProfissional({
         email: form.email.trim().toLowerCase(),
         password: form.password,
         phone: form.phone.trim(),
-        accessGroupId: form.accessGroupId || undefined,
+        accessGroupId: form.accessGroupId,
         branchId: form.branchId,
         pixKey: form.pixKey.trim(),
         cpf: form.cpf.trim() || undefined,

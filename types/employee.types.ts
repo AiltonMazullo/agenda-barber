@@ -2,16 +2,6 @@
  * Tipos espelhando o modelo `Employee` do backend.
  */
 
-export interface EmployeePermissions {
-  cadastroAgendamento: boolean;
-  edicaoAgendamento: boolean;
-  gerenciarProdutosComanda: boolean;
-  gerenciarServicosComanda: boolean;
-  bloquearHorario: boolean;
-  removerFolgas: boolean;
-  edicaoNotas: boolean;
-}
-
 export interface EmployeeSchedule {
   id: string;
   employeeId: string;
@@ -55,8 +45,6 @@ export interface Employee {
   featured: boolean;
   /** Quando true, o profissional não aparece para clientes no app. */
   hidden: boolean;
-  /** Permissões do sistema (JSON nullable — null = todas habilitadas por padrão). */
-  permissions?: EmployeePermissions | null;
   /** Caminho relativo da foto de perfil (ex.: "/uploads/.../foto.jpg"). */
   avatarUrl?: string | null;
   barbershopId: string;
@@ -72,14 +60,13 @@ export interface CreateEmployeePayload {
   email: string;
   password: string;
   phone: string;
-  accessGroupId?: string;
+  accessGroupId: string;
   branchId: string;
   pixKey: string;
   cpf?: string;
   cnpj?: string;
   birthDate?: string;
   hasBranchAccess?: boolean;
-  permissions?: EmployeePermissions;
   cep: string;
   street: string;
   neighborhood: string;
@@ -102,7 +89,6 @@ export interface UpdateEmployeePayload {
   cnpj?: string;
   birthDate?: string;
   hasBranchAccess?: boolean;
-  permissions?: EmployeePermissions;
   cep?: string;
   street?: string;
   neighborhood?: string;

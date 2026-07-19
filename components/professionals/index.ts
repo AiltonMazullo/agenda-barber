@@ -3,7 +3,7 @@ export { StatusBar } from "./StatusBar";
 export { IdentificacaoTipo } from "./IdentificacaoTipo";
 export { MidiaDocumentos } from "./MidiaDocumentos";
 export { AreaProfissional } from "./AreaProfissional";
-export { PermissoesSistema } from "./PermissoesSistema";
+export { AccessGroupSelect } from "./AccessGroupSelect";
 export { ServicosComissao } from "./ServicosComissao";
 export { HorariosAtendimento } from "./HorariosAtendimento";
 export { Intervalos } from "./Intervalos";

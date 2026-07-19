@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { Service } from "@/types/service.types";
 import type { ProfessionalConfig } from "@/types/professional-config.types";
+import type { AccessGroup } from "@/types/access-group.types";
 import type { ProfessionalBasic } from "./types";
 import { StatusBar } from "./StatusBar";
 import { IdentificacaoTipo } from "./IdentificacaoTipo";
 import { MidiaDocumentos } from "./MidiaDocumentos";
 import { AreaProfissional } from "./AreaProfissional";
-import { PermissoesSistema } from "./PermissoesSistema";
+import { AccessGroupSelect } from "./AccessGroupSelect";
 import { ServicosComissao } from "./ServicosComissao";
 import { HorariosAtendimento } from "./HorariosAtendimento";
 import { Intervalos } from "./Intervalos";
@@ -23,6 +24,7 @@ export function ProfessionalForm({
   initialBasic,
   services,
   categories,
+  accessGroups,
   initialConfig,
   onSave,
   onBack,
@@ -36,6 +38,7 @@ export function ProfessionalForm({
   initialBasic: ProfessionalBasic;
   services: Service[];
   categories: Category[];
+  accessGroups: AccessGroup[];
   initialConfig: ProfessionalConfig;
   onSave: (basic: ProfessionalBasic, config: ProfessionalConfig) => Promise<void>;
   onBack: () => void;
@@ -69,6 +72,8 @@ export function ProfessionalForm({
     if (!basic.email.trim()) return toast.error("Informe o e-mail.");
     if (basic.phone.replace(/\D/g, "").length < 10)
       return toast.error("Telefone inválido.");
+    if (!basic.accessGroupId)
+      return toast.error("Selecione um grupo de acesso.");
 
     setSaving(true);
     try {
@@ -144,13 +149,10 @@ export function ProfessionalForm({
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <PermissoesSistema
-            permissions={config.permissions}
-            onChange={(patch) =>
-              updateConfig({
-                permissions: { ...config.permissions, ...patch },
-              })
-            }
+          <AccessGroupSelect
+            accessGroupId={basic.accessGroupId}
+            accessGroups={accessGroups}
+            onChange={(accessGroupId) => updateBasic({ accessGroupId })}
           />
           {isProfissional && (
             <ServicosComissao

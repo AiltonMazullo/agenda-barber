@@ -1,21 +1,26 @@
 /**
  * Grupos de acesso de funcionários.
- * Cada grupo tem permissões CRUD por módulo do sistema.
+ * Cada grupo guarda uma lista de chaves de permissão do catálogo do sistema.
  */
 
-export interface AccessModulePermission {
-  /** Chave do módulo (ex.: "appointments", "clients"). */
+export interface PermissionCatalogItem {
+  /** Chave estável da permissão (ex.: "usuario.listar"). */
+  key: string;
+  /** Módulo/entidade a que a permissão pertence (ex.: "Usuário"). */
   module: string;
-  create: boolean;
-  read: boolean;
-  update: boolean;
-  delete: boolean;
+  name: string;
+  description: string;
+}
+
+export interface PermissionCatalogModule {
+  module: string;
+  items: PermissionCatalogItem[];
 }
 
 export interface AccessGroup {
   id: string;
   name: string;
-  modules: AccessModulePermission[];
+  permissions: string[];
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
@@ -23,7 +28,7 @@ export interface AccessGroup {
 
 export interface CreateAccessGroupPayload {
   name: string;
-  modules: AccessModulePermission[];
+  permissions: string[];
 }
 
 export type UpdateAccessGroupPayload = Partial<CreateAccessGroupPayload>;

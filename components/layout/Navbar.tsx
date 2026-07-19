@@ -75,26 +75,26 @@ const navOperacional: NavItem[] = [
     title: "Agenda",
     href: "/schedule",
     icon: Calendar,
-    module: "appointments",
+    module: "agendamento",
     children: [
       { title: "Horário de Feriados", href: "/schedule/feriados", icon: CalendarOff },
     ],
   },
-  { title: "Clientes", href: "/clients", icon: Users, module: "clients" },
+  { title: "Clientes", href: "/clients", icon: Users, module: "cliente" },
   {
     title: "Profissionais",
     href: "/professionals",
     icon: UserCog,
-    module: "employees",
+    module: "usuario",
   },
   { title: "Comandas", href: "/orders", icon: ClipboardList },
-  { title: "Caixa", href: "/cashier", icon: Wallet, module: "cash-registers" },
+  { title: "Caixa", href: "/cashier", icon: Wallet, module: "caixa" },
 ];
 
 const navGestao: NavItem[] = [
   { title: "Assinaturas", href: "/subscriptions", icon: CreditCard },
   { title: "Comissões", href: "/commissions", icon: TrendingUp },
-  { title: "Estoque", href: "/inventory", icon: Package, module: "products" },
+  { title: "Estoque", href: "/inventory", icon: Package, module: "produto" },
   { title: "Financeiro", href: "/financial", icon: DollarSign },
   { title: "Relatórios", href: "/reports", icon: BarChart2 },
   {
@@ -117,7 +117,7 @@ const navBottom: NavItem[] = [
     title: "Controle de Acesso",
     href: "/access-control",
     icon: Shield,
-    module: "access-groups",
+    module: "grupo_de_permissoes",
   },
 ];
 
@@ -139,7 +139,7 @@ export function Navbar() {
 
   // Esconde itens cujo módulo o usuário logado não pode ler.
   const visible = (items: NavItem[]) =>
-    items.filter((i) => !i.module || can(i.module, "read"));
+    items.filter((i) => !i.module || can(i.module));
 
   const operacional = visible(navOperacional);
   const gestao = visible(navGestao);

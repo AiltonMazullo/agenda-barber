@@ -28,6 +28,7 @@ const EMPTY_BASIC: ProfessionalBasic = {
   phone: "",
   pixKey: "",
   hasBranchAccess: false,
+  accessGroupId: "",
 };
 
 export default function ProfessionalNovoPage() {
@@ -84,8 +85,7 @@ export default function ProfessionalNovoPage() {
         ? new Date(`${basic.birthDate}T00:00:00`).toISOString()
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
-      permissions: config.permissions,
-      accessGroupId: groups[0]?.id,
+      accessGroupId: basic.accessGroupId,
       cep: branch.cep,
       street: branch.street,
       neighborhood: branch.neighborhood,
@@ -133,6 +133,7 @@ export default function ProfessionalNovoPage() {
       initialBasic={EMPTY_BASIC}
       services={services}
       categories={categories}
+      accessGroups={groups}
       initialConfig={defaultProfessionalConfig()}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}

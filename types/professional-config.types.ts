@@ -10,16 +10,6 @@
 
 export type ProfessionalType = "admin" | "profissional";
 
-export interface ProfessionalPermissions {
-  cadastroAgendamento: boolean;
-  edicaoAgendamento: boolean;
-  gerenciarProdutosComanda: boolean;
-  gerenciarServicosComanda: boolean;
-  bloquearHorario: boolean;
-  removerFolgas: boolean;
-  edicaoNotas: boolean;
-}
-
 /** Serviço que o profissional realiza + comissão (%) específica. */
 export interface ServiceCommission {
   serviceId: string;
@@ -79,25 +69,12 @@ export interface ProfessionalConfig {
   emergencyContactPhone: string;
   contractFileName: string | null;
   attendancePeriodDays: number | null;
-  permissions: ProfessionalPermissions;
   services: ServiceCommission[];
   workingHours: WorkingHour[];
   intervals: ProfessionalInterval[];
   timeOff: TimeOff[];
   productCommission: ProductCommissionRule;
   differentiated: DifferentiatedCommission;
-}
-
-export function defaultPermissions(): ProfessionalPermissions {
-  return {
-    cadastroAgendamento: true,
-    edicaoAgendamento: true,
-    gerenciarProdutosComanda: true,
-    gerenciarServicosComanda: true,
-    bloquearHorario: true,
-    removerFolgas: true,
-    edicaoNotas: true,
-  };
 }
 
 export function defaultWorkingHours(): WorkingHour[] {
@@ -120,7 +97,6 @@ export function defaultProfessionalConfig(): ProfessionalConfig {
     emergencyContactPhone: "",
     contractFileName: null,
     attendancePeriodDays: null,
-    permissions: defaultPermissions(),
     services: [],
     workingHours: defaultWorkingHours(),
     intervals: [],

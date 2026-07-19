@@ -10,11 +10,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
+import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
 import { apiAssetUrl } from "@/lib/api";
 import { employeesService } from "@/services/employees.service";
 import {
-  defaultPermissions,
   defaultWorkingHours,
   type ProfessionalConfig,
 } from "@/types/professional-config.types";
@@ -30,6 +30,7 @@ export default function ProfessionalEditPage() {
     useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { categories } = useCategories(barbershop?.id);
+  const { groups } = useAccessGroups(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 
   const [backendSchedules, setBackendSchedules] = useState<EmployeeSchedule[]>([]);
@@ -98,9 +99,6 @@ export default function ProfessionalEditPage() {
     }),
     services: backendServices,
     timeOff: backendTimeOff.map((t) => ({ id: t.id, start: t.startDate, end: t.endDate })),
-    permissions: employee.permissions
-      ? { ...defaultPermissions(), ...employee.permissions }
-      : config.permissions,
   };
 
   async function handleSave(basic: ProfessionalBasic, cfg: ProfessionalConfig) {
@@ -117,7 +115,7 @@ export default function ProfessionalEditPage() {
         ? new Date(`${basic.birthDate}T00:00:00`).toISOString()
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
-      permissions: cfg.permissions,
+      accessGroupId: basic.accessGroupId,
     };
 
     const schedulesToSave = cfg.workingHours
@@ -162,6 +160,7 @@ export default function ProfessionalEditPage() {
     phone: employee.phone,
     pixKey: employee.pixKey,
     hasBranchAccess: employee.hasBranchAccess,
+    accessGroupId: employee.accessGroupId ?? "",
   };
 
   return (
@@ -170,6 +169,7 @@ export default function ProfessionalEditPage() {
       initialBasic={initialBasic}
       services={services}
       categories={categories}
+      accessGroups={groups}
       initialConfig={effectiveConfig}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}

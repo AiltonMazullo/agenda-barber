@@ -1,5 +1,3 @@
-import type { ProfessionalPermissions } from "@/types/professional-config.types";
-
 /** Dias da semana na ordem de exibição (segunda → domingo). */
 export const WEEKDAYS: { value: number; label: string }[] = [
   { value: 1, label: "Segunda-feira" },
@@ -14,20 +12,6 @@ export const WEEKDAYS: { value: number; label: string }[] = [
 export const DAY_LABEL: Record<number, string> = Object.fromEntries(
   WEEKDAYS.map((d) => [d.value, d.label]),
 );
-
-/** Itens de permissão do sistema (item #7), na ordem da imagem. */
-export const PERMISSION_ITEMS: {
-  key: keyof ProfessionalPermissions;
-  label: string;
-}[] = [
-  { key: "cadastroAgendamento", label: "Cadastro de agendamento" },
-  { key: "edicaoAgendamento", label: "Edição de agendamento" },
-  { key: "gerenciarProdutosComanda", label: "Gerenciar produtos na comanda" },
-  { key: "gerenciarServicosComanda", label: "Gerenciar serviços na comanda" },
-  { key: "bloquearHorario", label: "Bloquear horário" },
-  { key: "removerFolgas", label: "Remoção de folgas" },
-  { key: "edicaoNotas", label: "Edição de notas" },
-];
 
 /** Opções de horário (30 em 30 min), de 06:00 a 23:00. */
 export const TIME_OPTIONS: string[] = (() => {

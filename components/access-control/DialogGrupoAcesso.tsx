@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,119 +11,102 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ACCESS_MODULES } from "@/utils/constants";
+import { cn } from "@/lib/utils";
 import type {
   AccessGroup,
-  AccessModulePermission,
   CreateAccessGroupPayload,
+  PermissionCatalogModule,
 } from "@/types/access-group.types";
 
-type Action = "create" | "read" | "update" | "delete";
-const ACTIONS: { key: Action; label: string }[] = [
-  { key: "read", label: "Ver" },
-  { key: "create", label: "Criar" },
-  { key: "update", label: "Editar" },
-  { key: "delete", label: "Excluir" },
-];
-
-type PermMap = Record<string, AccessModulePermission>;
-
-function emptyPermMap(): PermMap {
-  const map: PermMap = {};
-  for (const m of ACCESS_MODULES) {
-    map[m.key] = {
-      module: m.key,
-      create: false,
-      read: false,
-      update: false,
-      delete: false,
-    };
-  }
-  return map;
-}
-
-function fromGroup(group: AccessGroup): PermMap {
-  const map = emptyPermMap();
-  for (const mod of group.modules) {
-    map[mod.module] = { ...mod };
-  }
-  return map;
+function fromGroup(group: AccessGroup | null): Set<string> {
+  return new Set(group?.permissions ?? []);
 }
 
 export function DialogGrupoAcesso({
   open,
   onOpenChange,
   group,
+  catalog,
+  catalogLoading,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   group: AccessGroup | null;
+  catalog: PermissionCatalogModule[];
+  catalogLoading: boolean;
   onSave: (payload: CreateAccessGroupPayload) => Promise<unknown>;
 }) {
   const [name, setName] = useState("");
-  const [perms, setPerms] = useState<PermMap>(emptyPermMap());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [openModules, setOpenModules] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(group?.name ?? "");
-    setPerms(group ? fromGroup(group) : emptyPermMap());
-  }, [open, group]);
+    setSelected(fromGroup(group));
+    setOpenModules(new Set(catalog.length > 0 ? [catalog[0].module] : []));
+  }, [open, group, catalog]);
 
-  function toggle(moduleKey: string, action: Action) {
-    setPerms((prev) => ({
-      ...prev,
-      [moduleKey]: { ...prev[moduleKey], [action]: !prev[moduleKey][action] },
-    }));
+  function toggle(key: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
-  function toggleRow(moduleKey: string, value: boolean) {
-    setPerms((prev) => ({
-      ...prev,
-      [moduleKey]: {
-        module: moduleKey,
-        create: value,
-        read: value,
-        update: value,
-        delete: value,
-      },
-    }));
-  }
-
-  function toggleAll(value: boolean) {
-    setPerms(() => {
-      const next: PermMap = {};
-      for (const m of ACCESS_MODULES) {
-        next[m.key] = {
-          module: m.key,
-          create: value,
-          read: value,
-          update: value,
-          delete: value,
-        };
+  function toggleModule(mod: PermissionCatalogModule, value: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const item of mod.items) {
+        if (value) next.add(item.key);
+        else next.delete(item.key);
       }
       return next;
     });
   }
 
-  const allSelected = ACCESS_MODULES.every((m) => {
-    const r = perms[m.key];
-    return r && r.create && r.read && r.update && r.delete;
-  });
+  function toggleModuleOpen(moduleName: string) {
+    setOpenModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(moduleName)) next.delete(moduleName);
+      else next.add(moduleName);
+      return next;
+    });
+  }
+
+  function toggleAll(value: boolean) {
+    setSelected(() => {
+      if (!value) return new Set();
+      const next = new Set<string>();
+      for (const mod of catalog) {
+        for (const item of mod.items) next.add(item.key);
+      }
+      return next;
+    });
+  }
+
+  const totalItems = catalog.reduce((acc, m) => acc + m.items.length, 0);
+  const allSelected = totalItems > 0 && selected.size === totalItems;
 
   async function handleSave() {
     if (name.trim().length < 2) {
       toast.error("Informe o nome do grupo.");
       return;
     }
-    // Envia só os módulos com ao menos uma permissão marcada.
-    const modules = Object.values(perms).filter(
-      (m) => m.create || m.read || m.update || m.delete,
-    );
+    if (selected.size === 0) {
+      toast.error("Selecione ao menos uma permissão.");
+      return;
+    }
     setSaving(true);
     try {
-      const result = await onSave({ name: name.trim(), modules });
+      const result = await onSave({
+        name: name.trim(),
+        permissions: Array.from(selected),
+      });
       if (result) onOpenChange(false);
     } finally {
       setSaving(false);
@@ -132,7 +115,7 @@ export function DialogGrupoAcesso({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-lg p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-2xl p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -164,7 +147,7 @@ export function DialogGrupoAcesso({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Permissões por módulo
+                Permissões ({selected.size}/{totalItems})
               </label>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <span className="text-[11px] text-muted-foreground">
@@ -176,54 +159,78 @@ export function DialogGrupoAcesso({
                 />
               </label>
             </div>
-            <div className="rounded-lg border border-border-subtle overflow-hidden">
-              {/* Cabeçalho */}
-              <div className="grid grid-cols-[1.4fr_repeat(4,minmax(0,1fr))] gap-1 px-3 py-2 bg-surface-base border-b border-border-subtle">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Módulo
-                </span>
-                {ACTIONS.map((a) => (
-                  <span
-                    key={a.key}
-                    className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center"
-                  >
-                    {a.label}
-                  </span>
-                ))}
-              </div>
-              {/* Linhas */}
-              {ACCESS_MODULES.map((m) => {
-                const row = perms[m.key];
-                const allOn =
-                  row.create && row.read && row.update && row.delete;
-                return (
-                  <div
-                    key={m.key}
-                    className="grid grid-cols-[1.4fr_repeat(4,minmax(0,1fr))] gap-1 px-3 py-2 items-center border-b border-border-subtle last:border-b-0 hover:bg-surface-base/50"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleRow(m.key, !allOn)}
-                      className="text-left text-xs font-medium text-foreground hover:text-brand transition-colors truncate"
-                      title="Alternar todas"
+
+            {catalogLoading ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">
+                Carregando permissões…
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {catalog.map((mod) => {
+                  const moduleKeys = mod.items.map((i) => i.key);
+                  const moduleSelectedCount = moduleKeys.filter((k) =>
+                    selected.has(k),
+                  ).length;
+                  const moduleAllOn = moduleSelectedCount === moduleKeys.length;
+                  const isOpen = openModules.has(mod.module);
+                  return (
+                    <div
+                      key={mod.module}
+                      className="rounded-lg border border-border-subtle overflow-hidden"
                     >
-                      {m.label}
-                    </button>
-                    {ACTIONS.map((a) => (
-                      <div key={a.key} className="flex justify-center">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-surface-base">
+                        <button
+                          type="button"
+                          onClick={() => toggleModuleOpen(mod.module)}
+                          className="flex-1 flex items-center gap-2 text-left"
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "size-3.5 text-muted-foreground transition-transform",
+                              !isOpen && "-rotate-90",
+                            )}
+                          />
+                          <span className="text-xs font-bold text-foreground">
+                            {mod.module}
+                          </span>
+                          <span className="text-[10px] text-text-faint">
+                            {moduleSelectedCount}/{moduleKeys.length}
+                          </span>
+                        </button>
                         <Checkbox
-                          checked={row[a.key]}
-                          onCheckedChange={() => toggle(m.key, a.key)}
+                          checked={moduleAllOn}
+                          onCheckedChange={(c) => toggleModule(mod, c === true)}
                         />
                       </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-text-faint">
-              Clique no nome do módulo para marcar/desmarcar a linha inteira.
-            </p>
+                      {isOpen && (
+                        <div className="divide-y divide-border-subtle">
+                          {mod.items.map((item) => (
+                            <label
+                              key={item.key}
+                              className="flex items-start gap-2.5 px-3 py-2 cursor-pointer hover:bg-surface-base/50"
+                            >
+                              <Checkbox
+                                className="mt-0.5"
+                                checked={selected.has(item.key)}
+                                onCheckedChange={() => toggle(item.key)}
+                              />
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-xs font-medium text-foreground">
+                                  {item.name}
+                                </span>
+                                <span className="block text-[11px] text-muted-foreground">
+                                  {item.description}
+                                </span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

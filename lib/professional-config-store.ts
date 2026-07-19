@@ -7,7 +7,6 @@
 
 import {
   defaultProfessionalConfig,
-  defaultPermissions,
   type ProfessionalConfig,
 } from "@/types/professional-config.types";
 
@@ -41,7 +40,6 @@ function merge(stored: Partial<ProfessionalConfig> | undefined): ProfessionalCon
   return {
     ...base,
     ...stored,
-    permissions: { ...defaultPermissions(), ...(stored.permissions ?? {}) },
     productCommission: {
       ...base.productCommission,
       ...(stored.productCommission ?? {}),

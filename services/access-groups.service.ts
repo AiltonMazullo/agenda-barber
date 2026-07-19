@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import type {
   AccessGroup,
   CreateAccessGroupPayload,
+  PermissionCatalogModule,
   UpdateAccessGroupPayload,
 } from "@/types/access-group.types";
 
@@ -11,6 +12,13 @@ const base = (barbershopId: string) =>
 export const accessGroupsService = {
   async list(barbershopId: string): Promise<AccessGroup[]> {
     const { data } = await api.get<AccessGroup[]>(base(barbershopId));
+    return data;
+  },
+
+  async listPermissions(barbershopId: string): Promise<PermissionCatalogModule[]> {
+    const { data } = await api.get<PermissionCatalogModule[]>(
+      `${base(barbershopId)}/permissions`,
+    );
     return data;
   },
 
