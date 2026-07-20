@@ -2,10 +2,14 @@ import { api } from "@/lib/api";
 import type {
   CreateEmployeePayload,
   Employee,
+  EmployeeDifferentiatedCommission,
+  EmployeeProductCommissionRule,
   EmployeeSchedule,
   EmployeeService,
   EmployeeTimeOff,
+  UpdateDifferentiatedCommissionPayload,
   UpdateEmployeePayload,
+  UpdateProductCommissionRulePayload,
 } from "@/types/employee.types";
 
 type ScheduleInput = Pick<EmployeeSchedule, "dayOfWeek" | "startTime" | "endTime">;
@@ -111,6 +115,50 @@ export const employeesService = {
       `/barbershops/${barbershopId}/employees/${id}/services`,
       { services },
     );
+  },
+
+  async getProductCommissionRule(
+    barbershopId: string,
+    id: string,
+  ): Promise<EmployeeProductCommissionRule | null> {
+    const { data } = await api.get<EmployeeProductCommissionRule | null>(
+      `/barbershops/${barbershopId}/employees/${id}/product-commission`,
+    );
+    return data;
+  },
+
+  async updateProductCommissionRule(
+    barbershopId: string,
+    id: string,
+    payload: UpdateProductCommissionRulePayload,
+  ): Promise<EmployeeProductCommissionRule> {
+    const { data } = await api.put<EmployeeProductCommissionRule>(
+      `/barbershops/${barbershopId}/employees/${id}/product-commission`,
+      payload,
+    );
+    return data;
+  },
+
+  async getDifferentiatedCommission(
+    barbershopId: string,
+    id: string,
+  ): Promise<EmployeeDifferentiatedCommission | null> {
+    const { data } = await api.get<EmployeeDifferentiatedCommission | null>(
+      `/barbershops/${barbershopId}/employees/${id}/differentiated-commission`,
+    );
+    return data;
+  },
+
+  async updateDifferentiatedCommission(
+    barbershopId: string,
+    id: string,
+    payload: UpdateDifferentiatedCommissionPayload,
+  ): Promise<EmployeeDifferentiatedCommission> {
+    const { data } = await api.put<EmployeeDifferentiatedCommission>(
+      `/barbershops/${barbershopId}/employees/${id}/differentiated-commission`,
+      payload,
+    );
+    return data;
   },
 
   async getTimeOff(barbershopId: string, id: string): Promise<EmployeeTimeOff[]> {

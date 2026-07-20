@@ -18,7 +18,20 @@ import {
   defaultWorkingHours,
   type ProfessionalConfig,
 } from "@/types/professional-config.types";
-import type { EmployeeSchedule, EmployeeService, EmployeeTimeOff, UpdateEmployeePayload } from "@/types/employee.types";
+import type {
+  EmployeeDifferentiatedCommission,
+  EmployeeProductCommissionRule,
+  EmployeeSchedule,
+  EmployeeService,
+  EmployeeTimeOff,
+  UpdateEmployeePayload,
+} from "@/types/employee.types";
+import {
+  differentiatedCommissionFromBackend,
+  differentiatedCommissionToPayload,
+  productCommissionRuleFromBackend,
+  productCommissionRuleToPayload,
+} from "@/utils/employee-commission";
 
 export default function ProfessionalEditPage() {
   const params = useParams<{ id: string }>();
@@ -39,6 +52,12 @@ export default function ProfessionalEditPage() {
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [backendTimeOff, setBackendTimeOff] = useState<EmployeeTimeOff[]>([]);
   const [timeOffLoaded, setTimeOffLoaded] = useState(false);
+  const [backendProductCommission, setBackendProductCommission] =
+    useState<EmployeeProductCommissionRule | null>(null);
+  const [productCommissionLoaded, setProductCommissionLoaded] = useState(false);
+  const [backendDifferentiated, setBackendDifferentiated] =
+    useState<EmployeeDifferentiatedCommission | null>(null);
+  const [differentiatedLoaded, setDifferentiatedLoaded] = useState(false);
 
   useEffect(() => {
     if (!barbershop?.id || !id) return;
@@ -57,11 +76,29 @@ export default function ProfessionalEditPage() {
       .then((data) => setBackendTimeOff(data))
       .catch(() => {})
       .finally(() => setTimeOffLoaded(true));
+    employeesService
+      .getProductCommissionRule(barbershop.id, id)
+      .then((data) => setBackendProductCommission(data))
+      .catch(() => {})
+      .finally(() => setProductCommissionLoaded(true));
+    employeesService
+      .getDifferentiatedCommission(barbershop.id, id)
+      .then((data) => setBackendDifferentiated(data))
+      .catch(() => {})
+      .finally(() => setDifferentiatedLoaded(true));
   }, [barbershop?.id, id]);
 
   const employee = employees.find((e) => e.id === id);
 
-  if (isLoading || !loaded || !schedulesLoaded || !servicesLoaded || !timeOffLoaded) {
+  if (
+    isLoading ||
+    !loaded ||
+    !schedulesLoaded ||
+    !servicesLoaded ||
+    !timeOffLoaded ||
+    !productCommissionLoaded ||
+    !differentiatedLoaded
+  ) {
     return (
       <div className="min-h-screen bg-surface-base grid place-items-center">
         <Loading label="Carregando profissional" />
@@ -99,6 +136,8 @@ export default function ProfessionalEditPage() {
     }),
     services: backendServices,
     timeOff: backendTimeOff.map((t) => ({ id: t.id, start: t.startDate, end: t.endDate })),
+    productCommission: productCommissionRuleFromBackend(backendProductCommission),
+    differentiated: differentiatedCommissionFromBackend(backendDifferentiated),
   };
 
   async function handleSave(basic: ProfessionalBasic, cfg: ProfessionalConfig) {
@@ -139,6 +178,24 @@ export default function ProfessionalEditPage() {
         )
         .catch(() => {
           toast.error("Falha ao salvar as folgas do profissional.");
+        }),
+      employeesService
+        .updateProductCommissionRule(
+          barbershop.id,
+          employee.id,
+          productCommissionRuleToPayload(cfg.productCommission),
+        )
+        .catch(() => {
+          toast.error("Falha ao salvar as regras de comissão sobre produtos.");
+        }),
+      employeesService
+        .updateDifferentiatedCommission(
+          barbershop.id,
+          employee.id,
+          differentiatedCommissionToPayload(cfg.differentiated),
+        )
+        .catch(() => {
+          toast.error("Falha ao salvar o adicional de comissão diferenciada.");
         }),
     ]);
 

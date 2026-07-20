@@ -21,6 +21,39 @@ export interface EmployeeTimeOff {
   endDate: string;   // "YYYY-MM-DD"
 }
 
+export interface EmployeeProductCommissionTier {
+  id: string;
+  fromInCents: number;
+  toInCents: number | null; // null = "em diante"
+  percent: number;
+}
+
+export interface EmployeeProductCommissionRule {
+  id: string;
+  employeeId: string;
+  categoryId: string | null; // null = todas as categorias
+  minSaleValueInCents: number;
+  tiers: EmployeeProductCommissionTier[];
+}
+
+export interface UpdateProductCommissionRulePayload {
+  categoryId: string | null;
+  minSaleValueInCents: number;
+  tiers: { fromInCents: number; toInCents: number | null; percent: number }[];
+}
+
+export interface EmployeeDifferentiatedCommission {
+  id: string;
+  employeeId: string;
+  additionalPercent: number;
+  subscriberPercent: number;
+}
+
+export interface UpdateDifferentiatedCommissionPayload {
+  additionalPercent: number;
+  subscriberPercent: number;
+}
+
 export interface Employee {
   id: string;
   name: string;

@@ -106,6 +106,7 @@ export interface CommissionResultRow {
   employeeId: string;
   employeeName: string;
   servicesAvulsoInCents: number;
+  servicesProdutoInCents: number;
   servicesClubInCents: number;
   bonusInCents: number;
   valeInCents: number;

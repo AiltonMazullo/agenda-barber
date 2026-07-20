@@ -18,6 +18,10 @@ import {
 } from "@/types/professional-config.types";
 import { employeesService } from "@/services/employees.service";
 import type { CreateEmployeePayload } from "@/types/employee.types";
+import {
+  differentiatedCommissionToPayload,
+  productCommissionRuleToPayload,
+} from "@/utils/employee-commission";
 
 const EMPTY_BASIC: ProfessionalBasic = {
   name: "",
@@ -116,6 +120,20 @@ export default function ProfessionalNovoPage() {
               )
               .catch(() => {})
           : Promise.resolve(),
+        employeesService
+          .updateProductCommissionRule(
+            barbershop.id,
+            created.id,
+            productCommissionRuleToPayload(config.productCommission),
+          )
+          .catch(() => {}),
+        employeesService
+          .updateDifferentiatedCommission(
+            barbershop.id,
+            created.id,
+            differentiatedCommissionToPayload(config.differentiated),
+          )
+          .catch(() => {}),
       ]);
 
       professionalConfigStore.set(barbershop.id, created.id, {

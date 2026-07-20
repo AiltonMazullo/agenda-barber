@@ -106,6 +106,7 @@ export default function ComissoesPage() {
               <tr className="border-b border-border-subtle text-left text-xs uppercase text-muted-foreground">
                 <th className="px-4 py-3">Profissional</th>
                 <th className="px-4 py-3">Serviços avulso</th>
+                <th className="px-4 py-3">Produtos</th>
                 <th className="px-4 py-3">Serviços assinatura</th>
                 <th className="px-4 py-3">Bônus</th>
                 <th className="px-4 py-3">Vales</th>
@@ -117,6 +118,7 @@ export default function ComissoesPage() {
                 <tr key={r.employeeId} className="border-b border-border-subtle last:border-0">
                   <td className="px-4 py-3 font-semibold">{r.employeeName}</td>
                   <td className="px-4 py-3">{formatBRL(r.servicesAvulsoInCents / 100)}</td>
+                  <td className="px-4 py-3">{formatBRL(r.servicesProdutoInCents / 100)}</td>
                   <td className="px-4 py-3">{formatBRL(r.servicesClubInCents / 100)}</td>
                   <td className="px-4 py-3">
                     <Input
@@ -147,6 +149,7 @@ export default function ComissoesPage() {
                   <td className="px-4 py-3 font-bold">
                     {formatBRL(
                       (r.servicesAvulsoInCents +
+                        r.servicesProdutoInCents +
                         r.servicesClubInCents +
                         Math.round(parseBRL(bonusInputs[r.employeeId] ?? "0") * 100) +
                         Math.round(parseBRL(valeInputs[r.employeeId] ?? "0") * 100)) /
