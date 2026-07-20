@@ -18,10 +18,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useProductCosts } from "@/hooks/useProductCosts";
 import { useStockMovements } from "@/hooks/useStockMovements";
 import type { CreateProductPayload } from "@/types/product.types";
-import type {
-  NewStockMovementInput,
-  StockMovement,
-} from "@/types/inventory.types";
+import type { NewStockMovementInput } from "@/types/inventory.types";
 import {
   SummaryCards,
   InventoryTabs,
@@ -32,18 +29,19 @@ import {
   TabProdutos,
   MovementsTable,
   deriveStatus,
-  MOVEMENT_SIGN,
   type TabKey,
 } from "@/components/inventory";
 
 export default function EstoquePage() {
   const { barbershop } = useAuth();
-  const { products, isLoading, create, update, remove, upsertStock } =
+  const { products, isLoading, create, update, remove, upsertStock, loadStock } =
     useProducts(barbershop?.id, { withStock: true });
   const { categories } = useCategories(barbershop?.id);
   const { branches } = useBranches(barbershop?.id);
   const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
-  const { movements, addMovement } = useStockMovements(barbershop?.id);
+  const { movements, isLoading: movementsLoading, addMovement } = useStockMovements(
+    barbershop?.id,
+  );
 
   const [activeTab, setActiveTab] = useState<TabKey>("estoque");
   const [search, setSearch] = useState("");
@@ -154,43 +152,21 @@ export default function EstoquePage() {
   async function handleMovimentacao(input: NewStockMovementInput) {
     const product = products.find((p) => p.id === input.productId);
     if (!product) return;
-    const branch = branches.find((b) => b.id === input.branchId);
 
-    // Sincroniza o estoque real (quando há filial) via upsertStock.
+    // O backend já ajusta o estoque real (ProductStock) e registra a
+    // movimentação com auditoria (funcionário/dono logado) atomicamente.
+    const created = await addMovement(input);
+    if (!created) return;
+
+    // Estoque local (produtos) fica desatualizado até recarregar.
     if (input.branchId) {
-      const existing = product.stockPerBranch.find(
-        (s) => s.branchId === input.branchId,
-      );
-      const currentStock = existing?.currentStock ?? 0;
-      const minStock = existing?.minStock ?? 0;
-      const delta = MOVEMENT_SIGN[input.type] * input.quantity;
-      const newCurrent = Math.max(0, currentStock + delta);
-      await upsertStock(input.productId, input.branchId, {
-        minStock,
-        currentStock: newCurrent,
-      });
+      await loadStock(input.productId);
     }
 
-    // Entrada com custo atualiza o custo unitário do produto.
+    // Entrada com custo atualiza o custo unitário do produto (cache local).
     if (input.type === "ENTRADA" && input.unitCostInCents) {
       setCost(input.productId, input.unitCostInCents);
     }
-
-    const movement: StockMovement = {
-      id: crypto.randomUUID(),
-      productId: product.id,
-      productName: product.name,
-      branchId: input.branchId,
-      branchName: branch?.name ?? "",
-      type: input.type,
-      quantity: input.quantity,
-      unitCostInCents: input.unitCostInCents,
-      unitPriceInCents: input.unitPriceInCents,
-      note: input.note,
-      user: barbershop?.name ?? "Sistema",
-      createdAt: new Date().toISOString(),
-    };
-    addMovement(movement);
   }
 
   const searchPlaceholder = isProductTab
@@ -252,6 +228,8 @@ export default function EstoquePage() {
           {activeTab === "estoque" && (
             <TabEstoque
               items={pag.pageItems}
+              branches={branches}
+              costOf={costOf}
               isLoading={isLoading}
               isEmpty={filtered.length === 0}
               onAjustar={(p) => {
@@ -280,6 +258,7 @@ export default function EstoquePage() {
               movements={entradaSaida}
               mode="movimentacoes"
               emptyMessage="Nenhuma entrada ou saída registrada."
+              isLoading={movementsLoading}
             />
           )}
 
@@ -288,6 +267,7 @@ export default function EstoquePage() {
               movements={vendas}
               mode="vendas"
               emptyMessage="Nenhuma venda registrada."
+              isLoading={movementsLoading}
             />
           )}
 
@@ -296,6 +276,7 @@ export default function EstoquePage() {
               movements={movFiltered}
               mode="historico"
               emptyMessage="Nenhuma movimentação registrada."
+              isLoading={movementsLoading}
             />
           )}
 

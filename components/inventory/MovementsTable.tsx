@@ -6,7 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { StatusBadge, EmptyState } from "@/components/shared";
+import { StatusBadge, EmptyState, Loading } from "@/components/shared";
 import { formatDate, formatTime } from "@/utils/format";
 import type { StockMovement } from "@/types/inventory.types";
 import {
@@ -59,10 +59,12 @@ export function MovementsTable({
   movements,
   mode,
   emptyMessage,
+  isLoading,
 }: {
   movements: StockMovement[];
   mode: Mode;
   emptyMessage: string;
+  isLoading?: boolean;
 }) {
   const cols = COLS[mode];
 
@@ -82,7 +84,13 @@ export function MovementsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {movements.length === 0 ? (
+          {isLoading ? (
+            <TableRow className="border-border hover:bg-transparent">
+              <TableCell colSpan={cols.length} className="py-4">
+                <Loading />
+              </TableCell>
+            </TableRow>
+          ) : movements.length === 0 ? (
             <TableRow className="border-border hover:bg-transparent">
               <TableCell colSpan={cols.length} className="py-4">
                 <EmptyState message={emptyMessage} />

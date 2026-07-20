@@ -1,21 +1,36 @@
 /**
- * Tipos da camada **local** de estoque (movimentações e auditoria).
- *
- * O backend só expõe o estoque agregado por filial (`ProductStock`) e o
- * `upsertStock`. Não há endpoint de movimentações/histórico, então registramos
- * entradas, saídas e vendas no frontend (localStorage) — sempre sincronizando o
- * estoque real através do `upsertStock` existente.
+ * Tipos de movimentação de estoque (entradas, saídas e vendas). Persistidas
+ * no backend (`stock-movements`), com auditoria real (funcionário/dono
+ * logado que registrou a movimentação).
  */
 
 export type StockMovementType = "ENTRADA" | "SAIDA" | "VENDA";
 
+/** Resposta crua da API. */
+export interface StockMovementApiResponse {
+  id: string;
+  type: StockMovementType;
+  quantity: number;
+  unitCostInCents?: number | null;
+  unitPriceInCents?: number | null;
+  note?: string | null;
+  productId: string;
+  branchId?: string | null;
+  employeeId?: string | null;
+  barbershopId: string;
+  createdAt: string;
+  product: { id: string; name: string };
+  branch: { id: string; name: string } | null;
+  employee: { id: string; name: string } | null;
+}
+
 export interface StockMovement {
   id: string;
   productId: string;
-  /** Snapshot do nome do produto no momento do registro (auditoria). */
+  /** Nome do produto (auditoria). */
   productName: string;
   branchId: string;
-  /** Snapshot do nome da filial no momento do registro (auditoria). */
+  /** Nome da filial (auditoria). */
   branchName: string;
   type: StockMovementType;
   /** Unidades movimentadas (sempre positivo). */
@@ -25,7 +40,7 @@ export interface StockMovement {
   /** Preço unitário de venda em centavos (vendas). */
   unitPriceInCents?: number;
   note?: string;
-  /** Quem registrou a movimentação (auditoria). */
+  /** Quem registrou a movimentação — nome do funcionário ou "Dono". */
   user: string;
   /** Data/hora ISO do registro. */
   createdAt: string;

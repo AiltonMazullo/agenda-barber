@@ -2,30 +2,60 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { stockMovementsStore } from "@/lib/stock-movements-store";
-import type { StockMovement } from "@/types/inventory.types";
+import { toast } from "sonner";
+import { stockMovementsService } from "@/services/stock-movements.service";
+import type { NewStockMovementInput, StockMovement } from "@/types/inventory.types";
 
 /**
- * Histórico local de movimentações de estoque (entradas, saídas e vendas),
- * mais recentes primeiro. O estoque real continua sendo atualizado via
- * `upsertStock`; aqui guardamos apenas o log com auditoria.
+ * Histórico de movimentações de estoque (entradas, saídas e vendas),
+ * persistido no backend com auditoria real (funcionário/dono logado).
  */
 export function useStockMovements(barbershopId: string | undefined) {
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!barbershopId) return;
-    setMovements(stockMovementsStore.list(barbershopId));
+    if (!barbershopId) {
+      setIsLoading(false);
+      return;
+    }
+    let active = true;
+    setIsLoading(true);
+    stockMovementsService
+      .list(barbershopId)
+      .then((data) => {
+        if (active) setMovements(data);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao carregar movimentações.",
+        );
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [barbershopId]);
 
   const addMovement = useCallback(
-    (movement: StockMovement) => {
-      if (!barbershopId) return;
-      stockMovementsStore.add(barbershopId, movement);
-      setMovements((prev) => [movement, ...prev]);
+    async (input: NewStockMovementInput) => {
+      if (!barbershopId) return null;
+      try {
+        const created = await stockMovementsService.create(barbershopId, input);
+        setMovements((prev) => [created, ...prev]);
+        return created;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao registrar movimentação.",
+        );
+        return null;
+      }
     },
     [barbershopId],
   );
 
-  return { movements, addMovement };
+  return { movements, isLoading, addMovement };
 }
