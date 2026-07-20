@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Header } from "@/components/layout/Header";
 import { DashboardPermissionGate } from "@/components/layout/DashboardPermissionGate";
+import { SubscriptionGate } from "@/components/subscription/SubscriptionGate";
 
 export default function DashboardLayout({
   children,
@@ -14,7 +15,9 @@ export default function DashboardLayout({
       <SidebarInset className="min-w-0 overflow-hidden">
         <Header />
         <main className="flex flex-1 flex-col gap-4 p-6 bg-(--primary) min-w-0 min-h-0 overflow-y-auto overflow-x-hidden">
-          <DashboardPermissionGate>{children}</DashboardPermissionGate>
+          <SubscriptionGate>
+            <DashboardPermissionGate>{children}</DashboardPermissionGate>
+          </SubscriptionGate>
         </main>
       </SidebarInset>
     </SidebarProvider>

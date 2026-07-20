@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
+import { SubscriptionBadge } from "@/components/subscription/SubscriptionBadge";
 import { useAuth } from "@/hooks/useAuth";
 
 function getInitials(name: string | undefined): string {
@@ -45,6 +46,7 @@ export function Header() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <SubscriptionBadge />
         <NotificationsMenu />
 
         <Button

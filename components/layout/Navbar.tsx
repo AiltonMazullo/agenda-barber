@@ -23,7 +23,6 @@ import {
   ChevronDown,
   Flame,
   CalendarOff,
-  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -97,19 +96,6 @@ const navGestao: NavItem[] = [
   { title: "Estoque", href: "/inventory", icon: Package, module: "produto" },
   { title: "Financeiro", href: "/financial", icon: DollarSign },
   { title: "Relatórios", href: "/reports", icon: BarChart2 },
-  {
-    title: "Marketing",
-    href: "/marketing/whatsapp",
-    icon: MessageCircle,
-    module: "configuracoes_de_whatsapp",
-    children: [
-      {
-        title: "Configurações de WhatsApp",
-        href: "/marketing/whatsapp",
-        icon: MessageCircle,
-      },
-    ],
-  },
 ];
 
 const navBottom: NavItem[] = [
