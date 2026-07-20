@@ -58,14 +58,15 @@ export function usePreApprovedClients(barbershopId: string | undefined) {
       if (!barbershopId) return false;
       try {
         await preApprovedClientsService.resendLink(barbershopId, id);
-        toast.success("Link reenviado.");
+        toast.success("Link de checkout gerado.");
+        await fetchItems();
         return true;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Falha ao reenviar link.");
+        toast.error(err instanceof Error ? err.message : "Falha ao gerar link.");
         return false;
       }
     },
-    [barbershopId],
+    [barbershopId, fetchItems],
   );
 
   const remove = useCallback(

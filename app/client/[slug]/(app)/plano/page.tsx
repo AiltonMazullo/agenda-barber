@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Crown,
   Users,
@@ -241,8 +243,10 @@ function PlanCard({
 }
 
 export default function PlanoClientePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { barbershop } = usePublicBarbershop();
-  const { mySubscription, subscribe, cancel } = useClientSubscription(barbershop?.id);
+  const { mySubscription, subscribe, cancel, refresh } = useClientSubscription(barbershop?.id);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -251,6 +255,22 @@ export default function PlanoClientePage() {
   const [cancelTarget, setCancelTarget] = useState<Plan | null>(null);
 
   const activePlanId = mySubscription?.subscription.planId ?? null;
+
+  // Retorno do checkout externo (gateway) — o pagamento é confirmado por
+  // webhook, então aqui só avisamos e limpamos a URL; se o webhook ainda não
+  // processou, a assinatura pode levar alguns segundos para aparecer.
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (!checkout) return;
+    if (checkout === "success") {
+      toast.success("Pagamento recebido! Sua assinatura será ativada em instantes.");
+      void refresh();
+    } else if (checkout === "cancel") {
+      toast.error("Checkout cancelado — nenhuma cobrança foi feita.");
+    }
+    router.replace(window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   async function handleSubscribe(planId: string) {
     setSubscribingId(planId);

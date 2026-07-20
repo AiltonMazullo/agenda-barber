@@ -74,7 +74,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
-import { usePaymentData } from "@/hooks/usePaymentData";
+import { usePaymentGateways } from "@/hooks/usePaymentGateways";
+import { PaymentGatewayCard } from "@/components/settings/PaymentGatewayCard";
+import { GatewayConfigDialog } from "@/components/settings/GatewayConfigDialog";
+import type {
+  CreatePaymentGatewayPayload,
+  GatewayProvider,
+  UpdatePaymentGatewayPayload,
+} from "@/types/payment-gateways.types";
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
 import { barbershopsService } from "@/services/barbershops.service";
@@ -2816,159 +2823,92 @@ function TabCategorias() {
   );
 }
 
-// ─── Tab: Pagamento (GalaxPay) ────────────────────────────────────────────────
+// ─── Tab: Gateways de Pagamento ───────────────────────────────────────────────
 
 function TabPagamento() {
   const { barbershop } = useAuth();
-  const { data, isLoading, save, remove } = usePaymentData(barbershop?.id);
+  const { configs, isLoading, save, remove, activate, testConnection } =
+    usePaymentGateways(barbershop?.id);
 
-  const [galaxPayId, setGalaxPayId] = useState("");
-  const [galaxPayHash, setGalaxPayHash] = useState("");
-  const [galaxPaySecurityToken, setGalaxPaySecurityToken] = useState("");
-  const [galaxPayPublicToken, setGalaxPayPublicToken] = useState("");
+  const [dialogProvider, setDialogProvider] = useState<GatewayProvider | null>(
+    null,
+  );
   const [saving, setSaving] = useState(false);
-  const [showSecrets, setShowSecrets] = useState(false);
+  const [testingProvider, setTestingProvider] = useState<GatewayProvider | null>(
+    null,
+  );
 
-  useEffect(() => {
-    setGalaxPayId(data?.galaxPayId ?? "");
-    setGalaxPayHash(data?.galaxPayHash ?? "");
-    setGalaxPaySecurityToken(data?.galaxPaySecurityToken ?? "");
-    setGalaxPayPublicToken(data?.galaxPayPublicToken ?? "");
-  }, [data]);
+  const byProvider = (provider: GatewayProvider) =>
+    configs.find((c) => c.provider === provider);
 
-  async function handleSave() {
-    if (
-      !galaxPayId.trim() ||
-      !galaxPayHash.trim() ||
-      !galaxPaySecurityToken.trim() ||
-      !galaxPayPublicToken.trim()
-    ) {
-      toast.error("Preencha todas as credenciais.");
-      return;
-    }
+  async function handleSave(
+    provider: GatewayProvider,
+    payload: CreatePaymentGatewayPayload | UpdatePaymentGatewayPayload,
+    existing: boolean,
+  ) {
     setSaving(true);
     try {
-      await save({
-        galaxPayId: galaxPayId.trim(),
-        galaxPayHash: galaxPayHash.trim(),
-        galaxPaySecurityToken: galaxPaySecurityToken.trim(),
-        galaxPayPublicToken: galaxPayPublicToken.trim(),
-      });
+      return await save(provider, payload, existing);
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleRemove() {
-    if (!confirm("Remover as credenciais de pagamento?")) return;
-    await remove();
+  async function handleRemove(provider: GatewayProvider) {
+    if (!confirm(`Remover a configuração do ${provider}?`)) return;
+    await remove(provider);
   }
 
-  const inputType = showSecrets ? "text" : "password";
+  async function handleTest(provider: GatewayProvider) {
+    setTestingProvider(provider);
+    try {
+      await testConnection(provider);
+    } finally {
+      setTestingProvider(null);
+    }
+  }
+
+  const providers: GatewayProvider[] = ["GALAXPAY", "CELCOIN", "ASAAS"];
 
   return (
-    <div className="max-w-lg space-y-5">
-      <Card className="bg-surface-raised border-border">
-        <CardContent className="p-5 space-y-5">
-          <div>
-            <h2 className="text-sm font-bold text-white">
-              Credenciais GalaxPay
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Conecte sua conta GalaxPay para processar pagamentos.
-            </p>
-          </div>
+    <div className="max-w-3xl space-y-5">
+      <div>
+        <h2 className="text-sm font-bold text-white">Gateways de pagamento</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Configure um ou mais gateways e escolha qual fica ativo para novas
+          cobranças de assinaturas/planos.
+        </p>
+      </div>
 
-          {isLoading ? (
-            <Loading />
-          ) : (
-            <>
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowSecrets((v) => !v)}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  {showSecrets ? (
-                    <>
-                      <EyeOff className="size-3" />
-                      Ocultar segredos
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="size-3" />
-                      Mostrar segredos
-                    </>
-                  )}
-                </button>
-              </div>
+      {isLoading ? (
+        <Loading />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {providers.map((provider) => (
+            <PaymentGatewayCard
+              key={provider}
+              provider={provider}
+              config={byProvider(provider)}
+              testing={testingProvider === provider}
+              onConfigure={() => setDialogProvider(provider)}
+              onActivate={() => activate(provider)}
+              onTest={() => handleTest(provider)}
+              onRemove={() => handleRemove(provider)}
+            />
+          ))}
+        </div>
+      )}
 
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <FormLabel required>GalaxPay ID</FormLabel>
-                  <Input
-                    value={galaxPayId}
-                    onChange={(e) => setGalaxPayId(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FormLabel required>Hash</FormLabel>
-                  <Input
-                    type={inputType}
-                    value={galaxPayHash}
-                    onChange={(e) => setGalaxPayHash(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FormLabel required>Security Token</FormLabel>
-                  <Input
-                    type={inputType}
-                    value={galaxPaySecurityToken}
-                    onChange={(e) => setGalaxPaySecurityToken(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <FormLabel required>Public Token</FormLabel>
-                  <Input
-                    type={inputType}
-                    value={galaxPayPublicToken}
-                    onChange={(e) => setGalaxPayPublicToken(e.target.value)}
-                    className="bg-surface-base border-border text-white focus-visible:ring-[#f5b82e]/30 h-10 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 pt-2">
-                {data && (
-                  <button
-                    type="button"
-                    onClick={handleRemove}
-                    className="h-9 px-4 rounded-md border border-red-500/30 bg-transparent text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1.5"
-                  >
-                    <Trash2 className="size-3.5" />
-                    Remover
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={handleSave}
-                  className="ml-auto h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all disabled:opacity-60"
-                >
-                  {saving
-                    ? "Salvando…"
-                    : data
-                      ? "Atualizar Credenciais"
-                      : "Salvar Credenciais"}
-                </button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {dialogProvider && (
+        <GatewayConfigDialog
+          open={!!dialogProvider}
+          onOpenChange={(open) => !open && setDialogProvider(null)}
+          provider={dialogProvider}
+          existing={byProvider(dialogProvider) ?? null}
+          saving={saving}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 }

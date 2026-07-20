@@ -9,6 +9,7 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 
 function timeAgo(iso: string): string {
@@ -23,13 +24,15 @@ function timeAgo(iso: string): string {
 }
 
 /**
- * Sino de notificações. Mock local — quando vazio mostra o estado "sem
- * notificações"; com itens, permite selecionar (checkbox) e limpar
- * selecionadas, ou limpar todas de uma vez.
+ * Sino de notificações. Quando vazio mostra o estado "sem notificações";
+ * com itens, permite selecionar (checkbox) e limpar selecionadas, ou limpar
+ * todas de uma vez. Ao abrir, marca as notificações como lidas.
  */
 export function NotificationsMenu() {
-  const { items, clearAll, clearMany } = useNotifications();
+  const { barbershop } = useAuth();
+  const { items, markAllRead, clearAll, clearMany } = useNotifications(barbershop?.id);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const hasUnread = items.some((n) => !n.isRead);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -65,13 +68,17 @@ export function NotificationsMenu() {
   const hasItems = items.length > 0;
 
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (open) markAllRead();
+      }}
+    >
       <PopoverTrigger
         aria-label="Notificações"
         className="cursor-pointer relative inline-flex size-8 items-center justify-center rounded-lg text-foreground transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-muted"
       >
         <Bell className="size-4" />
-        {hasItems && (
+        {hasUnread && (
           <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-brand" />
         )}
       </PopoverTrigger>
@@ -130,7 +137,10 @@ export function NotificationsMenu() {
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-foreground truncate">
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground truncate">
+                          {!n.isRead && (
+                            <span className="size-1.5 shrink-0 rounded-full bg-brand" />
+                          )}
                           {n.title}
                         </p>
                         <span className="text-[10px] text-muted-foreground shrink-0">

@@ -1,5 +1,9 @@
 import { clientApi } from "@/lib/client-api";
-import type { MySubscription, SubscribePayload, Subscription } from "@/types/subscription.types";
+import type {
+  MySubscription,
+  SubscribeCheckoutResult,
+  SubscribePayload,
+} from "@/types/subscription.types";
 
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/subscriptions`;
 
@@ -13,8 +17,11 @@ export const clientSubscriptionsService = {
     return data;
   },
 
-  async subscribe(barbershopId: string, payload: SubscribePayload): Promise<Subscription> {
-    const { data } = await clientApi.post<Subscription>(base(barbershopId), payload);
+  async subscribe(
+    barbershopId: string,
+    payload: SubscribePayload,
+  ): Promise<SubscribeCheckoutResult> {
+    const { data } = await clientApi.post<SubscribeCheckoutResult>(base(barbershopId), payload);
     return data;
   },
 

@@ -7,6 +7,8 @@ export interface PreApprovedClient {
   startDate: string;
   cardLast4: string | null;
   soldByEmployeeId: string | null;
+  /** URL de checkout hospedada pelo gateway ativo — gerada ao cadastrar/reenviar (spec-gateways-pagamento.md). */
+  checkoutUrl: string | null;
   status: PreApprovalStatus;
   errorMessage: string | null;
   linkSentAt: string | null;
@@ -22,7 +24,5 @@ export interface CreatePreApprovedClientPayload {
   clientId: string;
   planId: string;
   startDate: string;
-  cardToken?: string;
-  cardLast4?: string;
   soldByEmployeeId?: string;
 }

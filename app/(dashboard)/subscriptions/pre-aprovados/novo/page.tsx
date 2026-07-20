@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { PageHeader, DatePickerField, SelectField } from "@/components/shared";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { usePlans } from "@/hooks/usePlans";
@@ -24,8 +22,6 @@ export default function NovoPreAprovadoPage() {
   const [clientId, setClientId] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [cardToken, setCardToken] = useState("");
-  const [cardLast4, setCardLast4] = useState("");
   const [soldByEmployeeId, setSoldByEmployeeId] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -36,8 +32,6 @@ export default function NovoPreAprovadoPage() {
       clientId,
       planId,
       startDate: startDate.toISOString(),
-      cardToken: cardToken || undefined,
-      cardLast4: cardLast4 || undefined,
       soldByEmployeeId: soldByEmployeeId || undefined,
     });
     setSaving(false);
@@ -92,31 +86,10 @@ export default function NovoPreAprovadoPage() {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Field className="flex-1">
-            <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Token do cartão
-            </FieldLabel>
-            <Input
-              value={cardToken}
-              onChange={(e) => setCardToken(e.target.value)}
-              placeholder="Token retornado pelo gateway"
-              className="bg-surface-base border-border text-foreground"
-            />
-          </Field>
-          <Field className="flex-1">
-            <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Final do cartão
-            </FieldLabel>
-            <Input
-              value={cardLast4}
-              onChange={(e) => setCardLast4(e.target.value.slice(0, 4))}
-              placeholder="0000"
-              maxLength={4}
-              className="bg-surface-base border-border text-foreground"
-            />
-          </Field>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Ao salvar, uma sessão de checkout é gerada no gateway ativo da barbearia — use
+          &quot;Enviar link&quot; na listagem para copiar a URL e mandar pro cliente.
+        </p>
 
         <div className="flex justify-end gap-2 pt-2">
           <button

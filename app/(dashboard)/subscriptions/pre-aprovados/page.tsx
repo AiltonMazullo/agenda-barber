@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Send, Trash2, UserCheck } from "lucide-react";
+import { ArrowLeft, Copy, Plus, Send, Trash2, UserCheck } from "lucide-react";
+import { toast } from "sonner";
 import {
   PageHeader,
   EmptyState,
@@ -87,13 +88,26 @@ export default function PreAprovadosPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {item.checkoutUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(item.checkoutUrl!);
+                      toast.success("Link de checkout copiado.");
+                    }}
+                    className="h-9 px-3 rounded-md border border-border bg-transparent text-xs font-semibold text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
+                  >
+                    <Copy className="size-3.5" />
+                    Copiar link
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => resendLink(item.id)}
                   className="h-9 px-3 rounded-md border border-border bg-transparent text-xs font-semibold text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
                 >
                   <Send className="size-3.5" />
-                  Enviar link
+                  {item.checkoutUrl ? "Gerar novo link" : "Enviar link"}
                 </button>
                 <button
                   type="button"

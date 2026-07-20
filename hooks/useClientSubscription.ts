@@ -34,16 +34,21 @@ export function useClientSubscription(barbershopId: string | undefined) {
     async (planId: string) => {
       if (!barbershopId) return false;
       try {
-        await clientSubscriptionsService.subscribe(barbershopId, { planId });
-        toast.success("Assinatura ativada!");
-        await fetchMine();
+        const result = await clientSubscriptionsService.subscribe(barbershopId, { planId });
+        if (!result.checkoutUrl) {
+          toast.error(result.errorMessage ?? "Não foi possível gerar o checkout.");
+          return false;
+        }
+        // Redireciona pro checkout hospedado pelo gateway — a assinatura só é
+        // criada de fato quando o pagamento for confirmado (webhook).
+        window.location.href = result.checkoutUrl;
         return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Falha ao assinar o plano.");
         return false;
       }
     },
-    [barbershopId, fetchMine],
+    [barbershopId],
   );
 
   const cancel = useCallback(async () => {
@@ -59,5 +64,5 @@ export function useClientSubscription(barbershopId: string | undefined) {
     }
   }, [barbershopId, fetchMine]);
 
-  return { mySubscription, isLoading, subscribe, cancel };
+  return { mySubscription, isLoading, subscribe, cancel, refresh: fetchMine };
 }

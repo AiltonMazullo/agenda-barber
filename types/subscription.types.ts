@@ -75,3 +75,16 @@ export interface MySubscription {
 export interface SubscribePayload {
   planId: string;
 }
+
+/**
+ * Resposta de `POST /subscriptions` (self-service) — não é mais a Subscription
+ * em si, e sim o registro de pré-aprovado com a sessão de checkout gerada no
+ * gateway ativo. A Subscription só é criada quando o webhook confirmar o
+ * pagamento (spec-gateways-pagamento.md — checkout externo).
+ */
+export interface SubscribeCheckoutResult {
+  id: string;
+  status: "AGUARDANDO" | "ERRO" | "SUCESSO";
+  checkoutUrl: string | null;
+  errorMessage: string | null;
+}
