@@ -36,6 +36,17 @@ export interface PlanProduct {
   };
 }
 
+export interface PlanCategory {
+  id: string;
+  planId: string;
+  categoryId: string;
+  discountPercent: number;
+  category: {
+    id: string;
+    name: string;
+  };
+}
+
 export interface Plan {
   id: string;
   name: string;
@@ -49,12 +60,16 @@ export interface Plan {
   hidden: boolean;
   freeDays: number[];
   status: "ACTIVE" | "INACTIVE";
+  contractUrl: string | null;
+  order: number;
+  highlighted: boolean;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
   planServices: PlanService[];
   planEmployees: PlanEmployee[];
   planProducts: PlanProduct[];
+  planCategories: PlanCategory[];
 }
 
 export interface PlanServiceInput {
@@ -92,4 +107,10 @@ export type UpdatePlanPayload = Partial<CreatePlanPayload>;
 
 export interface UpdatePlanStatusPayload {
   status: "ACTIVE" | "INACTIVE";
+}
+
+export interface PlanReorderItem {
+  id: string;
+  order: number;
+  highlighted: boolean;
 }

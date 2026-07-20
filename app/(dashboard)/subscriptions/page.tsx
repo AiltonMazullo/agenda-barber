@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CreditCard,
   Plus,
@@ -40,11 +41,38 @@ import { useServices } from "@/hooks/useServices";
 import { useProducts } from "@/hooks/useProducts";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useCategories } from "@/hooks/useCategories";
 import { usePagination } from "@/hooks/usePagination";
 import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 import type { Subscription } from "@/types/subscription.types";
 
 type Tab = "assinantes" | "planos";
+
+const QUICK_LINKS = [
+  { href: "/subscriptions/pre-aprovados", label: "Pré-aprovados" },
+  { href: "/subscriptions/pre-cancelados", label: "Pré-cancelados" },
+  { href: "/subscriptions/calendario", label: "Calendário" },
+  { href: "/subscriptions/alterar", label: "Alterar assinaturas" },
+  { href: "/subscriptions/contratos", label: "Contratos ativos" },
+  { href: "/subscriptions/planos/exibicao", label: "Exibição de planos" },
+  { href: "/subscriptions/comissao", label: "Comissão de assinaturas" },
+] as const;
+
+function QuickLinksBar() {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {QUICK_LINKS.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="h-8 px-3 rounded-md border border-border bg-surface-raised text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-brand/40 transition-colors flex items-center"
+        >
+          {link.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 function AssinantesTab() {
   const { barbershop } = useAuth();
@@ -265,6 +293,7 @@ function PlanosTab() {
   const { services } = useServices(barbershop?.id);
   const { products } = useProducts(barbershop?.id);
   const { employees } = useEmployees(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);
@@ -281,11 +310,9 @@ function PlanosTab() {
 
   async function handleSave(payload: CreatePlanPayload) {
     if (editing) {
-      const result = await update(editing.id, payload);
-      return result !== null;
+      return update(editing.id, payload);
     }
-    const result = await create(payload);
-    return result !== null;
+    return create(payload);
   }
 
   const activePlans = plans.filter((p) => p.status === "ACTIVE");
@@ -412,6 +439,8 @@ function PlanosTab() {
         services={services}
         products={products}
         employees={employees}
+        categories={categories}
+        barbershopId={barbershop?.id}
       />
     </div>
   );
@@ -426,6 +455,8 @@ export default function SubscriptionsPage() {
         title="Assinaturas"
         subtitle="Assinantes ativos e planos oferecidos pela barbearia"
       />
+
+      <QuickLinksBar />
 
       <div className="flex items-center gap-1 border-b border-border-subtle">
         {(

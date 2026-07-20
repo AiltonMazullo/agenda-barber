@@ -11,10 +11,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { maskBRLInput, parseBRL, formatBRL } from "@/utils/format";
+import { plansService } from "@/services/plans.service";
 import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 import type { Service } from "@/types/service.types";
 import type { Product } from "@/types/product.types";
 import type { Employee } from "@/types/employee.types";
+import type { Category } from "@/types/category.types";
 
 // ─── tipos internos das linhas ────────────────────────────────────────────────
 
@@ -27,6 +29,11 @@ interface ServiceRow {
 interface ProductRow {
   productId: string;
   priceInCents: string; // string BRL formatada
+}
+
+interface CategoryRow {
+  categoryId: string;
+  discountPercent: string;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -55,14 +62,19 @@ export function DialogNovoPlano({
   services = [],
   products = [],
   employees = [],
+  categories = [],
+  barbershopId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   plan: Plan | null;
-  onSave: (payload: CreatePlanPayload) => Promise<unknown>;
+  onSave: (payload: CreatePlanPayload) => Promise<Plan | null>;
   services?: Service[];
   products?: Product[];
   employees?: Employee[];
+  categories?: Category[];
+  /** Necessário para sincronizar categorias/contrato após salvar (rotas dedicadas por planId). */
+  barbershopId?: string;
 }) {
   // campos principais
   const [name, setName] = useState("");
@@ -90,6 +102,14 @@ export function DialogNovoPlano({
   // profissionais
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [pendingEmployeeId, setPendingEmployeeId] = useState("");
+
+  // categorias de produto (desconto %)
+  const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
+  const [pendingCategoryId, setPendingCategoryId] = useState("");
+
+  // contrato (só disponível ao editar, pois depende do planId)
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [uploadingContract, setUploadingContract] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -126,9 +146,17 @@ export function DialogNovoPlano({
     setSelectedEmployeeIds(
       plan?.planEmployees.map((pe) => pe.employeeId) ?? [],
     );
+    setCategoryRows(
+      plan?.planCategories?.map((pc) => ({
+        categoryId: pc.categoryId,
+        discountPercent: String(pc.discountPercent),
+      })) ?? [],
+    );
+    setContractFile(null);
     setPendingServiceId("");
     setPendingProductId("");
     setPendingEmployeeId("");
+    setPendingCategoryId("");
   }, [open, plan]);
 
   // ─── cor hex ────────────────────────────────────────────────────────────────
@@ -230,6 +258,60 @@ export function DialogNovoPlano({
     setSelectedEmployeeIds((prev) => prev.filter((id) => id !== employeeId));
   }
 
+  // ─── categorias de produto ──────────────────────────────────────────────────
+
+  const selectedCategoryIds = new Set(categoryRows.map((r) => r.categoryId));
+  const availableCategories = categories.filter((c) => !selectedCategoryIds.has(c.id));
+
+  function addCategory() {
+    if (!pendingCategoryId) return;
+    setCategoryRows((prev) => [...prev, { categoryId: pendingCategoryId, discountPercent: "0" }]);
+    setPendingCategoryId("");
+  }
+
+  function removeCategoryRow(categoryId: string) {
+    setCategoryRows((prev) => prev.filter((r) => r.categoryId !== categoryId));
+  }
+
+  function updateCategoryDiscount(categoryId: string, value: string) {
+    setCategoryRows((prev) =>
+      prev.map((r) => (r.categoryId === categoryId ? { ...r, discountPercent: value } : r)),
+    );
+  }
+
+  async function syncCategories(planId: string) {
+    if (!barbershopId) return;
+    const previousIds = new Set(plan?.planCategories?.map((pc) => pc.categoryId) ?? []);
+    const currentIds = new Set(categoryRows.map((r) => r.categoryId));
+
+    for (const categoryId of previousIds) {
+      if (!currentIds.has(categoryId)) {
+        await plansService.removeCategory(barbershopId, planId, categoryId);
+      }
+    }
+    for (const row of categoryRows) {
+      const discountPercent = parseFloat(row.discountPercent.replace(",", ".")) || 0;
+      await plansService.addCategory(barbershopId, planId, {
+        categoryId: row.categoryId,
+        discountPercent,
+      });
+    }
+  }
+
+  async function handleUploadContract() {
+    if (!contractFile || !barbershopId || !plan) return;
+    setUploadingContract(true);
+    try {
+      await plansService.uploadContract(barbershopId, plan.id, contractFile);
+      toast.success("Contrato anexado.");
+      setContractFile(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao anexar contrato.");
+    } finally {
+      setUploadingContract(false);
+    }
+  }
+
   // ─── submit ─────────────────────────────────────────────────────────────────
 
   async function handleSave() {
@@ -326,7 +408,10 @@ export function DialogNovoPlano({
           priceInCents: Math.round(parseBRL(r.priceInCents) * 100),
         })),
       });
-      if (result) onOpenChange(false);
+      if (result) {
+        await syncCategories(result.id);
+        onOpenChange(false);
+      }
     } finally {
       setSaving(false);
     }
@@ -746,6 +831,110 @@ export function DialogNovoPlano({
               )}
             </div>
           </Section>
+          {/* ── categorias de produto ── */}
+          <Section label="Categorias de produto (desconto)">
+            <div className="space-y-2">
+              {categoryRows.length > 0 && (
+                <div className="space-y-1.5">
+                  {categoryRows.map((row) => {
+                    const cat = categories.find((c) => c.id === row.categoryId);
+                    return (
+                      <div
+                        key={row.categoryId}
+                        className="flex items-center gap-2 bg-surface-base border border-border rounded-md px-3 py-2"
+                      >
+                        <span className="flex-1 text-sm text-foreground truncate">
+                          {cat?.name ?? row.categoryId}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Input
+                            value={row.discountPercent}
+                            onChange={(e) => updateCategoryDiscount(row.categoryId, e.target.value)}
+                            inputMode="decimal"
+                            className="w-16 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 text-right px-2"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeCategoryRow(row.categoryId)}
+                          className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-danger-foreground transition-colors shrink-0"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {availableCategories.length > 0 ? (
+                <div className="flex gap-2">
+                  <select
+                    value={pendingCategoryId}
+                    onChange={(e) => setPendingCategoryId(e.target.value)}
+                    className="flex-1 h-9 rounded-md border border-border bg-surface-base text-sm text-foreground px-2 focus:outline-none focus:ring-1 focus:ring-brand/30"
+                  >
+                    <option value="">Selecionar categoria…</option>
+                    {availableCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={addCategory}
+                    disabled={!pendingCategoryId}
+                    className="h-9 px-3 rounded-md border border-border bg-surface-base text-muted-foreground hover:text-foreground hover:border-brand/40 transition-colors disabled:opacity-40 flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="size-3.5" />
+                    Adicionar
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-text-faint">
+                  {categories.length > 0
+                    ? "Todas as categorias já foram adicionadas."
+                    : "Nenhuma categoria cadastrada na barbearia."}
+                </p>
+              )}
+            </div>
+          </Section>
+
+          {/* ── contrato (só após o plano existir) ── */}
+          {plan && (
+            <Section label="Contrato">
+              <div className="space-y-2">
+                {plan.contractUrl && (
+                  <a
+                    href={plan.contractUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-brand hover:underline"
+                  >
+                    Ver contrato atual
+                  </a>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
+                    className="flex-1 text-xs text-muted-foreground file:mr-2 file:h-8 file:px-3 file:rounded-md file:border-0 file:bg-surface-elevated file:text-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleUploadContract}
+                    disabled={!contractFile || uploadingContract}
+                    className="h-9 px-3 rounded-md border border-border bg-surface-base text-muted-foreground hover:text-foreground hover:border-brand/40 transition-colors disabled:opacity-40 text-sm"
+                  >
+                    {uploadingContract ? "Enviando…" : "Adicionar contrato"}
+                  </button>
+                </div>
+              </div>
+            </Section>
+          )}
         </div>
 
         {/* footer fixo */}
