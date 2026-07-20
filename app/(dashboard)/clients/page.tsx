@@ -42,6 +42,7 @@ import {
   DataTablePagination,
   ConfirmDialog,
   Loading,
+  Can,
 } from "@/components/shared";
 import { DialogNovoCliente } from "@/components/clients/DialogNovoCliente";
 import { toast } from "sonner";
@@ -392,14 +393,16 @@ function ClientesContent() {
               Desativados
               {deactivatedIds.length > 0 ? ` (${deactivatedIds.length})` : ""}
             </Link>
-            <button
-              type="button"
-              onClick={() => setNovoDialog(true)}
-              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
-            >
-              <UserPlus className="size-3.5" />
-              Novo cliente
-            </button>
+            <Can permission="cliente.cadastrar">
+              <button
+                type="button"
+                onClick={() => setNovoDialog(true)}
+                className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+              >
+                <UserPlus className="size-3.5" />
+                Novo cliente
+              </button>
+            </Can>
           </div>
         }
       />
@@ -554,28 +557,34 @@ function ClientesContent() {
                       </TableCell>
                       <TableCell className="px-4 py-4">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(c)}
-                            className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                          >
-                            <Pencil className="size-3" />
-                          </button>
-                          <Link
-                            href={`/clients/${c.id}`}
-                            title="Ver ficha"
-                            className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                          >
-                            <Eye className="size-3" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setToDeactivate(c)}
-                            title="Desativar cliente"
-                            className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
-                          >
-                            <UserX className="size-3" />
-                          </button>
+                          <Can permission="cliente.atualizar">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(c)}
+                              className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                          </Can>
+                          <Can permission="cliente.visualizar">
+                            <Link
+                              href={`/clients/${c.id}`}
+                              title="Ver ficha"
+                              className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                            >
+                              <Eye className="size-3" />
+                            </Link>
+                          </Can>
+                          <Can permission="cliente.remover">
+                            <button
+                              type="button"
+                              onClick={() => setToDeactivate(c)}
+                              title="Desativar cliente"
+                              className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+                            >
+                              <UserX className="size-3" />
+                            </button>
+                          </Can>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -87,12 +87,12 @@ const navOperacional: NavItem[] = [
     icon: UserCog,
     module: "usuario",
   },
-  { title: "Comandas", href: "/orders", icon: ClipboardList },
+  { title: "Comandas", href: "/orders", icon: ClipboardList, module: "comanda" },
   { title: "Caixa", href: "/cashier", icon: Wallet, module: "caixa" },
 ];
 
 const navGestao: NavItem[] = [
-  { title: "Assinaturas", href: "/subscriptions", icon: CreditCard },
+  { title: "Assinaturas", href: "/subscriptions", icon: CreditCard, module: "cliente" },
   { title: "Comissões", href: "/commissions", icon: TrendingUp },
   { title: "Estoque", href: "/inventory", icon: Package, module: "produto" },
   { title: "Financeiro", href: "/financial", icon: DollarSign },
@@ -101,6 +101,7 @@ const navGestao: NavItem[] = [
     title: "Marketing",
     href: "/marketing/whatsapp",
     icon: MessageCircle,
+    module: "configuracoes_de_whatsapp",
     children: [
       {
         title: "Configurações de WhatsApp",

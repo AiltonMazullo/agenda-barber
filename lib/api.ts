@@ -82,7 +82,7 @@ export function clearAuthTokens(): void {
   if (!isBrowser()) return;
   window.localStorage.removeItem(ACCESS_KEY);
   window.localStorage.removeItem(REFRESH_KEY);
-  window.localStorage.removeItem("sm_barbershop");
+  window.localStorage.removeItem("sm_session");
   clearCookie();
 }
 

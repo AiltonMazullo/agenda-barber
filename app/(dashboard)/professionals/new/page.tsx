@@ -29,6 +29,7 @@ const EMPTY_BASIC: ProfessionalBasic = {
   pixKey: "",
   hasBranchAccess: false,
   accessGroupId: "",
+  password: "",
 };
 
 export default function ProfessionalNovoPage() {
@@ -76,7 +77,7 @@ export default function ProfessionalNovoPage() {
       name: basic.name.trim(),
       appName: basic.appName.trim(),
       email: basic.email.trim().toLowerCase(),
-      password: `Tmp${Math.random().toString(36).slice(2, 10)}`,
+      password: basic.password,
       phone: basic.phone.trim(),
       branchId: branch.id,
       pixKey: basic.pixKey.trim(),

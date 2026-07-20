@@ -1,6 +1,7 @@
 "use client";
 
-import { Shield, Scissors } from "lucide-react";
+import { useState } from "react";
+import { Shield, Scissors, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePickerField } from "@/components/shared";
@@ -39,12 +40,16 @@ export function IdentificacaoTipo({
   onBasic,
   type,
   onType,
+  isEditing,
 }: {
   basic: ProfessionalBasic;
   onBasic: (patch: Partial<ProfessionalBasic>) => void;
   type: ProfessionalType;
   onType: (t: ProfessionalType) => void;
+  /** Na edição a senha é opcional (em branco mantém a atual). */
+  isEditing?: boolean;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
   const birthDate = basic.birthDate
     ? new Date(`${basic.birthDate}T00:00:00`)
     : undefined;
@@ -126,6 +131,36 @@ export function IdentificacaoTipo({
               className={INPUT_CLS}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <FieldLabel required={!isEditing}>Senha de acesso</FieldLabel>
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              value={basic.password}
+              onChange={(e) => onBasic({ password: e.target.value })}
+              placeholder={
+                isEditing ? "Deixe em branco para manter a atual" : "Mínimo 6 caracteres"
+              }
+              className={`${INPUT_CLS} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? (
+                <EyeOff className="size-3.5" />
+              ) : (
+                <Eye className="size-3.5" />
+              )}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Usada pelo profissional para entrar no painel.
+          </p>
         </div>
 
         <div className="space-y-1.5">

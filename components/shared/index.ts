@@ -9,3 +9,5 @@ export { DataTablePagination } from "./DataTablePagination";
 export { ListPaginationBar } from "./ListPaginationBar";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Loading } from "./Loading";
+export { Can } from "./Can";
+export { RequirePermission } from "./RequirePermission";

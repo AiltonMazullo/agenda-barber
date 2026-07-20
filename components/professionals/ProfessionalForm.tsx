@@ -34,6 +34,7 @@ export function ProfessionalForm({
   onHiddenChange,
   photoUrl,
   onUploadPhoto,
+  isEditing,
 }: {
   initialBasic: ProfessionalBasic;
   services: Service[];
@@ -42,6 +43,8 @@ export function ProfessionalForm({
   initialConfig: ProfessionalConfig;
   onSave: (basic: ProfessionalBasic, config: ProfessionalConfig) => Promise<void>;
   onBack: () => void;
+  /** Edição de profissional existente — senha vira opcional. */
+  isEditing?: boolean;
   /** Destaque (campo do backend). Só aparece quando há `onFeaturedChange`. */
   featured?: boolean;
   onFeaturedChange?: (value: boolean) => void;
@@ -74,6 +77,10 @@ export function ProfessionalForm({
       return toast.error("Telefone inválido.");
     if (!basic.accessGroupId)
       return toast.error("Selecione um grupo de acesso.");
+    if (!isEditing && basic.password.length < 6)
+      return toast.error("A senha de acesso deve ter pelo menos 6 caracteres.");
+    if (isEditing && basic.password.length > 0 && basic.password.length < 6)
+      return toast.error("A senha de acesso deve ter pelo menos 6 caracteres.");
 
     setSaving(true);
     try {
@@ -130,6 +137,7 @@ export function ProfessionalForm({
             onBasic={updateBasic}
             type={config.type}
             onType={(t) => updateConfig({ type: t })}
+            isEditing={isEditing}
           />
           <MidiaDocumentos
             photoDataUrl={photoUrl ?? config.photoDataUrl}

@@ -11,23 +11,44 @@ import type {
   RegisterCredentials,
 } from "@/types/auth.types";
 import type { Barbershop } from "@/types/barbershop.types";
+import type { Employee } from "@/types/employee.types";
 
-const BARBERSHOP_KEY = "sm_barbershop";
+const SESSION_KEY = "sm_session";
 
-export function setCachedBarbershop(barbershop: Barbershop): void {
+type CachedSession =
+  | { type: "owner"; barbershop: Barbershop }
+  | { type: "employee"; barbershop: Barbershop; employee: Employee; permissions: string[] };
+
+function setCachedSession(session: CachedSession): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(BARBERSHOP_KEY, JSON.stringify(barbershop));
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-function getCachedBarbershop(): Barbershop | null {
+function getCachedSession(): CachedSession | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(BARBERSHOP_KEY);
+  const raw = window.localStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Barbershop;
+    return JSON.parse(raw) as CachedSession;
   } catch {
     return null;
   }
+}
+
+export function setCachedBarbershop(barbershop: Barbershop): void {
+  const current = getCachedSession();
+  if (current) {
+    setCachedSession({ ...current, barbershop });
+    return;
+  }
+  setCachedSession({ type: "owner", barbershop });
+}
+
+interface LoginResponse extends AuthTokens {
+  type: "owner" | "employee";
+  employee?: Employee;
+  barbershop?: Barbershop;
+  permissions?: string[];
 }
 
 async function findBarbershopByEmail(email: string): Promise<Barbershop> {
@@ -43,16 +64,35 @@ async function findBarbershopByEmail(email: string): Promise<Barbershop> {
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthSession> {
-    const { data: tokens } = await api.post<AuthTokens>(
+    const { data } = await api.post<LoginResponse>(
       "/auth/login",
       credentials,
     );
+    const tokens: AuthTokens = {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    };
     setAuthTokens(tokens);
 
-    const barbershop = await findBarbershopByEmail(credentials.email);
-    setCachedBarbershop(barbershop);
+    if (data.type === "employee" && data.employee && data.barbershop && data.permissions) {
+      setCachedSession({
+        type: "employee",
+        barbershop: data.barbershop,
+        employee: data.employee,
+        permissions: data.permissions,
+      });
+      return {
+        type: "employee",
+        barbershop: data.barbershop,
+        employee: data.employee,
+        permissions: data.permissions,
+        tokens,
+      };
+    }
 
-    return { barbershop, tokens };
+    const barbershop = await findBarbershopByEmail(credentials.email);
+    setCachedSession({ type: "owner", barbershop });
+    return { type: "owner", barbershop, tokens };
   },
 
   async register(credentials: RegisterCredentials): Promise<AuthSession> {
@@ -72,9 +112,9 @@ export const authService = {
     clearAuthTokens();
   },
 
-  async me(): Promise<Barbershop | null> {
+  async me(): Promise<CachedSession | null> {
     if (!getAccessToken()) return null;
-    return getCachedBarbershop();
+    return getCachedSession();
   },
 
   async forgotPassword(email: string): Promise<void> {

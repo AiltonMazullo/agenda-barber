@@ -1,27 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-
-/**
- * Fonte isolada das permissões do usuário logado no painel.
- *
- * Hoje **só o dono** loga (acesso total) → retorna `null`, que o `can()`
- * interpreta como acesso irrestrito. Quando o **login de funcionário** existir,
- * basta esta função passar a devolver as chaves de permissão (`AccessGroup.permissions`)
- * do funcionário autenticado — o resto do gating já funciona.
- */
-function useCurrentPermissions(): string[] | null {
-  // TODO(backend): ler as permissões do accessGroup do funcionário logado.
-  return null; // null = dono / acesso total
-}
+import { useAuth } from "@/hooks/useAuth";
 
 export function usePermissions() {
-  const permissions = useCurrentPermissions();
+  const { permissions } = useAuth();
 
   return useMemo(() => {
-    function can(moduleName: string): boolean {
-      if (permissions === null) return true; // dono = acesso total
-      return permissions.some((key) => key.startsWith(`${moduleName}.`));
+    /**
+     * `key` pode ser um módulo ("agendamento", pra menu/página) ou uma
+     * permissão exata ("agendamento.cancelar", pra botão). `permissions === null`
+     * = dono (acesso total).
+     */
+    function can(key: string): boolean {
+      if (permissions === null) return true;
+      return permissions.some((p) => p === key || p.startsWith(`${key}.`));
     }
     return { can };
   }, [permissions]);

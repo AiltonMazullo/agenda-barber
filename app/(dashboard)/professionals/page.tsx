@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageHeader, EmptyState, Loading } from "@/components/shared";
+import { PageHeader, EmptyState, Loading, Can } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
@@ -136,13 +136,15 @@ function SortableEmployeeRow({
         </div>
       </TableCell>
       <TableCell className="px-4 py-4">
-        <Link
-          href={`/professionals/${e.id}`}
-          title="Editar profissional"
-          className="text-muted-foreground hover:text-brand transition-colors flex w-fit"
-        >
-          <Pencil className="size-4" />
-        </Link>
+        <Can permission="usuario.atualizar">
+          <Link
+            href={`/professionals/${e.id}`}
+            title="Editar profissional"
+            className="text-muted-foreground hover:text-brand transition-colors flex w-fit"
+          >
+            <Pencil className="size-4" />
+          </Link>
+        </Can>
       </TableCell>
     </TableRow>
   );
@@ -176,13 +178,15 @@ export default function ProfessionalsPage() {
         title="Profissionais"
         subtitle="Equipe e configurações de atendimento"
         actions={
-          <Link
-            href="/professionals/new"
-            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
-          >
-            <UserPlus className="size-3.5" />
-            Novo profissional
-          </Link>
+          <Can permission="usuario.cadastrar">
+            <Link
+              href="/professionals/new"
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+            >
+              <UserPlus className="size-3.5" />
+              Novo profissional
+            </Link>
+          </Can>
         }
       />
 

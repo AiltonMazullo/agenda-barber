@@ -9,4 +9,6 @@ export interface ProfessionalBasic {
   pixKey: string;
   hasBranchAccess: boolean;
   accessGroupId: string;
+  /** Senha de acesso ao painel. Obrigatória na criação; em branco na edição mantém a atual. */
+  password: string;
 }

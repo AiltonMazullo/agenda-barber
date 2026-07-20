@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader, SummaryCard, EmptyState, Loading } from "@/components/shared";
+import { PageHeader, SummaryCard, EmptyState, Loading, Can } from "@/components/shared";
 import { DialogGrupoAcesso } from "@/components/access-control/DialogGrupoAcesso";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
@@ -73,14 +73,16 @@ export default function ControleAcessoPage() {
         title="Controle de Acesso"
         subtitle="Grupos de acesso e permissões por módulo"
         actions={
-          <button
-            type="button"
-            onClick={openCreate}
-            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            Novo grupo
-          </button>
+          <Can permission="grupo_de_permissoes.cadastrar">
+            <button
+              type="button"
+              onClick={openCreate}
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="size-3.5" />
+              Novo grupo
+            </button>
+          </Can>
         }
       />
 
@@ -115,20 +117,24 @@ export default function ControleAcessoPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(g)}
-                    className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                  >
-                    <Pencil className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(g)}
-                    className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
+                  <Can permission="grupo_de_permissoes.atualizar">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(g)}
+                      className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                    >
+                      <Pencil className="size-3" />
+                    </button>
+                  </Can>
+                  <Can permission="grupo_de_permissoes.apagar">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(g)}
+                      className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </Can>
                 </div>
               </CardContent>
             </Card>

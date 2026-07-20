@@ -116,6 +116,7 @@ export default function ProfessionalEditPage() {
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
       accessGroupId: basic.accessGroupId,
+      ...(basic.password ? { password: basic.password } : {}),
     };
 
     const schedulesToSave = cfg.workingHours
@@ -161,6 +162,7 @@ export default function ProfessionalEditPage() {
     pixKey: employee.pixKey,
     hasBranchAccess: employee.hasBranchAccess,
     accessGroupId: employee.accessGroupId ?? "",
+    password: "",
   };
 
   return (
@@ -171,6 +173,7 @@ export default function ProfessionalEditPage() {
       categories={categories}
       accessGroups={groups}
       initialConfig={effectiveConfig}
+      isEditing
       onSave={handleSave}
       onBack={() => router.push("/professionals")}
       featured={employee.featured}
