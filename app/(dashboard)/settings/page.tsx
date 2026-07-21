@@ -2868,7 +2868,7 @@ function TabPagamento() {
     }
   }
 
-  const providers: GatewayProvider[] = ["GALAXPAY", "CELCOIN", "ASAAS"];
+  const providers: GatewayProvider[] = ["CELCOIN", "ASAAS"];
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -2889,6 +2889,7 @@ function TabPagamento() {
               key={provider}
               provider={provider}
               config={byProvider(provider)}
+              barbershopId={barbershop?.id ?? ""}
               testing={testingProvider === provider}
               onConfigure={() => setDialogProvider(provider)}
               onActivate={() => activate(provider)}
@@ -2905,6 +2906,7 @@ function TabPagamento() {
           onOpenChange={(open) => !open && setDialogProvider(null)}
           provider={dialogProvider}
           existing={byProvider(dialogProvider) ?? null}
+          barbershopId={barbershop?.id ?? ""}
           saving={saving}
           onSave={handleSave}
         />

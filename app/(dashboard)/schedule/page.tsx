@@ -493,13 +493,21 @@ export default function SchedulePage() {
                 <ChevronRight className="size-4" />
               </button>
             </div>
-            <div className="w-40">
-              <DatePickerField
-                id="agenda-data"
-                date={selectedDate}
-                onChange={(d) => d && setSelectedDate(d)}
-              />
-            </div>
+            {isMonthMode ? (
+              <div className="w-40 h-10 px-3 rounded-md border border-border bg-surface-base flex items-center justify-center">
+                <span className="text-sm font-medium text-foreground truncate">
+                  {monthLabelCapitalizada}
+                </span>
+              </div>
+            ) : (
+              <div className="w-40">
+                <DatePickerField
+                  id="agenda-data"
+                  date={selectedDate}
+                  onChange={(d) => d && setSelectedDate(d)}
+                />
+              </div>
+            )}
 
             {/* View toggle */}
             <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-border">

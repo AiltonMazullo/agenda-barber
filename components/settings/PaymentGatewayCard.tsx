@@ -1,28 +1,30 @@
 "use client";
 
-import { CheckCircle2, Pencil, Trash2, Zap } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, Copy, Pencil, Trash2, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { gatewayWebhookUrl } from "@/lib/api";
 import type {
   GatewayProvider,
   PaymentGatewayConfig,
 } from "@/types/payment-gateways.types";
 
 const PROVIDER_LABELS: Record<GatewayProvider, string> = {
-  GALAXPAY: "GalaxPay",
   CELCOIN: "CelCoin",
   ASAAS: "ASAAS",
 };
 
 const PROVIDER_DESCRIPTIONS: Record<GatewayProvider, string> = {
-  GALAXPAY: "Gateway padrão (\"Cel Cash\") para cobrança de assinaturas.",
-  CELCOIN: "Gateway alternativo para recebimento de assinaturas/planos.",
+  CELCOIN:
+    "Gateway padrão (\"Cel Cash\"/antiga GalaxPay) para cobrança de assinaturas.",
   ASAAS: "Gateway alternativo para recebimento de assinaturas/planos.",
 };
 
 interface Props {
   provider: GatewayProvider;
   config: PaymentGatewayConfig | undefined;
+  barbershopId: string;
   testing: boolean;
   onConfigure: () => void;
   onActivate: () => void;
@@ -33,6 +35,7 @@ interface Props {
 export function PaymentGatewayCard({
   provider,
   config,
+  barbershopId,
   testing,
   onConfigure,
   onActivate,
@@ -40,6 +43,14 @@ export function PaymentGatewayCard({
   onRemove,
 }: Props) {
   const configured = !!config;
+  const [copied, setCopied] = useState(false);
+  const webhookUrl = config?.webhookUrl ?? gatewayWebhookUrl(provider, barbershopId);
+
+  async function handleCopyWebhook() {
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <Card className="bg-surface-raised border-border">
@@ -75,6 +86,25 @@ export function PaymentGatewayCard({
         ) : (
           <p className="text-xs text-muted-foreground">Não configurado.</p>
         )}
+
+        <div className="space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground">
+            URL do webhook (cadastre no painel do {PROVIDER_LABELS[provider]})
+          </p>
+          <div className="flex items-center gap-1.5">
+            <code className="flex-1 truncate rounded-md border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-white">
+              {webhookUrl}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopyWebhook}
+              className="h-7 px-2 rounded-md border border-border bg-transparent text-[11px] text-white hover:bg-muted transition-colors flex items-center gap-1 shrink-0"
+            >
+              <Copy className="size-3" />
+              {copied ? "Copiado!" : "Copiar"}
+            </button>
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <button

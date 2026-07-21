@@ -3,16 +3,9 @@
  * Cada barbearia pode ter um registro por provider; só um fica `isDefault=true`.
  */
 
-export type GatewayProvider = "GALAXPAY" | "CELCOIN" | "ASAAS";
+export type GatewayProvider = "CELCOIN" | "ASAAS";
 
 export type GatewayConfigStatus = "ACTIVE" | "INACTIVE";
-
-export interface GalaxPayCredentials {
-  galaxPayId: string;
-  galaxPayHash: string;
-  galaxPaySecurityToken: string;
-  galaxPayPublicToken: string;
-}
 
 export interface CelcoinCredentials {
   clientId: string;
@@ -25,10 +18,7 @@ export interface AsaasCredentials {
   environment: "sandbox" | "production";
 }
 
-export type ProviderCredentials =
-  | GalaxPayCredentials
-  | CelcoinCredentials
-  | AsaasCredentials;
+export type ProviderCredentials = CelcoinCredentials | AsaasCredentials;
 
 export interface PaymentGatewayConfig {
   id: string;
@@ -37,6 +27,8 @@ export interface PaymentGatewayConfig {
   credentials: Record<string, string>;
   externalAccountId: string | null;
   webhookToken: string | null;
+  /** Montada pelo backend a partir de API_BASE_URL — cadastrar no painel do gateway. */
+  webhookUrl: string;
   status: GatewayConfigStatus;
   isDefault: boolean;
   lastTestedAt: string | null;
@@ -47,12 +39,11 @@ export interface PaymentGatewayConfig {
 }
 
 export type CreatePaymentGatewayPayload =
-  | { provider: "GALAXPAY"; credentials: GalaxPayCredentials; externalAccountId?: string; webhookToken?: string }
   | { provider: "CELCOIN"; credentials: CelcoinCredentials; externalAccountId?: string; webhookToken?: string }
   | { provider: "ASAAS"; credentials: AsaasCredentials; externalAccountId?: string; webhookToken?: string };
 
 export interface UpdatePaymentGatewayPayload {
-  credentials?: Partial<GalaxPayCredentials & CelcoinCredentials & AsaasCredentials>;
+  credentials?: Partial<CelcoinCredentials & AsaasCredentials>;
   externalAccountId?: string;
   webhookToken?: string;
   status?: GatewayConfigStatus;

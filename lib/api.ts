@@ -35,6 +35,19 @@ export function apiAssetUrl(path: string | null | undefined): string | null {
   return `${BASE_URL ?? ""}${path}`;
 }
 
+/**
+ * URL que o dono da barbearia deve cadastrar no painel do gateway (GalaxPay/
+ * CelCoin/ASAAS) como destino do webhook. Calculada no client para poder ser
+ * exibida mesmo antes de o gateway estar configurado/salvo; o backend também
+ * a retorna (campo `webhookUrl`) para configs já existentes.
+ */
+export function gatewayWebhookUrl(
+  provider: "CELCOIN" | "ASAAS",
+  barbershopId: string,
+): string {
+  return `${BASE_URL ?? ""}/webhooks/gateways/${provider}/${barbershopId}`;
+}
+
 // ─── Token storage (chaves compartilhadas com services/auth.service.ts) ───────
 
 const ACCESS_KEY = "sm_access_token";
