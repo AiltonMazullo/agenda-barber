@@ -147,7 +147,7 @@ function BillingContent() {
             <div>
               <p className="font-semibold text-foreground">Plano Mensal Agendle</p>
               <p className="text-sm text-muted-foreground">
-                {formatBRL(subscription.price)} / mês — cartão, PIX ou boleto
+                {formatBRL(subscription.price)} / mês — cobrança recorrente no cartão de crédito
               </p>
             </div>
           </div>
