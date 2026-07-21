@@ -76,6 +76,23 @@ export function useClients(barbershopId: string | undefined) {
     [barbershopId],
   );
 
+  const updateNotes = useCallback(
+    async (id: string, notes: string | null) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await clientsService.updateNotes(barbershopId, id, notes);
+        setClients((prev) => prev.map((c) => (c.id === id ? updated : c)));
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao salvar a observação.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       if (!barbershopId) return false;
@@ -94,5 +111,5 @@ export function useClients(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { clients, isLoading, create, update, remove };
+  return { clients, isLoading, create, update, updateNotes, remove };
 }

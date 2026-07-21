@@ -61,6 +61,7 @@ function fallbackClient(
     phone: null,
     birthDate: null,
     howMet: null,
+    notes: null,
     cpf: null,
     cep: null,
     street: null,

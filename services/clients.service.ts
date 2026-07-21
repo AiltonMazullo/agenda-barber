@@ -46,4 +46,16 @@ export const clientsService = {
   async remove(barbershopId: string, id: string): Promise<void> {
     await api.delete<void>(`/barbershops/${barbershopId}/clients/${id}`);
   },
+
+  async updateNotes(
+    barbershopId: string,
+    id: string,
+    notes: string | null,
+  ): Promise<Client> {
+    const { data } = await api.patch<Client>(
+      `/barbershops/${barbershopId}/clients/${id}/notes`,
+      { notes },
+    );
+    return data;
+  },
 };

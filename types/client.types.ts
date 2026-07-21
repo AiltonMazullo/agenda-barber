@@ -20,6 +20,8 @@ export interface Client {
   uf: string | null;
   number: string | null;
   complement: string | null;
+  /** Observação interna da equipe — nunca visível/editável pelo próprio cliente. */
+  notes: string | null;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;

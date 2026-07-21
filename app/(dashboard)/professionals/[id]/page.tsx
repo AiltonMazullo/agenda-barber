@@ -19,6 +19,7 @@ import {
   type ProfessionalConfig,
 } from "@/types/professional-config.types";
 import type {
+  EmployeeBreak,
   EmployeeDifferentiatedCommission,
   EmployeeProductCommissionRule,
   EmployeeSchedule,
@@ -48,6 +49,8 @@ export default function ProfessionalEditPage() {
 
   const [backendSchedules, setBackendSchedules] = useState<EmployeeSchedule[]>([]);
   const [schedulesLoaded, setSchedulesLoaded] = useState(false);
+  const [backendBreaks, setBackendBreaks] = useState<EmployeeBreak[]>([]);
+  const [breaksLoaded, setBreaksLoaded] = useState(false);
   const [backendServices, setBackendServices] = useState<EmployeeService[]>([]);
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [backendTimeOff, setBackendTimeOff] = useState<EmployeeTimeOff[]>([]);
@@ -66,6 +69,11 @@ export default function ProfessionalEditPage() {
       .then((data) => setBackendSchedules(data))
       .catch(() => {})
       .finally(() => setSchedulesLoaded(true));
+    employeesService
+      .getBreaks(barbershop.id, id)
+      .then((data) => setBackendBreaks(data))
+      .catch(() => {})
+      .finally(() => setBreaksLoaded(true));
     employeesService
       .getServices(barbershop.id, id)
       .then((data) => setBackendServices(data))
@@ -94,6 +102,7 @@ export default function ProfessionalEditPage() {
     isLoading ||
     !loaded ||
     !schedulesLoaded ||
+    !breaksLoaded ||
     !servicesLoaded ||
     !timeOffLoaded ||
     !productCommissionLoaded ||
@@ -135,6 +144,12 @@ export default function ProfessionalEditPage() {
         : { ...wh, enabled: false };
     }),
     services: backendServices,
+    intervals: backendBreaks.map((b) => ({
+      id: b.id,
+      day: b.dayOfWeek,
+      start: b.startTime,
+      end: b.endTime,
+    })),
     timeOff: backendTimeOff.map((t) => ({ id: t.id, start: t.startDate, end: t.endDate })),
     productCommission: productCommissionRuleFromBackend(backendProductCommission),
     differentiated: differentiatedCommissionFromBackend(backendDifferentiated),
@@ -167,6 +182,19 @@ export default function ProfessionalEditPage() {
       employeesService.updateSchedules(barbershop.id, employee.id, schedulesToSave).catch(() => {
         toast.error("Falha ao salvar os horários de atendimento.");
       }),
+      employeesService
+        .updateBreaks(
+          barbershop.id,
+          employee.id,
+          cfg.intervals.map((it) => ({
+            dayOfWeek: it.day,
+            startTime: it.start,
+            endTime: it.end,
+          })),
+        )
+        .catch(() => {
+          toast.error("Falha ao salvar os intervalos do profissional.");
+        }),
       employeesService.updateServices(barbershop.id, employee.id, cfg.services).catch(() => {
         toast.error("Falha ao salvar os serviços do profissional.");
       }),

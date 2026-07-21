@@ -10,6 +10,14 @@ export interface EmployeeSchedule {
   endTime: string; // "HH:mm"
 }
 
+export interface EmployeeBreak {
+  id: string;
+  employeeId: string;
+  dayOfWeek: number;
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
+}
+
 export interface EmployeeService {
   serviceId: string;
   commissionPercent: number;

@@ -10,6 +10,9 @@ export type AppointmentStatus =
   | "CANCELLED"
   | "COMPLETED";
 
+/** Quem criou o agendamento: o cliente (reserva online) ou a equipe (painel). */
+export type AppointmentOrigin = "CLIENT" | "INTERNAL";
+
 /** Cliente como vem populado no `GET /appointments` (campos parciais). */
 export interface AppointmentClient {
   id: string;
@@ -30,6 +33,7 @@ export interface AppointmentRaw {
   id: string;
   scheduledAt: string;
   status: AppointmentStatus;
+  origin: AppointmentOrigin;
   clientId: string;
   serviceId: string;
   employeeId: string | null;

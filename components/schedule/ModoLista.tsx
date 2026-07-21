@@ -19,6 +19,7 @@ import {
 import { DropdownButton } from "./Primitives";
 import { minToTime } from "./helpers";
 import { STATUS_COR, STATUS_ROTULO } from "./status";
+import { AgendamentoIcones } from "./AgendamentoIcones";
 import type {
   AgendamentoVM,
   ProfissionalVM,
@@ -208,6 +209,9 @@ export function ModoLista({
                           {ag.telefone}
                         </p>
                       )}
+                      <div className="mt-1">
+                        <AgendamentoIcones agendamento={ag} iconClassName="size-3" />
+                      </div>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">

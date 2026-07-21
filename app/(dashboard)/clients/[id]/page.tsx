@@ -16,6 +16,7 @@ import {
   CreditCard,
   BadgeCheck,
   Inbox,
+  StickyNote,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ConfirmDialog, Loading } from "@/components/shared";
@@ -62,12 +63,14 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const { barbershop } = useAuth();
-  const { clients, isLoading, update } = useClients(barbershop?.id);
+  const { clients, isLoading, update, updateNotes } = useClients(barbershop?.id);
   const { appointments } = useAppointments(barbershop?.id);
   const { deactivate, isDeactivated } = useDeactivatedClients(barbershop?.id);
 
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDesativar, setConfirmDesativar] = useState(false);
+  const [notesDraft, setNotesDraft] = useState<string | null>(null);
+  const [savingNotes, setSavingNotes] = useState(false);
 
   const client = useMemo(
     () => clients.find((c) => c.id === id) ?? null,
@@ -88,6 +91,15 @@ export default function ClienteDetalhePage({ params }: PageProps) {
 
   async function handleSaveEdit(cid: string, payload: UpdateClientPayload) {
     await update(cid, payload);
+  }
+
+  async function handleSaveNotes() {
+    if (!client) return;
+    setSavingNotes(true);
+    const trimmed = (notesDraft ?? "").trim();
+    const updated = await updateNotes(client.id, trimmed || null);
+    setSavingNotes(false);
+    if (updated) toast.success("Observação salva.");
   }
 
   function doDesativar() {
@@ -206,6 +218,30 @@ export default function ClienteDetalhePage({ params }: PageProps) {
               <span className="text-muted-foreground">Prof. Preferido</span>
               <span className="text-foreground">—</span>
             </div>
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <StickyNote className="size-3.5" />
+              Observações internas
+            </div>
+            <textarea
+              value={notesDraft ?? client.notes ?? ""}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              placeholder="Anotações visíveis só para a equipe..."
+              rows={3}
+              className="w-full rounded-md border border-border bg-surface-base text-sm text-foreground placeholder:text-text-faint p-2 outline-none focus:border-brand transition-colors resize-none"
+            />
+            {notesDraft !== null && notesDraft !== (client.notes ?? "") && (
+              <button
+                type="button"
+                onClick={() => void handleSaveNotes()}
+                disabled={savingNotes}
+                className="h-8 px-3 rounded-md bg-brand text-brand-foreground text-xs font-bold hover:bg-brand-hover transition-colors disabled:opacity-50"
+              >
+                {savingNotes ? "Salvando..." : "Salvar observação"}
+              </button>
+            )}
           </div>
 
           {ativo && (

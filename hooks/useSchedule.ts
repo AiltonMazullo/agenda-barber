@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServices } from "@/hooks/useServices";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useClients } from "@/hooks/useClients";
@@ -8,8 +8,10 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
 import { initials, isoToMin } from "@/components/schedule/helpers";
 import { apiAssetUrl } from "@/lib/api";
+import { subscriptionsService } from "@/services/subscriptions.service";
 import type {
   AgendamentoVM,
+  AssinanteSituacao,
   NovoAgendamentoInput,
   ProfissionalVM,
   QuickClientInput,
@@ -19,6 +21,29 @@ import type { Appointment } from "@/types/appointment.types";
 import type { Client } from "@/types/client.types";
 
 const DEFAULT_HEX = "#f5b82e";
+
+/** Domingo (0) que inicia a semana em que `date` cai. */
+function startOfWeek(date: Date): Date {
+  const s = new Date(date);
+  s.setHours(0, 0, 0, 0);
+  s.setDate(s.getDate() - s.getDay());
+  return s;
+}
+
+/** Compara mês/dia do aniversário contra cada dia da semana corrente. */
+function isBirthdayThisWeek(birthDateIso: string | null | undefined): boolean {
+  if (!birthDateIso) return false;
+  const birth = new Date(birthDateIso);
+  const start = startOfWeek(new Date());
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    if (day.getMonth() === birth.getMonth() && day.getDate() === birth.getDate()) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /** Overlay puramente visual aplicado por drag-drop / resize (não persiste). */
 interface Overlay {
@@ -58,6 +83,36 @@ export function useSchedule(
   } = useAppointments(barbershopId);
 
   const [overlay, setOverlay] = useState<Record<string, Overlay>>({});
+
+  // ─── Situação de assinatura por cliente (para os ícones da agenda) ──────────
+  const [subscriberStatusByClient, setSubscriberStatusByClient] = useState<
+    Map<string, AssinanteSituacao>
+  >(new Map());
+
+  useEffect(() => {
+    if (!barbershopId) return;
+    let active = true;
+    subscriptionsService
+      .getContracts(barbershopId)
+      .then((res) => {
+        if (!active) return;
+        const map = new Map<string, AssinanteSituacao>();
+        for (const contract of res.contracts) {
+          const situacao: AssinanteSituacao =
+            contract.contractStatus === "ATRASADO" ? "inadimplente" : "ativo";
+          if (map.get(contract.clientId) !== "inadimplente") {
+            map.set(contract.clientId, situacao);
+          }
+        }
+        setSubscriberStatusByClient(map);
+      })
+      .catch(() => {
+        // silencioso — ícone de assinante simplesmente não aparece
+      });
+    return () => {
+      active = false;
+    };
+  }, [barbershopId]);
 
   // Foto local (cadastro) como fallback enquanto o backend não tem avatarUrl.
   const localPhotos = useLocalProfessionalPhotos(
@@ -106,6 +161,28 @@ export function useSchedule(
     return m;
   }, [employees]);
 
+  /** Cadastro completo do cliente (nascimento, nota) por id. */
+  const clientById = useMemo(() => {
+    const m = new Map<string, Client>();
+    clients.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [clients]);
+
+  /** Id do primeiro agendamento (não cancelado) de cada cliente, entre TODOS
+   * os agendamentos da barbearia — não só os do dia selecionado. */
+  const firstAppointmentIdByClient = useMemo(() => {
+    const earliest = new Map<string, { id: string; time: number }>();
+    for (const a of appointments) {
+      if (a.status === "CANCELLED") continue;
+      const time = new Date(a.scheduledAt).getTime();
+      const current = earliest.get(a.clientId);
+      if (!current || time < current.time) {
+        earliest.set(a.clientId, { id: a.id, time });
+      }
+    }
+    return new Map(Array.from(earliest, ([clientId, v]) => [clientId, v.id]));
+  }, [appointments]);
+
   // ─── Agendamentos VM (do dia, com overlay) ──────────────────────────────────
   const agendamentos = useMemo<AgendamentoVM[]>(() => {
     return appointments
@@ -121,6 +198,7 @@ export function useSchedule(
           a.employee?.appName ??
           a.employee?.name ??
           "Sem profissional";
+        const cli = clientById.get(a.clientId);
         return {
           id: a.id,
           servicoId: a.serviceId,
@@ -131,10 +209,23 @@ export function useSchedule(
           inicioMin: ov.inicioMin ?? isoToMin(a.scheduledAt),
           duracao: ov.customDuracao ?? baseDur,
           status: a.status,
-          origem: "recepcao",
+          origem: a.origin === "CLIENT" ? "online" : "recepcao",
+          primeiroAgendamento: firstAppointmentIdByClient.get(a.clientId) === a.id,
+          assinante: subscriberStatusByClient.get(a.clientId) ?? null,
+          aniversarianteSemana: isBirthdayThisWeek(cli?.birthDate),
+          temNota: !!cli?.notes?.trim(),
         } satisfies AgendamentoVM;
       });
-  }, [appointments, selectedDate, overlay, servicoById, employeeNameById]);
+  }, [
+    appointments,
+    selectedDate,
+    overlay,
+    servicoById,
+    employeeNameById,
+    clientById,
+    firstAppointmentIdByClient,
+    subscriberStatusByClient,
+  ]);
 
   // ─── Ações ──────────────────────────────────────────────────────────────────
   /**

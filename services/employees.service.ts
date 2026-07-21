@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import type {
   CreateEmployeePayload,
   Employee,
+  EmployeeBreak,
   EmployeeDifferentiatedCommission,
   EmployeeProductCommissionRule,
   EmployeeSchedule,
@@ -13,6 +14,7 @@ import type {
 } from "@/types/employee.types";
 
 type ScheduleInput = Pick<EmployeeSchedule, "dayOfWeek" | "startTime" | "endTime">;
+type BreakInput = Pick<EmployeeBreak, "dayOfWeek" | "startTime" | "endTime">;
 
 export const employeesService = {
   async list(barbershopId: string): Promise<Employee[]> {
@@ -96,6 +98,24 @@ export const employeesService = {
     await api.put<void>(
       `/barbershops/${barbershopId}/employees/${id}/schedules`,
       { schedules },
+    );
+  },
+
+  async getBreaks(barbershopId: string, id: string): Promise<EmployeeBreak[]> {
+    const { data } = await api.get<EmployeeBreak[]>(
+      `/barbershops/${barbershopId}/employees/${id}/breaks`,
+    );
+    return data;
+  },
+
+  async updateBreaks(
+    barbershopId: string,
+    id: string,
+    breaks: BreakInput[],
+  ): Promise<void> {
+    await api.put<void>(
+      `/barbershops/${barbershopId}/employees/${id}/breaks`,
+      { breaks },
     );
   },
 

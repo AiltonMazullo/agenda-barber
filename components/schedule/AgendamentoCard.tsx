@@ -5,6 +5,7 @@ import { Clock, Wifi, Monitor, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { minToTime } from "./helpers";
 import { STATUS_COR } from "./status";
+import { AgendamentoIcones } from "./AgendamentoIcones";
 import type { AgendamentoVM, ServicoVM, SlotSize } from "./types";
 
 export function AgendamentoCard({
@@ -78,6 +79,12 @@ export function AgendamentoCard({
               <span className="text-[9px] text-muted-foreground truncate">
                 {servico.nome}
               </span>
+            </div>
+          )}
+          {/* Ícones de situação (assinante, aniversário, confirmação, nota...) */}
+          {heightPx >= 36 && (
+            <div className="mt-0.5">
+              <AgendamentoIcones agendamento={agendamento} />
             </div>
           )}
         </div>

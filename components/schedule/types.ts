@@ -28,6 +28,9 @@ export interface ProfissionalVM {
   ativo: boolean;
 }
 
+/** Situação de assinatura do cliente, para o ícone de assinante. */
+export type AssinanteSituacao = "ativo" | "inadimplente" | null;
+
 /** View-model de agendamento já resolvido para a agenda do dia. */
 export interface AgendamentoVM {
   id: string;
@@ -42,6 +45,14 @@ export interface AgendamentoVM {
   status: AppointmentStatus;
   origem: Origem;
   observacao?: string;
+  /** Primeiro agendamento (de qualquer status) já feito por este cliente. */
+  primeiroAgendamento: boolean;
+  /** null = não é assinante; "ativo"/"inadimplente" conforme a última fatura. */
+  assinante: AssinanteSituacao;
+  /** Aniversário do cliente cai na semana corrente. */
+  aniversarianteSemana: boolean;
+  /** Cliente tem observação interna cadastrada. */
+  temNota: boolean;
 }
 
 /** Um serviço escolhido no agendamento (com profissional opcional). */
