@@ -4,6 +4,7 @@ export { BloqueioCard } from "./BloqueioCard";
 export { ProfissionalColuna } from "./ProfissionalColuna";
 export { TimeLine } from "./TimeLine";
 export { ModoLista } from "./ModoLista";
+export { AgendaMonthGrid } from "./AgendaMonthGrid";
 export { ResumoDia } from "./ResumoDia";
 export { DialogNovoAgendamento } from "./DialogNovoAgendamento";
 export { DialogDetalhe } from "./DialogDetalhe";

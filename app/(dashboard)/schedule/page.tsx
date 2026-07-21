@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   Building2,
   CalendarOff,
+  CalendarRange,
 } from "lucide-react";
 // (Scissors removido — a orientação textual da legenda foi substituída)
 import {
@@ -46,6 +47,7 @@ import {
   ProfissionalColuna,
   TimeLine,
   ModoLista,
+  AgendaMonthGrid,
   ResumoDia,
   IconLegend,
   ColorLegend,
@@ -59,6 +61,7 @@ import {
   minToTime,
   snapToSlot,
   gerarId,
+  buildMonthDates,
   SLOT_OPTIONS,
   START_HOUR,
   END_HOUR,
@@ -91,6 +94,7 @@ export default function SchedulePage() {
     servicos,
     profissionais,
     agendamentos,
+    agendamentosTodos,
     clients,
     servicoById,
     isLoading,
@@ -176,6 +180,14 @@ export default function SchedulePage() {
     });
     return map;
   }, [agendamentos, profissionais]);
+
+  // ─── Visão de mês ───────────────────────────────────────────────────────────
+  const monthDates = useMemo(() => buildMonthDates(selectedDate), [selectedDate]);
+
+  const agendamentosMes = useMemo(() => {
+    const idsVisiveis = new Set(profissionaisVisiveis.map((p) => p.id));
+    return agendamentosTodos.filter((a) => idsVisiveis.has(a.profissionalId));
+  }, [agendamentosTodos, profissionaisVisiveis]);
 
   const agendamentoAtivo = useMemo(
     () => agendamentos.find((a) => a.id === activeId) ?? null,
@@ -368,6 +380,22 @@ export default function SchedulePage() {
       return next;
     });
 
+  const shiftMonth = (units: number) =>
+    setSelectedDate((d) => {
+      const next = new Date(d);
+      next.setDate(1); // evita overflow de dia (ex.: 31 jan + 1 mês)
+      next.setMonth(next.getMonth() + units);
+      return next;
+    });
+
+  const isMonthMode = viewMode === "mes";
+  const monthLabel = selectedDate.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+  const monthLabelCapitalizada =
+    monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
   const agSelecionadoServico = agSelecionado
     ? (servicoById.get(agSelecionado.servicoId) ?? null)
     : null;
@@ -392,7 +420,9 @@ export default function SchedulePage() {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               Agendamentos
             </h1>
-            <p className="text-muted-foreground text-sm mt-0.5">{dataCapitalizada}</p>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {isMonthMode ? monthLabelCapitalizada : dataCapitalizada}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -437,7 +467,7 @@ export default function SchedulePage() {
             <div className="flex items-center bg-surface-raised border border-border rounded-md h-9 overflow-hidden divide-x divide-border">
               <button
                 type="button"
-                onClick={() => shiftDate(-1)}
+                onClick={() => (isMonthMode ? shiftMonth(-1) : shiftDate(-1))}
                 className="h-9 px-2.5 text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
               >
                 <ChevronLeft className="size-4" />
@@ -457,7 +487,7 @@ export default function SchedulePage() {
               </button>
               <button
                 type="button"
-                onClick={() => shiftDate(1)}
+                onClick={() => (isMonthMode ? shiftMonth(1) : shiftDate(1))}
                 className="h-9 px-2.5 text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
               >
                 <ChevronRight className="size-4" />
@@ -498,6 +528,19 @@ export default function SchedulePage() {
               >
                 <LayoutList className="size-3.5" />
                 Lista
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("mes")}
+                className={cn(
+                  "h-9 px-3 flex items-center gap-1.5 text-xs transition-colors",
+                  viewMode === "mes"
+                    ? "bg-surface-elevated text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-elevated",
+                )}
+              >
+                <CalendarRange className="size-3.5" />
+                Mês
               </button>
             </div>
 
@@ -643,7 +686,7 @@ export default function SchedulePage() {
         )}
 
         {/* ── Resumo do Dia ── */}
-        <ResumoDia agendamentos={agendamentos} />
+        {!isMonthMode && <ResumoDia agendamentos={agendamentos} />}
 
         {/* ── Legendas (ícones + cores) ── */}
         {viewMode === "kanban" && (
@@ -665,6 +708,19 @@ export default function SchedulePage() {
               Nenhum profissional cadastrado nesta filial. Cadastre profissionais
               em Configurações para montar a agenda.
             </p>
+          </div>
+        ) : viewMode === "mes" ? (
+          <div className="md:flex-1 md:overflow-y-auto schedule-scroll">
+            <AgendaMonthGrid
+              dates={monthDates}
+              agendamentos={agendamentosMes}
+              currentMonth={selectedDate.getMonth()}
+              onSelect={handleCardClick}
+              onDayClick={(d) => {
+                setSelectedDate(d);
+                setViewMode("kanban");
+              }}
+            />
           </div>
         ) : viewMode === "kanban" ? (
           <div className="overflow-x-auto schedule-scroll md:flex-1 md:overflow-y-auto md:overflow-x-hidden">

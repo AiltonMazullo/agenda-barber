@@ -6,7 +6,12 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
-import { initials, isoToMin } from "@/components/schedule/helpers";
+import {
+  initials,
+  isoToMin,
+  localDateIso,
+  toDateInputValue,
+} from "@/components/schedule/helpers";
 import { apiAssetUrl } from "@/lib/api";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import type {
@@ -50,15 +55,6 @@ interface Overlay {
   inicioMin?: number;
   profissionalId?: string;
   customDuracao?: number;
-}
-
-function sameDay(iso: string, date: Date): boolean {
-  const d = new Date(iso);
-  return (
-    d.getFullYear() === date.getFullYear() &&
-    d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate()
-  );
 }
 
 export function useSchedule(
@@ -183,42 +179,42 @@ export function useSchedule(
     return new Map(Array.from(earliest, ([clientId, v]) => [clientId, v.id]));
   }, [appointments]);
 
-  // ─── Agendamentos VM (do dia, com overlay) ──────────────────────────────────
-  const agendamentos = useMemo<AgendamentoVM[]>(() => {
-    return appointments
-      .filter((a) => sameDay(a.scheduledAt, selectedDate))
-      .map((a) => {
-        const ov = overlay[a.id] ?? {};
-        const servico = servicoById.get(a.serviceId);
-        const baseDur = servico?.tempoPadrao ?? 30;
-        const profId =
-          ov.profissionalId ?? a.employeeId ?? a.employee?.id ?? "sem-prof";
-        const profNome =
-          employeeNameById.get(profId) ??
-          a.employee?.appName ??
-          a.employee?.name ??
-          "Sem profissional";
-        const cli = clientById.get(a.clientId);
-        return {
-          id: a.id,
-          servicoId: a.serviceId,
-          profissionalId: profId,
-          profissionalNome: profNome,
-          cliente: a.client?.name ?? "Cliente",
-          telefone: a.client?.phone ?? "",
-          inicioMin: ov.inicioMin ?? isoToMin(a.scheduledAt),
-          duracao: ov.customDuracao ?? baseDur,
-          status: a.status,
-          origem: a.origin === "CLIENT" ? "online" : "recepcao",
-          primeiroAgendamento: firstAppointmentIdByClient.get(a.clientId) === a.id,
-          assinante: subscriberStatusByClient.get(a.clientId) ?? null,
-          aniversarianteSemana: isBirthdayThisWeek(cli?.birthDate),
-          temNota: !!cli?.notes?.trim(),
-        } satisfies AgendamentoVM;
-      });
+  // ─── Agendamentos VM (todos, com overlay) ───────────────────────────────────
+  // Serve tanto o kanban do dia (filtrado abaixo) quanto a visão de mês, que
+  // precisa do conjunto inteiro pra agrupar por `dataIso`.
+  const agendamentosTodos = useMemo<AgendamentoVM[]>(() => {
+    return appointments.map((a) => {
+      const ov = overlay[a.id] ?? {};
+      const servico = servicoById.get(a.serviceId);
+      const baseDur = servico?.tempoPadrao ?? 30;
+      const profId =
+        ov.profissionalId ?? a.employeeId ?? a.employee?.id ?? "sem-prof";
+      const profNome =
+        employeeNameById.get(profId) ??
+        a.employee?.appName ??
+        a.employee?.name ??
+        "Sem profissional";
+      const cli = clientById.get(a.clientId);
+      return {
+        id: a.id,
+        servicoId: a.serviceId,
+        profissionalId: profId,
+        profissionalNome: profNome,
+        cliente: a.client?.name ?? "Cliente",
+        telefone: a.client?.phone ?? "",
+        inicioMin: ov.inicioMin ?? isoToMin(a.scheduledAt),
+        duracao: ov.customDuracao ?? baseDur,
+        dataIso: localDateIso(a.scheduledAt),
+        status: a.status,
+        origem: a.origin === "CLIENT" ? "online" : "recepcao",
+        primeiroAgendamento: firstAppointmentIdByClient.get(a.clientId) === a.id,
+        assinante: subscriberStatusByClient.get(a.clientId) ?? null,
+        aniversarianteSemana: isBirthdayThisWeek(cli?.birthDate),
+        temNota: !!cli?.notes?.trim(),
+      } satisfies AgendamentoVM;
+    });
   }, [
     appointments,
-    selectedDate,
     overlay,
     servicoById,
     employeeNameById,
@@ -226,6 +222,12 @@ export function useSchedule(
     firstAppointmentIdByClient,
     subscriberStatusByClient,
   ]);
+
+  // ─── Agendamentos do dia selecionado (kanban) ───────────────────────────────
+  const agendamentos = useMemo<AgendamentoVM[]>(() => {
+    const selectedIso = toDateInputValue(selectedDate);
+    return agendamentosTodos.filter((a) => a.dataIso === selectedIso);
+  }, [agendamentosTodos, selectedDate]);
 
   // ─── Ações ──────────────────────────────────────────────────────────────────
   /**
@@ -314,6 +316,7 @@ export function useSchedule(
     servicos,
     profissionais,
     agendamentos,
+    agendamentosTodos,
     clients,
     servicoById,
     isLoading,

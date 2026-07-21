@@ -22,6 +22,40 @@ export function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+/** Data ISO ("yyyy-MM-dd") de um `Date`, no fuso local. */
+export function toDateInputValue(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Dia (fuso local) de um `scheduledAt` ISO, como "yyyy-MM-dd". */
+export function localDateIso(iso: string): string {
+  return toDateInputValue(new Date(iso));
+}
+
+/**
+ * Grade de dias do mês de `center`, preenchida até completar semanas
+ * inteiras (de domingo a sábado) — inclui dias do mês anterior/seguinte.
+ */
+export function buildMonthDates(center: Date): Date[] {
+  const firstOfMonth = new Date(center.getFullYear(), center.getMonth(), 1);
+  const start = new Date(firstOfMonth);
+  start.setDate(start.getDate() - start.getDay());
+  const lastOfMonth = new Date(center.getFullYear(), center.getMonth() + 1, 0);
+  const end = new Date(lastOfMonth);
+  end.setDate(end.getDate() + (6 - end.getDay()));
+
+  const days: Date[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
 export function snapToSlot(min: number, slotSize: SlotSize): number {
   return Math.round(min / slotSize) * slotSize;
 }

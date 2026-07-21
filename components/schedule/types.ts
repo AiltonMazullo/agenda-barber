@@ -2,7 +2,7 @@ import type { AppointmentStatus } from "@/types/appointment.types";
 
 /** Tamanho do slot da agenda em minutos. */
 export type SlotSize = 10 | 20 | 30;
-export type ViewMode = "kanban" | "lista";
+export type ViewMode = "kanban" | "lista" | "mes";
 export type Origem = "online" | "recepcao";
 
 export const SLOT_OPTIONS = [10, 20, 30] as const;
@@ -42,6 +42,8 @@ export interface AgendamentoVM {
   telefone: string;
   inicioMin: number; // minutos desde meia-noite
   duracao: number; // minutos
+  /** Dia do agendamento no fuso local, "yyyy-MM-dd" — usado pela visão de mês. */
+  dataIso: string;
   status: AppointmentStatus;
   origem: Origem;
   observacao?: string;
