@@ -201,12 +201,12 @@ export default function AgendarPage({ params }: PageProps) {
     return visible.filter((e) => e.branchId === selectedBranch.id);
   }, [employees, selectedBranch, hasBranches]);
 
-  // Serviços disponíveis para o profissional escolhido. Se "sem preferência"
-  // ou o profissional ainda não tem serviços configurados, exibe todos.
+  // Serviços disponíveis para o profissional escolhido. "Sem preferência"
+  // exibe todos; um profissional específico só mostra os que ele realiza
+  // (lista vazia se não tiver nenhum serviço vinculado).
   const visibleServices = useMemo(() => {
     if (anyEmployee || !selectedEmployee) return services;
-    const linked = selectedEmployee.employeeServices;
-    if (!linked || linked.length === 0) return services;
+    const linked = selectedEmployee.employeeServices ?? [];
     const ids = new Set(linked.map((es) => es.serviceId));
     return services.filter((s) => ids.has(s.id));
   }, [services, selectedEmployee, anyEmployee]);

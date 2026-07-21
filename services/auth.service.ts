@@ -112,9 +112,23 @@ export const authService = {
     clearAuthTokens();
   },
 
+  /**
+   * Sessão atual — sempre confirmada com o backend (nunca só o cache local),
+   * pra refletir imediatamente qualquer alteração no grupo de acesso do
+   * funcionário sem precisar dele deslogar e logar de novo.
+   */
   async me(): Promise<CachedSession | null> {
     if (!getAccessToken()) return null;
-    return getCachedSession();
+    try {
+      const { data } = await api.get<CachedSession>("/auth/me");
+      setCachedSession(data);
+      return data;
+    } catch {
+      // Token inválido/expirado (já tentou refresh no interceptor e falhou) —
+      // trata como deslogado em vez de servir permissões desatualizadas.
+      clearAuthTokens();
+      return null;
+    }
   },
 
   async forgotPassword(email: string): Promise<void> {
