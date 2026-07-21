@@ -18,7 +18,6 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { translateApiError } from "@/utils/api-errors";
-import { acquireSlot, releaseSlot } from "@/lib/request-queue";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ;
@@ -130,13 +129,10 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
 export const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
-  // Evita que uma requisição travada bloqueie a fila indefinidamente.
   timeout: 30000,
 });
 
 api.interceptors.request.use(async (config) => {
-  // Serializa as chamadas (uma por vez) para não estourar o rate limit.
-  await acquireSlot();
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -145,12 +141,8 @@ api.interceptors.request.use(async (config) => {
 });
 
 api.interceptors.response.use(
-  (response) => {
-    releaseSlot();
-    return response;
-  },
+  (response) => response,
   async (error: AxiosError<ApiErrorBody>) => {
-    releaseSlot();
     const originalConfig = error.config as RetriableConfig | undefined;
 
     // 401 → tenta refresh uma única vez

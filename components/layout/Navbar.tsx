@@ -51,13 +51,14 @@ interface NavSubItem {
   icon: typeof LayoutDashboard;
 }
 
-// `module` (opcional) liga o item a uma permissão de grupo de acesso.
-// Itens sem `module` ficam sempre visíveis.
+// `module` liga o item a uma permissão de grupo de acesso — sem nenhuma
+// permissão daquele módulo (ou lista de módulos), o item não aparece no
+// menu. Todo item deve declarar seu(s) módulo(s); não há mais item "livre".
 interface NavItem {
   title: string;
   href: string;
   icon: typeof LayoutDashboard;
-  module?: string;
+  module: string | string[];
   children?: NavSubItem[];
 }
 
@@ -66,6 +67,7 @@ const navOperacional: NavItem[] = [
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    module: "dashboard",
     children: [
       { title: "Horários de Pico", href: "/dashboard/horarios-de-pico", icon: Flame },
     ],
@@ -92,14 +94,24 @@ const navOperacional: NavItem[] = [
 
 const navGestao: NavItem[] = [
   { title: "Assinaturas", href: "/subscriptions", icon: CreditCard, module: "cliente" },
-  { title: "Comissões", href: "/commissions", icon: TrendingUp },
+  { title: "Comissões", href: "/commissions", icon: TrendingUp, module: "comissao" },
   { title: "Estoque", href: "/inventory", icon: Package, module: "produto" },
-  { title: "Financeiro", href: "/financial", icon: DollarSign },
-  { title: "Relatórios", href: "/reports", icon: BarChart2 },
+  {
+    title: "Financeiro",
+    href: "/financial",
+    icon: DollarSign,
+    module: ["categoria_financeira", "movimentacoes", "contas_bancarias", "formas_de_pagamentos"],
+  },
+  { title: "Relatórios", href: "/reports", icon: BarChart2, module: "relatorio" },
 ];
 
 const navBottom: NavItem[] = [
-  { title: "Configurações", href: "/settings", icon: Settings },
+  {
+    title: "Configurações",
+    href: "/settings",
+    icon: Settings,
+    module: ["empresa", "filial", "servico", "categoria", "gateways_de_pagamento"],
+  },
   {
     title: "Controle de Acesso",
     href: "/access-control",
@@ -111,7 +123,7 @@ const navBottom: NavItem[] = [
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, isOwner } = useAuth();
   const { can } = usePermissions();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
 
@@ -124,9 +136,8 @@ export function Navbar() {
     });
   }
 
-  // Esconde itens cujo módulo o usuário logado não pode ler.
-  const visible = (items: NavItem[]) =>
-    items.filter((i) => !i.module || can(i.module));
+  // Esconde itens cujo(s) módulo(s) o usuário logado não pode ler.
+  const visible = (items: NavItem[]) => items.filter((i) => can(i.module));
 
   const operacional = visible(navOperacional);
   const gestao = visible(navGestao);
@@ -297,16 +308,19 @@ export function Navbar() {
       <SidebarFooter className="border-t border-sidebar-border py-4">
         {/* MENU: Gap-1 no rodapé */}
         <SidebarMenu className="gap-1">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              render={<Link href="/billing" />}
-              tooltip="Plano"
-              className="h-10 text-emerald-500 hover:text-emerald-400" // Cor de destaque para o plano
-            >
-              <CreditCard className="size-4" />
-              <span className="font-medium">Plano</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* Assinatura da barbearia no Agendle — exclusiva do dono. */}
+          {isOwner && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link href="/billing" />}
+                tooltip="Plano"
+                className="h-10 text-emerald-500 hover:text-emerald-400" // Cor de destaque para o plano
+              >
+                <CreditCard className="size-4" />
+                <span className="font-medium">Plano</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           {bottom.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton

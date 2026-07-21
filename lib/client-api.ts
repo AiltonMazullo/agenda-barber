@@ -11,7 +11,6 @@ import axios, {
 } from "axios";
 import { ApiError } from "@/lib/api";
 import { translateApiError } from "@/utils/api-errors";
-import { acquireSlot, releaseSlot } from "@/lib/request-queue";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -101,13 +100,10 @@ export function getClientIdFromToken(): string | null {
 export const clientApi: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
-  // Evita que uma requisição travada bloqueie a fila indefinidamente.
   timeout: 30000,
 });
 
 clientApi.interceptors.request.use(async (config) => {
-  // Serializa as chamadas (uma por vez) para não estourar o rate limit.
-  await acquireSlot();
   const token = getClientAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -127,12 +123,8 @@ clientApi.interceptors.request.use(async (config) => {
 });
 
 clientApi.interceptors.response.use(
-  (response) => {
-    releaseSlot();
-    return response;
-  },
+  (response) => response,
   async (error: AxiosError<ApiErrorBody>) => {
-    releaseSlot();
     const originalConfig = error.config as RetriableConfig | undefined;
 
     // Evita loop infinito em rotas de login/register de cliente
