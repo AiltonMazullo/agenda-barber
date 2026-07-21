@@ -145,7 +145,7 @@ export function GatewayConfigDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="min-w-0 space-y-4 pt-2">
           {existing && (
             <p className="text-xs text-muted-foreground">
               Deixe um campo em branco para manter o valor salvo atualmente.
@@ -210,16 +210,16 @@ export function GatewayConfigDialog({
               placeholder="Mesmo token cadastrado no painel do gateway"
             />
             <p className="text-[11px] text-muted-foreground">
-              Cadastre este mesmo token no painel do {PROVIDER_LABELS[provider]}
-              ao configurar o webhook — é ele que valida que a notificação
-              recebida realmente veio do gateway.
+              Cadastre este mesmo token no painel do{" "}
+              {PROVIDER_LABELS[provider]} ao configurar o webhook — é ele que
+              valida que a notificação recebida realmente veio do gateway.
             </p>
           </div>
 
           <div className="space-y-1.5">
             <FormLabel>URL do webhook</FormLabel>
-            <div className="flex items-center gap-1.5">
-              <code className="flex-1 truncate rounded-md border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-white">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-white">
                 {webhookUrl}
               </code>
               <button

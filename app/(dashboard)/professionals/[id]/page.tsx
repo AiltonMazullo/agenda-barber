@@ -43,7 +43,7 @@ export default function ProfessionalEditPage() {
   const { employees, isLoading, update, setFeatured, setHidden, uploadAvatar } =
     useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
-  const { categories } = useCategories(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id, "PRODUTO");
   const { groups } = useAccessGroups(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 

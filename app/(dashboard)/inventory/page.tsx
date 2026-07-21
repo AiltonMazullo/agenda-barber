@@ -36,7 +36,7 @@ export default function EstoquePage() {
   const { barbershop } = useAuth();
   const { products, isLoading, create, update, remove, upsertStock, loadStock } =
     useProducts(barbershop?.id, { withStock: true });
-  const { categories } = useCategories(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id, "PRODUTO");
   const { branches } = useBranches(barbershop?.id);
   const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
   const { movements, isLoading: movementsLoading, addMovement } = useStockMovements(

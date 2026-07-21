@@ -35,9 +35,35 @@ export function ReportFiltersBar({
   const { employees } = useEmployees(
     fields.includes("employee") ? barbershopId : undefined,
   );
-  const { categories } = useCategories(
-    fields.includes("category") ? barbershopId : undefined,
+
+  // Uma categoria é sempre de produto OU de serviço — quando o relatório
+  // filtra por ambos os itens ("vendas por item"), mostramos as duas listas
+  // juntas com o tipo prefixado no label; quando filtra só um dos dois (ex.:
+  // agendamentos = só serviço), mostramos só as categorias daquele tipo.
+  const wantsCategory = fields.includes("category");
+  const showProductCategories = wantsCategory && fields.includes("product");
+  const showServiceCategories = wantsCategory && fields.includes("service");
+  const showBothCategoryTypes =
+    wantsCategory && (!fields.includes("product") && !fields.includes("service"));
+
+  const { categories: productCategories } = useCategories(
+    showProductCategories || showBothCategoryTypes ? barbershopId : undefined,
+    "PRODUTO",
   );
+  const { categories: serviceCategories } = useCategories(
+    showServiceCategories || showBothCategoryTypes ? barbershopId : undefined,
+    "SERVICO",
+  );
+  const categories =
+    showProductCategories && showServiceCategories
+      ? [
+          ...productCategories.map((c) => ({ ...c, name: `Produto: ${c.name}` })),
+          ...serviceCategories.map((c) => ({ ...c, name: `Serviço: ${c.name}` })),
+        ]
+      : showProductCategories
+        ? productCategories
+        : [...serviceCategories, ...productCategories];
+
   const { services } = useServices(
     fields.includes("service") ? barbershopId : undefined,
   );

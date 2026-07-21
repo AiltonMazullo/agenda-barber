@@ -102,7 +102,7 @@ import {
 import type { CreateEmployeePayload, Employee } from "@/types/employee.types";
 import type { AccessGroup } from "@/types/access-group.types";
 import type { CreateServicePayload, Service } from "@/types/service.types";
-import type { Category } from "@/types/category.types";
+import type { Category, CategoryType } from "@/types/category.types";
 import {
   maskBRLInput,
   maskCep,
@@ -139,7 +139,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   },
   {
     key: "pagamento",
-    label: "Pagamento",
+    label: "Integrações",
     icon: <CreditCard className="size-3.5" />,
   },
 ];
@@ -2460,7 +2460,7 @@ function TabServicos() {
   const { barbershop } = useAuth();
   const { services, isLoading, create, update, remove, setFeatured, reorder } =
     useServices(barbershop?.id);
-  const { categories } = useCategories(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id, "SERVICO");
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const pag = usePagination(services, 10);
@@ -2615,15 +2615,22 @@ function TabServicos() {
 
 // ─── Dialog: Categoria ────────────────────────────────────────────────────────
 
+const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
+  PRODUTO: "Produto",
+  SERVICO: "Serviço",
+};
+
 function DialogCategoria({
   open,
   onOpenChange,
   category,
+  type,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   category: Category | null;
+  type: CategoryType;
   onSave: (name: string) => Promise<void>;
 }) {
   const [name, setName] = useState("");
@@ -2652,7 +2659,8 @@ function DialogCategoria({
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
-              {category ? "Editar Categoria" : "Nova Categoria"}
+              {category ? "Editar Categoria" : "Nova Categoria"} de{" "}
+              {CATEGORY_TYPE_LABELS[type]}
             </DialogTitle>
             <button
               type="button"
@@ -2670,9 +2678,15 @@ function DialogCategoria({
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              placeholder="Ex: Cortes, Cosméticos…"
+              placeholder={
+                type === "PRODUTO" ? "Ex: Cosméticos, Bebidas…" : "Ex: Cortes, Barba…"
+              }
               className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
             />
+            <p className="text-[11px] text-muted-foreground">
+              Categoria de {CATEGORY_TYPE_LABELS[type].toLowerCase()} — o tipo
+              não pode ser alterado depois de criada.
+            </p>
           </div>
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
@@ -2699,26 +2713,36 @@ function DialogCategoria({
 
 // ─── Tab: Categorias ─────────────────────────────────────────────────────────
 
-function TabCategorias() {
-  const { barbershop } = useAuth();
+/** Uma seção autocontida de categorias de um único tipo (produto OU serviço) — nunca misturadas. */
+function CategoriasSection({
+  barbershopId,
+  type,
+  title,
+}: {
+  barbershopId: string | undefined;
+  type: CategoryType;
+  title: string;
+}) {
   const { categories, isLoading, create, update, remove } = useCategories(
-    barbershop?.id,
+    barbershopId,
+    type,
   );
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
 
   async function handleSave(name: string) {
     if (editing) {
-      await update(editing.id, { name });
+      await update(editing.id, name);
     } else {
-      await create({ name });
+      await create(name);
     }
   }
 
   async function handleDelete(id: string) {
+    const linkedThing = type === "PRODUTO" ? "Produtos" : "Serviços";
     if (
       !confirm(
-        "Remover esta categoria? Serviços e produtos vinculados serão desvinculados automaticamente.",
+        `Remover esta categoria? ${linkedThing} vinculados serão desvinculados automaticamente.`,
       )
     )
       return;
@@ -2729,7 +2753,7 @@ function TabCategorias() {
     <Card className="bg-surface-raised border-border">
       <CardContent className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-          <h2 className="text-sm font-bold text-white">Categorias</h2>
+          <h2 className="text-sm font-bold text-white">{title}</h2>
           <button
             type="button"
             onClick={() => {
@@ -2817,9 +2841,29 @@ function TabCategorias() {
         open={dialog}
         onOpenChange={setDialog}
         category={editing}
+        type={type}
         onSave={handleSave}
       />
     </Card>
+  );
+}
+
+function TabCategorias() {
+  const { barbershop } = useAuth();
+
+  return (
+    <div className="space-y-5">
+      <CategoriasSection
+        barbershopId={barbershop?.id}
+        type="PRODUTO"
+        title="Categorias de produtos"
+      />
+      <CategoriasSection
+        barbershopId={barbershop?.id}
+        type="SERVICO"
+        title="Categorias de serviços"
+      />
+    </div>
   );
 }
 

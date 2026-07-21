@@ -293,7 +293,7 @@ function PlanosTab() {
   const { services } = useServices(barbershop?.id);
   const { products } = useProducts(barbershop?.id);
   const { employees } = useEmployees(barbershop?.id);
-  const { categories } = useCategories(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id, "PRODUTO");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);

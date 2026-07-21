@@ -1,14 +1,16 @@
 import { api } from "@/lib/api";
 import type {
   Category,
+  CategoryType,
   CreateCategoryPayload,
   UpdateCategoryPayload,
 } from "@/types/category.types";
 
 export const categoriesService = {
-  async list(barbershopId: string): Promise<Category[]> {
+  async list(barbershopId: string, type?: CategoryType): Promise<Category[]> {
     const { data } = await api.get<Category[]>(
       `/barbershops/${barbershopId}/categories`,
+      { params: { type } },
     );
     return data;
   },

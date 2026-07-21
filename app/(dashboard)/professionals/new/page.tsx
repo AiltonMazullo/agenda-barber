@@ -43,7 +43,7 @@ export default function ProfessionalNovoPage() {
   const { branches } = useBranches(barbershop?.id);
   const { groups } = useAccessGroups(barbershop?.id);
   const { services } = useServices(barbershop?.id);
-  const { categories } = useCategories(barbershop?.id);
+  const { categories } = useCategories(barbershop?.id, "PRODUTO");
 
   // Foto escolhida antes do profissional existir: preview local agora,
   // upload real logo após o create (quando há ID pra rota de avatar).

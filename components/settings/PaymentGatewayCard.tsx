@@ -53,8 +53,8 @@ export function PaymentGatewayCard({
   }
 
   return (
-    <Card className="bg-surface-raised border-border">
-      <CardContent className="p-5 space-y-4">
+    <Card className="min-w-0 bg-surface-raised border-border">
+      <CardContent className="min-w-0 p-5 space-y-4">
         <div className="flex items-start justify-between gap-2">
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -87,12 +87,12 @@ export function PaymentGatewayCard({
           <p className="text-xs text-muted-foreground">Não configurado.</p>
         )}
 
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="text-[11px] font-medium text-muted-foreground">
             URL do webhook (cadastre no painel do {PROVIDER_LABELS[provider]})
           </p>
-          <div className="flex items-center gap-1.5">
-            <code className="flex-1 truncate rounded-md border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-white">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted/50 px-2 py-1.5 text-[11px] text-white">
               {webhookUrl}
             </code>
             <button
