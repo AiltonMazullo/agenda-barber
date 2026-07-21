@@ -57,6 +57,9 @@ export default function CategoriasFinanceirasPage() {
                   <StatusBadge tone={cat.type === "RECEIVABLE" ? "success" : "danger"}>
                     {cat.type === "RECEIVABLE" ? "Contas a receber" : "Contas a pagar"}
                   </StatusBadge>
+                  <StatusBadge tone={cat.status === "ACTIVE" ? "success" : "neutral"}>
+                    {cat.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                  </StatusBadge>
                 </div>
                 {cat.parentCategory && (
                   <p className="text-xs text-muted-foreground mt-0.5">

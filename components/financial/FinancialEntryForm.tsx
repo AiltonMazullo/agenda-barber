@@ -7,6 +7,7 @@ import { DatePickerField, SelectField } from "@/components/shared";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { useBranches } from "@/hooks/useBranches";
 import { useFinancialCategories } from "@/hooks/useFinancialCategories";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
@@ -29,6 +30,7 @@ export function FinancialEntryForm({
 }) {
   const router = useRouter();
   const { barbershop } = useAuth();
+  const { branches } = useBranches(barbershop?.id);
   const { categories } = useFinancialCategories(barbershop?.id, type);
   const { accounts } = useBankAccounts(barbershop?.id);
   const { methods: paymentMethods } = usePaymentMethods(barbershop?.id);
@@ -37,7 +39,8 @@ export function FinancialEntryForm({
 
   const [description, setDescription] = useState("");
   const [value, setValue] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [parentCategoryId, setParentCategoryId] = useState("");
+  const [subCategoryId, setSubCategoryId] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
   const [interestPercent, setInterestPercent] = useState("");
   const [observations, setObservations] = useState("");
@@ -48,8 +51,21 @@ export function FinancialEntryForm({
   const [paymentMethodId, setPaymentMethodId] = useState("");
   const [expensePaymentMethodId, setExpensePaymentMethodId] = useState("");
   const [bankAccountId, setBankAccountId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
   const [saving, setSaving] = useState(false);
+
+  // Categoria-pai = sem parentCategoryId; subcategoria = filha da categoria
+  // escolhida acima (§4.1). O lançamento é salvo com a subcategoria quando
+  // houver uma selecionada, senão com a categoria-pai.
+  const parentCategories = categories.filter((c) => !c.parentCategoryId);
+  const subCategories = categories.filter((c) => c.parentCategoryId === parentCategoryId);
+  const effectiveCategoryId = subCategoryId || parentCategoryId;
+
+  function handleParentCategoryChange(nextId: string) {
+    setParentCategoryId(nextId);
+    setSubCategoryId("");
+  }
 
   const valid = description && value && dueDate;
 
@@ -60,7 +76,7 @@ export function FinancialEntryForm({
       type,
       description,
       valueInCents: Math.round(parseBRL(value) * 100),
-      categoryId: categoryId || undefined,
+      categoryId: effectiveCategoryId || undefined,
       discountPercent: discountPercent ? Number(discountPercent) : undefined,
       interestPercent: interestPercent ? Number(interestPercent) : undefined,
       observations: observations || undefined,
@@ -71,6 +87,7 @@ export function FinancialEntryForm({
       paymentMethodId: type === "RECEIVABLE" ? paymentMethodId || undefined : undefined,
       expensePaymentMethodId: type === "PAYABLE" ? expensePaymentMethodId || undefined : undefined,
       bankAccountId: bankAccountId || undefined,
+      branchId: branchId || undefined,
       dueDate: dueDate.toISOString(),
     });
     setSaving(false);
@@ -107,10 +124,28 @@ export function FinancialEntryForm({
         <SelectField
           id="category"
           label="Categoria"
-          value={categoryId}
-          onChange={setCategoryId}
+          value={parentCategoryId}
+          onChange={handleParentCategoryChange}
           placeholder="Selecione"
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          options={parentCategories.map((c) => ({ value: c.id, label: c.name }))}
+        />
+        {subCategories.length > 0 && (
+          <SelectField
+            id="subCategory"
+            label="Subcategoria"
+            value={subCategoryId}
+            onChange={setSubCategoryId}
+            placeholder="Nenhuma"
+            options={subCategories.map((c) => ({ value: c.id, label: c.name }))}
+          />
+        )}
+        <SelectField
+          id="branch"
+          label="Filial"
+          value={branchId}
+          onChange={setBranchId}
+          placeholder="Selecione"
+          options={branches.map((b) => ({ value: b.id, label: b.name }))}
         />
       </div>
 

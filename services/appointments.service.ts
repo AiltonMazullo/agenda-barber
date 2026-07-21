@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import type {
   Appointment,
   CreateAppointmentPayload,
+  RescheduleAppointmentPayload,
   UpdateAppointmentStatusPayload,
 } from "@/types/appointment.types";
 
@@ -38,5 +39,18 @@ export const appointmentsService = {
 
   async cancel(barbershopId: string, id: string): Promise<void> {
     await api.delete<void>(`/barbershops/${barbershopId}/appointments/${id}`);
+  },
+
+  /** Persiste o reagendamento (drag-and-drop): novo horário e, opcionalmente, novo profissional. */
+  async reschedule(
+    barbershopId: string,
+    id: string,
+    payload: RescheduleAppointmentPayload,
+  ): Promise<Appointment> {
+    const { data } = await api.patch<Appointment>(
+      `/barbershops/${barbershopId}/appointments/${id}/reschedule`,
+      payload,
+    );
+    return data;
   },
 };

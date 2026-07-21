@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
@@ -25,6 +26,8 @@ import {
   Building2,
   CalendarOff,
   CalendarRange,
+  ClipboardList,
+  ExternalLink,
 } from "lucide-react";
 // (Scissors removido — a orientação textual da legenda foi substituída)
 import {
@@ -42,6 +45,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useHolidays } from "@/hooks/useHolidays";
+import { useComandas } from "@/hooks/useComandas";
+import type { Comanda, ComandaDraft } from "@/types/orders.types";
 import {
   AgendamentoCard,
   ProfissionalColuna,
@@ -81,6 +86,7 @@ export default function SchedulePage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
   const { holidays } = useHolidays(barbershop?.id);
+  const { comandas, create: createComanda } = useComandas(barbershop?.id);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [filialId, setFilialId] = useState<string>("");
@@ -93,6 +99,7 @@ export default function SchedulePage() {
   const {
     servicos,
     profissionais,
+    profissionaisTodos,
     agendamentos,
     agendamentosTodos,
     clients,
@@ -104,6 +111,7 @@ export default function SchedulePage() {
     cancel,
     moveLocal,
     resizeLocal,
+    rescheduleAgendamento,
   } = useSchedule(barbershop?.id, selectedDate, filialId || undefined);
 
   // UI state
@@ -113,6 +121,9 @@ export default function SchedulePage() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [filtroProf, setFiltroProf] = useState<string>("todos");
   const [modoBloquear, setModoBloquear] = useState(false);
+  const [filtroComanda, setFiltroComanda] = useState<
+    "nenhum" | "abertas" | "fechadas" | "antigas"
+  >("nenhum");
 
   // Dialogs
   const [dialogNovo, setDialogNovo] = useState(false);
@@ -175,11 +186,40 @@ export default function SchedulePage() {
     profissionais.forEach((p) => (map[p.id] = []));
     agendamentos.forEach((ag) => {
       // Cancelados (e faltas) aparecem apenas na visualização em lista.
-      if (ag.status === "CANCELLED") return;
+      if (ag.status === "CANCELLED" || ag.status === "NO_SHOW") return;
       if (map[ag.profissionalId]) map[ag.profissionalId].push(ag);
     });
     return map;
   }, [agendamentos, profissionais]);
+
+  // ─── Filtros de comandas ────────────────────────────────────────────────────
+  const comandasAbertas = useMemo(
+    () => comandas.filter((c) => c.status === "ABERTA"),
+    [comandas],
+  );
+  const comandasFechadas = useMemo(
+    () => comandas.filter((c) => c.status === "FECHADA"),
+    [comandas],
+  );
+  const comandasAntigas = useMemo(() => {
+    const umDiaAtras = Date.now() - 24 * 60 * 60 * 1000;
+    return comandasAbertas.filter(
+      (c) => new Date(c.createdAt).getTime() < umDiaAtras,
+    );
+  }, [comandasAbertas]);
+
+  const comandasFiltradas: Comanda[] = useMemo(() => {
+    switch (filtroComanda) {
+      case "abertas":
+        return comandasAbertas;
+      case "fechadas":
+        return comandasFechadas;
+      case "antigas":
+        return comandasAntigas;
+      default:
+        return [];
+    }
+  }, [filtroComanda, comandasAbertas, comandasFechadas, comandasAntigas]);
 
   // ─── Visão de mês ───────────────────────────────────────────────────────────
   const monthDates = useMemo(() => buildMonthDates(selectedDate), [selectedDate]);
@@ -252,11 +292,15 @@ export default function SchedulePage() {
         return;
       }
 
-      // TODO backend: PATCH /appointments/:id (scheduledAt/employeeId).
-      // Sem endpoint, a movimentação é apenas visual (não persiste).
+      // Move visualmente de imediato (otimista) e persiste no backend em
+      // seguida. Em caso de falha (ex.: conflito detectado pelo servidor),
+      // `rescheduleAgendamento` limpa o overlay e o card volta pro lugar.
       moveLocal(ag.id, { inicioMin: newInicio, profissionalId: newProfId });
+      void rescheduleAgendamento(ag.id, newInicio, newProfId).then((ok) => {
+        if (ok) toast.success("Agendamento reagendado.");
+      });
     },
-    [agendamentos, slotSize, SLOT_HEIGHT_PX, bloqueios, moveLocal],
+    [agendamentos, slotSize, SLOT_HEIGHT_PX, bloqueios, moveLocal, rescheduleAgendamento],
   );
 
   const confirmarConflito = useCallback(() => {
@@ -304,6 +348,58 @@ export default function SchedulePage() {
     setAgSelecionado(ag);
     setDialogDetalhe(true);
   }, []);
+
+  /**
+   * Cria uma comanda do tipo AGENDAMENTO pré-preenchida a partir do
+   * agendamento aberto no modal "Editar agendamento" (item 1.5 da spec) — o
+   * serviço do próprio agendamento já entra como primeiro item da comanda.
+   */
+  const handleAbrirComanda = useCallback(
+    async (ag: AgendamentoVM) => {
+      const servico = servicoById.get(ag.servicoId);
+      if (!servico) {
+        toast.error("Serviço do agendamento não encontrado.");
+        return;
+      }
+      const [ano, mes, dia] = ag.dataIso.split("-").map(Number);
+      const scheduledAt = new Date(
+        Date.UTC(ano, mes - 1, dia, Math.floor(ag.inicioMin / 60), ag.inicioMin % 60),
+      ).toISOString();
+
+      const draft: ComandaDraft = {
+        tipo: "AGENDAMENTO",
+        clienteAvulso: null,
+        agendamentos: [
+          {
+            appointmentId: ag.id,
+            clienteNome: ag.cliente,
+            servicoNome: servico.nome,
+            profissionalNome: ag.profissionalNome || null,
+            scheduledAt,
+          },
+        ],
+        itens: [
+          {
+            id: gerarId(),
+            tipo: "SERVICO",
+            refId: servico.id,
+            nome: servico.nome,
+            categoriaNome: null,
+            appointmentId: ag.id,
+            quantidade: 1,
+            valorUnitarioInCents: Math.round(servico.preco * 100),
+          },
+        ],
+        observacoes: "",
+      };
+
+      const created = await createComanda(draft);
+      if (created) {
+        setDialogDetalhe(false);
+      }
+    },
+    [servicoById, createComanda],
+  );
 
   const handleResizeEnd = useCallback(
     (id: string, novaDuracao: number) => {
@@ -590,6 +686,70 @@ export default function SchedulePage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Filtro de comandas */}
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <DropdownButton
+                  className={cn(
+                    "h-9 px-3 rounded-md border text-sm flex items-center gap-2 transition-colors cursor-pointer",
+                    filtroComanda !== "nenhum"
+                      ? "border-brand/40 bg-brand/5 text-brand"
+                      : "border-border bg-surface-raised text-foreground hover:border-brand/40",
+                  )}
+                >
+                  <ClipboardList className="size-3.5 text-muted-foreground" />
+                  <span className="max-w-[110px] truncate text-xs">
+                    {filtroComanda === "abertas"
+                      ? `Comandas abertas (${comandasAbertas.length})`
+                      : filtroComanda === "fechadas"
+                        ? `Comandas fechadas (${comandasFechadas.length})`
+                        : filtroComanda === "antigas"
+                          ? `+1 dia (${comandasAntigas.length})`
+                          : "Comandas"}
+                  </span>
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
+                </DropdownButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-surface-raised border-border text-foreground">
+                <DropdownMenuItem
+                  onClick={() => setFiltroComanda("nenhum")}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroComanda === "nenhum" && "text-brand",
+                  )}
+                >
+                  Sem filtro
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setFiltroComanda("abertas")}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroComanda === "abertas" && "text-brand",
+                  )}
+                >
+                  Comandas abertas ({comandasAbertas.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setFiltroComanda("fechadas")}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroComanda === "fechadas" && "text-brand",
+                  )}
+                >
+                  Comandas fechadas ({comandasFechadas.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setFiltroComanda("antigas")}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroComanda === "antigas" && "text-brand",
+                  )}
+                >
+                  Abertas há mais de 1 dia ({comandasAntigas.length})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Slot size */}
             <DropdownMenu>
               <DropdownMenuTrigger>
@@ -693,8 +853,38 @@ export default function SchedulePage() {
           </div>
         )}
 
+        {/* ── Painel de comandas filtradas ── */}
+        {filtroComanda !== "nenhum" && (
+          <div className="flex items-center gap-2 px-4 md:px-6 py-2 border-b border-border-subtle shrink-0 overflow-x-auto schedule-scroll">
+            {comandasFiltradas.length === 0 ? (
+              <span className="text-xs text-text-faint">
+                Nenhuma comanda encontrada para este filtro.
+              </span>
+            ) : (
+              comandasFiltradas.map((c) => (
+                <Link
+                  key={c.id}
+                  href="/orders"
+                  className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border-subtle bg-surface-raised hover:border-brand/40 transition-colors text-[11px] text-muted-foreground"
+                >
+                  <Receipt className="size-3 text-emerald-400" />#{c.numero} ·{" "}
+                  {c.clienteAvulso ??
+                    c.agendamentos[0]?.clienteNome ??
+                    "Cliente"}
+                  <ExternalLink className="size-3 text-text-faint" />
+                </Link>
+              ))
+            )}
+          </div>
+        )}
+
         {/* ── Resumo do Dia ── */}
-        {!isMonthMode && <ResumoDia agendamentos={agendamentos} />}
+        {!isMonthMode && (
+          <ResumoDia
+            agendamentos={agendamentos}
+            comandasAbertas={comandasAbertas.length}
+          />
+        )}
 
         {/* ── Legendas (ícones + cores) ── */}
         {viewMode === "kanban" && (
@@ -819,7 +1009,9 @@ export default function SchedulePage() {
           onConfirm={(d) => void handleNovoAgendamento(d)}
           onCreateClient={createClient}
           servicos={servicos}
-          profissionais={profissionais}
+          profissionaisTodos={profissionaisTodos}
+          branches={branches}
+          defaultBranchId={filialId || undefined}
           agendamentos={agendamentos}
           clients={clients}
           defaultDate={selectedDate}
@@ -835,6 +1027,7 @@ export default function SchedulePage() {
           profissional={agSelecionadoProf}
           onDelete={handleDelete}
           onUpdateStatus={handleUpdateStatus}
+          onAbrirComanda={handleAbrirComanda}
         />
         <DialogConflito
           open={dialogConflito}

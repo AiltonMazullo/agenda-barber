@@ -76,6 +76,7 @@ export function useSchedule(
     updateStatus,
     cancel,
     replaceLocal,
+    reschedule,
   } = useAppointments(barbershopId);
 
   const [overlay, setOverlay] = useState<Record<string, Overlay>>({});
@@ -146,8 +147,28 @@ export function useSchedule(
           avatar: initials(e.appName || e.name),
           fotoUrl: apiAssetUrl(e.avatarUrl) ?? localPhotos[e.id] ?? null,
           ativo: true,
+          branchId: e.branchId ?? null,
         })),
     [employees, branchId, localPhotos],
+  );
+
+  /**
+   * Profissionais de TODAS as filiais (sem o filtro da filial selecionada na
+   * página) — usado pelo modal "Novo agendamento" (item 1.6), que agora tem
+   * seu próprio seletor de filial e precisa poder listar/filtrar
+   * profissionais de qualquer filial, não só a que está ativa na agenda.
+   */
+  const profissionaisTodos = useMemo<ProfissionalVM[]>(
+    () =>
+      employees.map((e) => ({
+        id: e.id,
+        nome: e.appName || e.name,
+        avatar: initials(e.appName || e.name),
+        fotoUrl: apiAssetUrl(e.avatarUrl) ?? localPhotos[e.id] ?? null,
+        ativo: true,
+        branchId: e.branchId ?? null,
+      })),
+    [employees, localPhotos],
   );
 
   /** Nome de qualquer profissional (independente da filial), para a lista. */
@@ -197,6 +218,7 @@ export function useSchedule(
       const cli = clientById.get(a.clientId);
       return {
         id: a.id,
+        clientId: a.clientId,
         servicoId: a.serviceId,
         profissionalId: profId,
         profissionalNome: profNome,
@@ -309,12 +331,51 @@ export function useSchedule(
     setOverlay((prev) => ({ ...prev, [id]: { ...prev[id], customDuracao } }));
   }, []);
 
+  /** Remove o overlay visual de um agendamento (volta a refletir o dado real). */
+  const clearOverlay = useCallback((id: string) => {
+    setOverlay((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  /**
+   * Persiste o reagendamento feito por drag-and-drop (novo horário/profissional)
+   * via `PATCH /appointments/:id/reschedule` — reaproveita a mesma checagem de
+   * conflito de horário do backend usada em `GET /availability`. `moveLocal` já
+   * aplicou a movimentação otimista antes desta chamada; aqui só confirmamos
+   * (limpando o overlay, que passa a refletir o dado persistido) ou revertemos
+   * (limpando o overlay também, mas sem o dado ter mudado de fato — volta ao
+   * horário original) em caso de falha.
+   */
+  const rescheduleAgendamento = useCallback(
+    async (
+      id: string,
+      novoInicioMin: number,
+      novoProfissionalId: string,
+    ): Promise<boolean> => {
+      const dt = new Date(selectedDate);
+      dt.setUTCHours(0, 0, 0, 0);
+      dt.setUTCMinutes(novoInicioMin);
+      const updated = await reschedule(id, {
+        scheduledAt: dt.toISOString(),
+        employeeId: novoProfissionalId,
+      });
+      clearOverlay(id);
+      return updated !== null;
+    },
+    [selectedDate, reschedule, clearOverlay],
+  );
+
   const isLoading =
     loadingServices || loadingEmployees || loadingClients || loadingAppts;
 
   return {
     servicos,
     profissionais,
+    profissionaisTodos,
     agendamentos,
     agendamentosTodos,
     clients,
@@ -326,5 +387,6 @@ export function useSchedule(
     cancel,
     moveLocal,
     resizeLocal,
+    rescheduleAgendamento,
   };
 }

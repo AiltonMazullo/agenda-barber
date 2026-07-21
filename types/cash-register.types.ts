@@ -45,10 +45,34 @@ export interface CashRegister {
   transactions?: CashTransaction[];
   /** Valor em espécie registrado na abertura (centavos). Frontend-computed via transação "Saldo inicial". */
   openingCashInCents?: number;
+  /** Dinheiro contado fisicamente na gaveta ao fechar (centavos). Só preenchido após o fechamento. */
+  countedCashInCents?: number | null;
+  /** `countedCashInCents - dinheiro esperado`, calculado no fechamento. Pode ser negativo. */
+  cashDifferenceInCents?: number | null;
 }
 
 export interface CreateCashRegisterPayload {
   branchId: string;
+}
+
+export interface UpdateCashRegisterPayload {
+  branchId: string;
+}
+
+export interface ClosePayload {
+  /** Valor contado fisicamente na gaveta ao fechar (centavos). Opcional para não travar fechamentos rápidos. */
+  countedCashInCents?: number;
+}
+
+export interface CashRegisterClosingSummary {
+  /** Dinheiro que deveria estar na gaveta: movimentações do caixa + comandas fechadas em dinheiro no período. */
+  expectedCashInCents: number;
+  /** Saldo (entradas − saídas) das movimentações lançadas diretamente no caixa. */
+  transactionsBalanceInCents: number;
+  /** Soma das comandas fechadas em dinheiro, na filial e período do caixa. */
+  comandasDinheiroInCents: number;
+  /** Cobranças de assinatura pagas manualmente (billingType MANUAL) recebidas no dia. */
+  manualSubscriptionsInCents: number;
 }
 
 export interface NewTransactionInput {

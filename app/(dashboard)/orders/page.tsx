@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CheckCircle2,
   ClipboardList,
+  Download,
   EllipsisVertical,
   Pencil,
   Plus,
@@ -46,6 +47,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useComandas } from "@/hooks/useComandas";
 import { usePagination } from "@/hooks/usePagination";
 import { comandaClienteLabel, comandaTotalInCents } from "@/utils/comanda";
+import { exportToCsv } from "@/utils/csv-export";
 import { formatBRL, formatDate } from "@/utils/format";
 import type { Tone } from "@/types/common.types";
 import type { Comanda, ComandaStatus } from "@/types/orders.types";
@@ -111,19 +113,56 @@ export default function ComandasPage() {
     setDeleteTarget(null);
   }
 
+  function handleExportCsv() {
+    exportToCsv(
+      "comandas",
+      filtered.map((c) => ({
+        numero: c.numero,
+        cliente: comandaClienteLabel(c),
+        tipo: c.tipo === "AVULSA" ? "Avulsa" : "Agendamento",
+        status: STATUS_LABEL[c.status],
+        agendamentos: c.tipo === "AVULSA" ? 0 : c.agendamentos.length,
+        itens: c.itens.length,
+        totalInReais: (comandaTotalInCents(c.itens) / 100).toFixed(2),
+        criadaEm: formatDate(c.createdAt),
+      })),
+      [
+        { key: "numero", label: "Número" },
+        { key: "cliente", label: "Cliente" },
+        { key: "tipo", label: "Tipo" },
+        { key: "status", label: "Status" },
+        { key: "agendamentos", label: "Agendamentos" },
+        { key: "itens", label: "Itens" },
+        { key: "totalInReais", label: "Total (R$)" },
+        { key: "criadaEm", label: "Criada em" },
+      ],
+    );
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Comandas"
         subtitle="Consumo de produtos e serviços vinculado aos agendamentos"
         actions={
-          <Button
-            render={<Link href="/orders/new" />}
-            className="cursor-pointer bg-brand hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.35)] text-brand-foreground font-bold h-9 text-xs transition-all"
-          >
-            <Plus className="size-3.5 mr-1.5" />
-            Nova Comanda
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              disabled={filtered.length === 0}
+              className="cursor-pointer border-border bg-surface-raised text-foreground hover:bg-surface-elevated font-semibold h-9 text-xs"
+            >
+              <Download className="size-3.5 mr-1.5" />
+              CSV
+            </Button>
+            <Button
+              render={<Link href="/orders/new" />}
+              className="cursor-pointer bg-brand hover:bg-brand-hover hover:shadow-[0_0_16px_rgba(245,184,46,0.35)] text-brand-foreground font-bold h-9 text-xs transition-all"
+            >
+              <Plus className="size-3.5 mr-1.5" />
+              Nova Comanda
+            </Button>
+          </div>
         }
       />
 

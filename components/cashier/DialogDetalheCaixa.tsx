@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X,
   ArrowDownCircle,
@@ -23,6 +24,7 @@ import {
   OPENING_TRANSACTION_NAME,
   PAYMENT_METHOD_LABELS,
   type CashRegister,
+  type CashRegisterClosingSummary,
   type NewTransactionInput,
   type PaymentMethod,
 } from "@/types/cash-register.types";
@@ -36,6 +38,7 @@ export function DialogDetalheCaixa({
   onAddTransaction,
   onClose,
   onRemove,
+  fetchClosingSummary,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -43,10 +46,31 @@ export function DialogDetalheCaixa({
   loading?: boolean;
   busy?: boolean;
   onAddTransaction: (input: NewTransactionInput) => void;
-  onClose: () => void;
+  onClose: (countedCashInCents?: number) => void;
   onRemove: () => void;
+  /** Busca o dinheiro esperado + assinaturas manuais do dia (ver §2.2). */
+  fetchClosingSummary?: () => Promise<CashRegisterClosingSummary | null>;
 }) {
   const [confirmFechar, setConfirmFechar] = useState(false);
+  const [closingSummary, setClosingSummary] =
+    useState<CashRegisterClosingSummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    if (!confirmFechar || !fetchClosingSummary) return;
+    let active = true;
+    setLoadingSummary(true);
+    fetchClosingSummary()
+      .then((summary) => {
+        if (active) setClosingSummary(summary);
+      })
+      .finally(() => {
+        if (active) setLoadingSummary(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [confirmFechar, fetchClosingSummary]);
 
   const aberto = register?.closedAt === null;
   const transactions = useMemo(() => register?.transactions ?? [], [register]);
@@ -240,10 +264,12 @@ export function DialogDetalheCaixa({
         onOpenChange={setConfirmFechar}
         branchName={register?.branch?.name ?? "Caixa"}
         transactions={transactions}
+        summary={closingSummary}
+        loadingSummary={loadingSummary}
         busy={busy}
-        onConfirm={() => {
+        onConfirm={(countedCashInCents) => {
           setConfirmFechar(false);
-          onClose();
+          onClose(countedCashInCents);
         }}
       />
     </>

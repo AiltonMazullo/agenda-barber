@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, Clock, ChevronDown, TrendingUp } from "lucide-react";
+import {
+  Building2,
+  Clock,
+  ChevronDown,
+  TrendingUp,
+  Pencil,
+  RotateCcw,
+} from "lucide-react";
 import { Loading } from "@/components/shared";
 import { formatDate, formatTime, formatBRL } from "@/utils/format";
 import { OPENING_TRANSACTION_NAME } from "@/types/cash-register.types";
@@ -30,12 +37,18 @@ export function CaixaCard({
   register,
   onClick,
   onExpand,
+  onEdit,
+  onReopen,
 }: {
   register: CashRegister;
   /** Abre o detalhe completo (dialog). */
   onClick: () => void;
   /** Carrega as transações sob demanda quando o resumo é expandido. */
   onExpand?: () => void;
+  /** Abre o formulário de edição de metadados (só exibido em caixas abertos). */
+  onEdit?: () => void;
+  /** Reabre um caixa fechado (só exibido em caixas fechados). */
+  onReopen?: () => void;
 }) {
   const aberto = register.closedAt === null;
   const summary = computeSummary(register);
@@ -91,6 +104,28 @@ export function CaixaCard({
         >
           {aberto ? "Aberto" : "Fechado"}
         </span>
+
+        {aberto && onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Editar caixa"
+            className="size-7 rounded-md grid place-items-center text-text-faint hover:text-brand hover:bg-surface-elevated transition-colors shrink-0"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        )}
+
+        {!aberto && onReopen && (
+          <button
+            type="button"
+            onClick={onReopen}
+            aria-label="Reabrir caixa"
+            className="size-7 rounded-md grid place-items-center text-text-faint hover:text-brand hover:bg-surface-elevated transition-colors shrink-0"
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
+        )}
 
         <button
           type="button"

@@ -148,6 +148,7 @@ export default function CaixaHistoricoPage() {
                 register={r}
                 onClick={() => void detalhe.openDetalhe(r.id)}
                 onExpand={() => void crud.getById(r.id)}
+                onReopen={() => void crud.reopen(r.id)}
               />
             ))}
           </div>
@@ -161,8 +162,11 @@ export default function CaixaHistoricoPage() {
         loading={detalhe.loading}
         busy={detalhe.busy}
         onAddTransaction={(input) => void detalhe.addTransaction(input)}
-        onClose={() => void detalhe.handleClose()}
+        onClose={(countedCashInCents) =>
+          void detalhe.handleClose({ countedCashInCents })
+        }
         onRemove={() => void detalhe.handleRemove()}
+        fetchClosingSummary={detalhe.fetchClosingSummary}
       />
     </div>
   );

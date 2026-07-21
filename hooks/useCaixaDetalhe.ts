@@ -4,7 +4,10 @@ import { useState } from "react";
 import type {
   AddTransactionsPayload,
   CashRegister,
+  CashRegisterClosingSummary,
+  ClosePayload,
   NewTransactionInput,
+  UpdateCashRegisterPayload,
 } from "@/types/cash-register.types";
 
 interface CashRegisterCrud {
@@ -13,7 +16,22 @@ interface CashRegisterCrud {
     id: string,
     payload: AddTransactionsPayload,
   ) => Promise<{ count: number } | null>;
-  close: (id: string) => Promise<{ closedAt: string | null } | null>;
+  update: (
+    id: string,
+    payload: UpdateCashRegisterPayload,
+  ) => Promise<CashRegister | null>;
+  close: (
+    id: string,
+    payload?: ClosePayload,
+  ) => Promise<{
+    closedAt: string | null;
+    countedCashInCents?: number | null;
+    cashDifferenceInCents?: number | null;
+  } | null>;
+  reopen: (id: string) => Promise<{ closedAt: string | null } | null>;
+  getClosingSummary: (
+    id: string,
+  ) => Promise<CashRegisterClosingSummary | null>;
   remove: (id: string) => Promise<boolean>;
 }
 
@@ -55,18 +73,55 @@ export function useCaixaDetalhe(crud: CashRegisterCrud) {
     }
   }
 
-  async function handleClose() {
+  async function handleUpdate(payload: UpdateCashRegisterPayload) {
     if (!detalhe) return;
     setBusy(true);
     try {
-      const closed = await crud.close(detalhe.id);
+      const updated = await crud.update(detalhe.id, payload);
+      if (updated) setDetalhe((prev) => (prev ? { ...prev, ...updated } : prev));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleClose(payload?: ClosePayload) {
+    if (!detalhe) return;
+    setBusy(true);
+    try {
+      const closed = await crud.close(detalhe.id, payload);
       if (closed)
         setDetalhe((prev) =>
-          prev ? { ...prev, closedAt: closed.closedAt } : prev,
+          prev
+            ? {
+                ...prev,
+                closedAt: closed.closedAt,
+                countedCashInCents: closed.countedCashInCents,
+                cashDifferenceInCents: closed.cashDifferenceInCents,
+              }
+            : prev,
         );
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleReopen() {
+    if (!detalhe) return;
+    setBusy(true);
+    try {
+      const reopened = await crud.reopen(detalhe.id);
+      if (reopened)
+        setDetalhe((prev) =>
+          prev ? { ...prev, closedAt: reopened.closedAt } : prev,
+        );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function fetchClosingSummary() {
+    if (!detalhe) return null;
+    return crud.getClosingSummary(detalhe.id);
   }
 
   async function handleRemove() {
@@ -97,7 +152,10 @@ export function useCaixaDetalhe(crud: CashRegisterCrud) {
     busy,
     openDetalhe,
     addTransaction,
+    handleUpdate,
     handleClose,
+    handleReopen,
+    fetchClosingSummary,
     handleRemove,
   };
 }

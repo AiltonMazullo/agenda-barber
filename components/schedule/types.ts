@@ -26,6 +26,8 @@ export interface ProfissionalVM {
   /** URL completa da foto de perfil, quando cadastrada. */
   fotoUrl?: string | null;
   ativo: boolean;
+  /** Filial do profissional — usado para filtrar por filial no modal de criação. */
+  branchId?: string | null;
 }
 
 /** Situação de assinatura do cliente, para o ícone de assinante. */
@@ -34,6 +36,8 @@ export type AssinanteSituacao = "ativo" | "inadimplente" | null;
 /** View-model de agendamento já resolvido para a agenda do dia. */
 export interface AgendamentoVM {
   id: string;
+  /** Id do cliente — usado para buscar plano ativo e histórico de agendamentos. */
+  clientId: string;
   servicoId: string;
   profissionalId: string;
   /** Nome do profissional resolvido (mesmo se fora da filial filtrada). */

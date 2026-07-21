@@ -1,17 +1,21 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useMemo } from "react";
-import { X, Lock, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { X, Lock, AlertTriangle, Banknote, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatBRL } from "@/utils/format";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { formatBRL, maskBRLInput, parseBRL } from "@/utils/format";
 import {
   PAYMENT_METHOD_LABELS,
   OPENING_TRANSACTION_NAME,
+  type CashRegisterClosingSummary,
   type CashTransaction,
   type PaymentMethod,
 } from "@/types/cash-register.types";
@@ -21,8 +25,11 @@ interface DialogFechamentoCaixaProps {
   onOpenChange: (v: boolean) => void;
   branchName: string;
   transactions: CashTransaction[];
+  /** Dinheiro esperado + assinaturas manuais do dia (ver §2.2). `null` enquanto carrega. */
+  summary?: CashRegisterClosingSummary | null;
+  loadingSummary?: boolean;
   busy?: boolean;
-  onConfirm: () => void;
+  onConfirm: (countedCashInCents?: number) => void;
 }
 
 export function DialogFechamentoCaixa({
@@ -30,9 +37,26 @@ export function DialogFechamentoCaixa({
   onOpenChange,
   branchName,
   transactions,
+  summary,
+  loadingSummary,
   busy,
   onConfirm,
 }: DialogFechamentoCaixaProps) {
+  const [contado, setContado] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setContado("");
+    }
+  }, [open]);
+
+  const countedCashInCents =
+    contado.trim() === "" ? undefined : Math.round(parseBRL(contado) * 100);
+
+  const cashDifferenceInCents =
+    summary && countedCashInCents !== undefined
+      ? countedCashInCents - summary.expectedCashInCents
+      : null;
   /** Agrupa entradas por meio de pagamento (ignora a transação de abertura na contagem). */
   const byPayment = useMemo(() => {
     const map = new Map<string, number>();
@@ -168,6 +192,81 @@ export function DialogFechamentoCaixa({
             )}
           </div>
 
+          {/* Assinaturas manuais do dia */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-brand flex items-center gap-1.5">
+              <Users className="size-3" />
+              Assinaturas Manuais
+            </p>
+            <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-base px-3 py-2">
+              <span className="text-xs text-muted-foreground">
+                Cobranças manuais (não-gateway) pagas hoje
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                {loadingSummary
+                  ? "…"
+                  : formatBRL((summary?.manualSubscriptionsInCents ?? 0) / 100)}
+              </span>
+            </div>
+          </div>
+
+          {/* Contagem física de dinheiro */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-brand flex items-center gap-1.5">
+              <Banknote className="size-3" />
+              Contagem física do dinheiro
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Dinheiro contado na gaveta
+              </label>
+              <Input
+                value={contado}
+                onChange={(e) => setContado(maskBRLInput(e.target.value))}
+                placeholder="R$ 0,00"
+                inputMode="numeric"
+                className="bg-surface-base border-border text-foreground placeholder:text-text-faint h-10"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-base px-3 py-2">
+              <span className="text-xs text-muted-foreground">
+                Dinheiro esperado
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                {loadingSummary
+                  ? "…"
+                  : formatBRL((summary?.expectedCashInCents ?? 0) / 100)}
+              </span>
+            </div>
+
+            {cashDifferenceInCents !== null && (
+              <div
+                className={cn(
+                  "flex items-center justify-between rounded-lg border px-3 py-2",
+                  cashDifferenceInCents === 0
+                    ? "border-success-foreground/30 bg-success-bg"
+                    : "border-danger-foreground/30 bg-danger-bg",
+                )}
+              >
+                <span className="text-xs font-semibold text-foreground">
+                  Diferença de caixa
+                </span>
+                <span
+                  className={cn(
+                    "text-sm font-bold",
+                    cashDifferenceInCents === 0
+                      ? "text-success-foreground"
+                      : "text-danger-foreground",
+                  )}
+                >
+                  {cashDifferenceInCents > 0 ? "+" : ""}
+                  {formatBRL(cashDifferenceInCents / 100)}
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
             <AlertTriangle className="size-4 text-warning-foreground shrink-0" />
             <p className="text-xs text-muted-foreground">
@@ -188,7 +287,7 @@ export function DialogFechamentoCaixa({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm(countedCashInCents)}
             disabled={busy}
             className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 disabled:opacity-60"
           >

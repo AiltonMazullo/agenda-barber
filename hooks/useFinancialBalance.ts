@@ -10,6 +10,7 @@ const EMPTY_BALANCE: FinancialBalance = {
   receivable: { notReceived: 0, upcoming: 0, received: 0, total: 0 },
   balance: 0,
   projectedBalance: 0,
+  totalFeesInCents: 0,
 };
 
 export function useFinancialBalance(

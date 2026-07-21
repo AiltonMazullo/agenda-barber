@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { DatePickerField } from "@/components/shared";
+import { DatePickerField, SelectField } from "@/components/shared";
 import { QuickClientForm } from "./QuickClientForm";
 import { PlanoAtivacao } from "./PlanoAtivacao";
 import { ServicoSelector } from "./ServicoSelector";
@@ -40,6 +40,7 @@ import type {
 } from "./types";
 import type { Client } from "@/types/client.types";
 import type { AppointmentStatus } from "@/types/appointment.types";
+import type { Branch } from "@/types/branch.types";
 import { STATUS_ROTULO, STATUS_COR } from "./status";
 
 function startOfDay(d: Date): Date {
@@ -61,7 +62,9 @@ export function DialogNovoAgendamento({
   onConfirm,
   onCreateClient,
   servicos,
-  profissionais,
+  profissionaisTodos,
+  branches,
+  defaultBranchId,
   agendamentos,
   clients,
   defaultDate,
@@ -75,7 +78,12 @@ export function DialogNovoAgendamento({
   /** Criação rápida de cliente. Retorna o cliente criado ou null. */
   onCreateClient: (data: QuickClientInput) => Promise<Client | null>;
   servicos: ServicoVM[];
-  profissionais: ProfissionalVM[];
+  /** Profissionais de TODAS as filiais — filtrados aqui pela filial escolhida no modal. */
+  profissionaisTodos: ProfissionalVM[];
+  /** Filiais disponíveis para o seletor do modal (item 1.6). */
+  branches: Branch[];
+  /** Filial pré-selecionada ao abrir (a filial ativa na página da Agenda). */
+  defaultBranchId?: string;
   agendamentos: AgendamentoVM[];
   clients: Client[];
   defaultDate: Date;
@@ -93,6 +101,16 @@ export function DialogNovoAgendamento({
   const [hora, setHora] = useState(prefilledHora ?? "09:00");
   const [observacao, setObservacao] = useState("");
   const [status, setStatus] = useState<AppointmentStatus>("PENDING");
+  const [branchId, setBranchId] = useState<string>(defaultBranchId ?? "");
+
+  /** Profissionais visíveis no seletor de serviço, filtrados pela filial escolhida acima. */
+  const profissionais = useMemo(
+    () =>
+      profissionaisTodos.filter(
+        (p) => !branchId || !p.branchId || p.branchId === branchId,
+      ),
+    [profissionaisTodos, branchId],
+  );
 
   // Plano (UI local — ativado após confirmação)
   const [ativarPlano, setAtivarPlano] = useState(false);
@@ -137,7 +155,8 @@ export function DialogNovoAgendamento({
     setPlanoDataInicio(new Date());
     setPlanoForma("DINHEIRO");
     setStatus("PENDING");
-  }, [open, prefilledHora, prefilledProfId, defaultDate, servicos]);
+    setBranchId(defaultBranchId ?? "");
+  }, [open, prefilledHora, prefilledProfId, defaultDate, servicos, defaultBranchId]);
 
   // Prefill CPF do plano com o CPF do cliente selecionado
   useEffect(() => {
@@ -311,6 +330,23 @@ export function DialogNovoAgendamento({
           </DialogHeader>
 
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto schedule-scroll">
+            {/* ── Filial ── */}
+            {branches.length > 1 && (
+              <SelectField
+                id="ag-filial"
+                label="Filial"
+                value={branchId}
+                options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                onChange={(v) => {
+                  setBranchId(v);
+                  // Profissional escolhido pode não pertencer à nova filial.
+                  setRows((prev) =>
+                    prev.map((r) => ({ ...r, profissionalId: undefined })),
+                  );
+                }}
+              />
+            )}
+
             {/* ── Cliente ── */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

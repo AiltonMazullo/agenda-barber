@@ -22,6 +22,9 @@ export interface Client {
   complement: string | null;
   /** Observação interna da equipe — nunca visível/editável pelo próprio cliente. */
   notes: string | null;
+  /** "Lembrar na agenda" — destaca o cliente na tela de Agenda. */
+  remindInSchedule: boolean;
+  photoUrl: string | null;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
@@ -43,6 +46,8 @@ export interface CreateClientPayload {
   uf?: string;
   number?: string;
   complement?: string;
+  notes?: string;
+  remindInSchedule?: boolean;
 }
 
 export interface UpdateClientPayload {
@@ -50,6 +55,7 @@ export interface UpdateClientPayload {
   email?: string;
   phone?: string;
   password?: string;
+  remindInSchedule?: boolean;
 }
 
 /**

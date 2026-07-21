@@ -32,6 +32,8 @@ export const clientFormSchema = z.object({
     .optional(),
   number: z.string().optional(),
   complement: z.string().optional(),
+  notes: z.string().optional(),
+  remindInSchedule: z.boolean().optional(),
 });
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>;
@@ -59,5 +61,7 @@ export function toCreateClientPayload(
     uf: values.uf ? values.uf : undefined,
     number: trimmed(values.number),
     complement: trimmed(values.complement),
+    notes: trimmed(values.notes),
+    remindInSchedule: values.remindInSchedule ?? false,
   };
 }

@@ -8,6 +8,7 @@ export interface ReportFilters {
   productId?: string;
   planId?: string;
   diasSemVisita?: number;
+  groupBy?: "origin" | "vendedor";
 }
 
 interface RefLite {
@@ -40,6 +41,8 @@ export interface FaturamentoVisaoGeral {
   porMes: { mes: string; comandasInCents: number; assinaturasInCents: number }[];
   totalComandasInCents: number;
   totalAssinaturasInCents: number;
+  totalAssinaturaGatewayInCents: number;
+  totalAssinaturaManualInCents: number;
   totalGeralInCents: number;
   quantidadeComandas: number;
   quantidadeAssinaturasAtivas: number;
@@ -139,6 +142,12 @@ export interface TicketMedioClienteRow {
   ticketMedioInCents: number;
 }
 
+export interface TicketMedioAgendamento {
+  faturamentoInCents: number;
+  quantidadeAtendimentos: number;
+  ticketMedioInCents: number;
+}
+
 export interface ComissaoServicoRow {
   employeeId: string | null;
   profissional: string | null;
@@ -158,7 +167,8 @@ export interface ComissaoProdutoRow {
   categoria: string | null;
   quantidade: number;
   totalInCents: number;
-  commissionPercent: null;
+  commissionPercent: number | null;
+  comissaoInCents: number;
 }
 
 export interface CaptacaoRow {

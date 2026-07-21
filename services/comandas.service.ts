@@ -4,8 +4,13 @@ import type { Comanda, ComandaDraft, ComandaStatus } from "@/types/orders.types"
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/comandas`;
 
 export const comandasService = {
-  async list(barbershopId: string): Promise<Comanda[]> {
-    const { data } = await api.get<Comanda[]>(base(barbershopId));
+  async list(
+    barbershopId: string,
+    filters: { clientId?: string } = {},
+  ): Promise<Comanda[]> {
+    const { data } = await api.get<Comanda[]>(base(barbershopId), {
+      params: filters,
+    });
     return data;
   },
 

@@ -4,6 +4,7 @@ import type {
   CreateClientPayload,
   UpdateClientPayload,
 } from "@/types/client.types";
+import type { Appointment } from "@/types/appointment.types";
 
 export const clientsService = {
   async list(barbershopId: string): Promise<Client[]> {
@@ -55,6 +56,35 @@ export const clientsService = {
     const { data } = await api.patch<Client>(
       `/barbershops/${barbershopId}/clients/${id}/notes`,
       { notes },
+    );
+    return data;
+  },
+
+  /** Últimos agendamentos do cliente na barbearia (mais recentes primeiro). */
+  async getRecentAppointments(
+    barbershopId: string,
+    id: string,
+    limit = 3,
+  ): Promise<Appointment[]> {
+    const { data } = await api.get<Appointment[]>(
+      `/barbershops/${barbershopId}/clients/${id}/appointments`,
+      { params: { limit } },
+    );
+    return data;
+  },
+
+  /** Envia a foto do cliente (campo `photo`, JPEG/PNG/WebP até 2MB). */
+  async uploadPhoto(
+    barbershopId: string,
+    id: string,
+    file: File,
+  ): Promise<Client> {
+    const formData = new FormData();
+    formData.append("photo", file);
+    const { data } = await api.patch<Client>(
+      `/barbershops/${barbershopId}/clients/${id}/photo`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },

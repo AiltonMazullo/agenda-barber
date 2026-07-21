@@ -92,6 +92,7 @@ export interface FinancialBalance {
   receivable: { notReceived: number; upcoming: number; received: number; total: number };
   balance: number;
   projectedBalance: number;
+  totalFeesInCents: number;
 }
 
 export interface GenerateCommissionsPayload {
@@ -111,6 +112,7 @@ export interface CommissionResultRow {
   bonusInCents: number;
   valeInCents: number;
   totalInCents: number;
+  totalLiquidoInCents: number;
 }
 
 export interface GenerateCommissionsResult {

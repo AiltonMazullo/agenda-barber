@@ -20,6 +20,7 @@ import type {
   ReviewRow,
   ServicoVendidoRow,
   SubscriptionReportRow,
+  TicketMedioAgendamento,
   TicketMedioClienteRow,
   TicketMedioProfissionalRow,
   VendaItemRow,
@@ -163,6 +164,17 @@ export const reportsService = {
   ): Promise<TicketMedioProfissionalRow[]> {
     const { data } = await api.get<TicketMedioProfissionalRow[]>(
       `${base(barbershopId)}/ticket-medio-atendimento`,
+      { params: params(filters) },
+    );
+    return data;
+  },
+
+  async ticketMedioPorAgendamento(
+    barbershopId: string,
+    filters: ReportFilters,
+  ): Promise<TicketMedioAgendamento> {
+    const { data } = await api.get<TicketMedioAgendamento>(
+      `${base(barbershopId)}/ticket-medio-por-agendamento`,
       { params: params(filters) },
     );
     return data;

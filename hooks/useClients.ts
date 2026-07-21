@@ -93,6 +93,23 @@ export function useClients(barbershopId: string | undefined) {
     [barbershopId],
   );
 
+  const uploadPhoto = useCallback(
+    async (id: string, file: File) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await clientsService.uploadPhoto(barbershopId, id, file);
+        setClients((prev) => prev.map((c) => (c.id === id ? updated : c)));
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao enviar a foto do cliente.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       if (!barbershopId) return false;
@@ -111,5 +128,5 @@ export function useClients(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { clients, isLoading, create, update, updateNotes, remove };
+  return { clients, isLoading, create, update, updateNotes, uploadPhoto, remove };
 }

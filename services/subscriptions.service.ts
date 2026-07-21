@@ -5,8 +5,10 @@ import type {
   Subscription,
   SubscriptionBillingType,
   SubscriptionCalendar,
+  SubscriptionCharge,
   SubscriptionContractsResult,
 } from "@/types/subscription.types";
+import type { CancelReasonCode } from "@/types/pre-cancelled-client.types";
 
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/subscriptions`;
 
@@ -16,8 +18,23 @@ export const subscriptionsService = {
     return data;
   },
 
-  async cancel(barbershopId: string, id: string): Promise<void> {
-    await api.patch<void>(`${base(barbershopId)}/${id}/cancel`);
+  async cancel(
+    barbershopId: string,
+    id: string,
+    reason?: CancelReasonCode,
+  ): Promise<void> {
+    await api.patch<void>(`${base(barbershopId)}/${id}/cancel`, reason ? { reason } : {});
+  },
+
+  /** Histórico de cobranças (`SubscriptionCharge`) da assinatura de um cliente. */
+  async getClientCharges(
+    barbershopId: string,
+    clientId: string,
+  ): Promise<SubscriptionCharge[]> {
+    const { data } = await api.get<SubscriptionCharge[]>(
+      `${base(barbershopId)}/clients/${clientId}/charges`,
+    );
+    return data;
   },
 
   async getCalendar(

@@ -7,6 +7,7 @@ import { appointmentsService } from "@/services/appointments.service";
 import type {
   Appointment,
   CreateAppointmentPayload,
+  RescheduleAppointmentPayload,
   UpdatableAppointmentStatus,
 } from "@/types/appointment.types";
 
@@ -90,7 +91,9 @@ export function useAppointments(barbershopId: string | undefined) {
             ? "Agendamento confirmado."
             : status === "COMPLETED"
               ? "Atendimento concluído."
-              : "Agendamento cancelado.",
+              : status === "NO_SHOW"
+                ? "Falta registrada."
+                : "Agendamento cancelado.",
         );
         return updated;
       } catch (err) {
@@ -122,9 +125,8 @@ export function useAppointments(barbershopId: string | undefined) {
   );
 
   /**
-   * Atualização puramente local (otimista) usada pelo drag-drop do kanban.
-   * O backend ainda não expõe PATCH para mudar `scheduledAt`/`employeeId`,
-   * então a mudança não persiste no refresh — é apenas visual.
+   * Atualização puramente local, usada para enriquecer um agendamento recém
+   * criado (client/employee) sem esperar um refetch completo da lista.
    */
   const replaceLocal = useCallback(
     (id: string, partial: Partial<Appointment>) => {
@@ -135,6 +137,37 @@ export function useAppointments(barbershopId: string | undefined) {
     [],
   );
 
+  /**
+   * Persiste o reagendamento (drag-and-drop): `PATCH /appointments/:id/reschedule`.
+   * A checagem de conflito de horário é feita no backend (mesma lógica de
+   * `GET /availability`) — em caso de 409/422 o request falha e quem chamou
+   * (useSchedule) é responsável por reverter o overlay visual otimista.
+   */
+  const reschedule = useCallback(
+    async (id: string, payload: RescheduleAppointmentPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await appointmentsService.reschedule(
+          barbershopId,
+          id,
+          payload,
+        );
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, ...updated } : a)),
+        );
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Falha ao reagendar. O horário foi restaurado.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
   return {
     appointments,
     isLoading,
@@ -142,6 +175,7 @@ export function useAppointments(barbershopId: string | undefined) {
     updateStatus,
     cancel,
     replaceLocal,
+    reschedule,
     refetch,
   };
 }

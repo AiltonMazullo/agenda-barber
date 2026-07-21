@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PageHeader, SelectField, DatePickerField } from "@/components/shared";
+import { FinancialEntriesList } from "@/components/financial/FinancialEntriesList";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useFinancialBalance } from "@/hooks/useFinancialBalance";
@@ -90,6 +91,20 @@ export default function FinanceiroPage() {
           <BalanceCard label="Balanço" value={balance.balance} tone="brand" loading={isLoading} />
           <BalanceCard label="Balanço projetado" value={balance.projectedBalance} tone="brand" loading={isLoading} />
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Movimentações do período
+        </p>
+        <FinancialEntriesList
+          barbershopId={barbershop?.id}
+          branchId={branchId || undefined}
+          dueDateFrom={dueDateFrom?.toISOString()}
+          dueDateTo={dueDateTo?.toISOString()}
+          readOnly
+          hideTotals
+        />
       </div>
     </div>
   );

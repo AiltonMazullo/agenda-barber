@@ -6,6 +6,7 @@ export const STATUS_LABEL: Record<AppointmentStatus, string> = {
   CONFIRMED: "Confirmado",
   COMPLETED: "Concluído",
   CANCELLED: "Cancelado",
+  NO_SHOW: "Faltou",
 };
 
 export const STATUS_TONE: Record<AppointmentStatus, Tone> = {
@@ -13,6 +14,7 @@ export const STATUS_TONE: Record<AppointmentStatus, Tone> = {
   CONFIRMED: "info",
   COMPLETED: "success",
   CANCELLED: "danger",
+  NO_SHOW: "danger",
 };
 
 export function isSameDay(a: Date, b: Date): boolean {

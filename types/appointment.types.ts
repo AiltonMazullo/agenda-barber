@@ -8,7 +8,8 @@ export type AppointmentStatus =
   | "PENDING"
   | "CONFIRMED"
   | "CANCELLED"
-  | "COMPLETED";
+  | "COMPLETED"
+  | "NO_SHOW";
 
 /** Quem criou o agendamento: o cliente (reserva online) ou a equipe (painel). */
 export type AppointmentOrigin = "CLIENT" | "INTERNAL";
@@ -83,4 +84,11 @@ export type UpdatableAppointmentStatus = Exclude<AppointmentStatus, "PENDING">;
 
 export interface UpdateAppointmentStatusPayload {
   status: UpdatableAppointmentStatus;
+}
+
+/** Body de `PATCH /appointments/:id/reschedule` — usado pelo drag-and-drop da agenda. */
+export interface RescheduleAppointmentPayload {
+  /** ISO datetime string (UTC). */
+  scheduledAt: string;
+  employeeId?: string;
 }

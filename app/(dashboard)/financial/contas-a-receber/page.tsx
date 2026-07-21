@@ -5,9 +5,12 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/shared";
 import { FinancialEntriesList } from "@/components/financial/FinancialEntriesList";
 import { useAuth } from "@/hooks/useAuth";
+import { useFinancialBalance } from "@/hooks/useFinancialBalance";
+import { formatBRL } from "@/utils/format";
 
 export default function ContasAReceberPage() {
   const { barbershop } = useAuth();
+  const { balance, isLoading: isLoadingBalance } = useFinancialBalance(barbershop?.id);
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
@@ -24,6 +27,24 @@ export default function ContasAReceberPage() {
           </Link>
         }
       />
+
+      <div className="grid grid-cols-2 gap-3 max-w-md">
+        <div className="rounded-xl border border-border bg-surface-raised p-4">
+          <p className="text-xs text-muted-foreground">Taxas</p>
+          <p className="text-lg font-bold text-foreground">
+            {isLoadingBalance ? "—" : formatBRL(balance.totalFeesInCents / 100)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface-raised p-4">
+          <p className="text-xs text-muted-foreground">Total com taxas</p>
+          <p className="text-lg font-bold text-brand">
+            {isLoadingBalance
+              ? "—"
+              : formatBRL((balance.receivable.total + balance.totalFeesInCents) / 100)}
+          </p>
+        </div>
+      </div>
+
       <FinancialEntriesList
         barbershopId={barbershop?.id}
         type="RECEIVABLE"

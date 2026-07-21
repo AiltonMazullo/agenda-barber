@@ -7,6 +7,8 @@ import { cashRegistersService } from "@/services/cash-registers.service";
 import type {
   AddTransactionsPayload,
   CashRegister,
+  ClosePayload,
+  UpdateCashRegisterPayload,
 } from "@/types/cash-register.types";
 
 export function useCashRegisters(barbershopId: string | undefined) {
@@ -111,13 +113,24 @@ export function useCashRegisters(barbershopId: string | undefined) {
   );
 
   const close = useCallback(
-    async (id: string) => {
+    async (id: string, payload?: ClosePayload) => {
       if (!barbershopId) return null;
       try {
-        const closed = await cashRegistersService.close(barbershopId, id);
+        const closed = await cashRegistersService.close(
+          barbershopId,
+          id,
+          payload,
+        );
         setRegisters((prev) =>
           prev.map((r) =>
-            r.id === id ? { ...r, closedAt: closed.closedAt } : r,
+            r.id === id
+              ? {
+                  ...r,
+                  closedAt: closed.closedAt,
+                  countedCashInCents: closed.countedCashInCents,
+                  cashDifferenceInCents: closed.cashDifferenceInCents,
+                }
+              : r,
           ),
         );
         toast.success("Caixa fechado.");
@@ -125,6 +138,76 @@ export function useCashRegisters(barbershopId: string | undefined) {
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Falha ao fechar caixa.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  const update = useCallback(
+    async (id: string, payload: UpdateCashRegisterPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await cashRegistersService.update(
+          barbershopId,
+          id,
+          payload,
+        );
+        setRegisters((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, ...updated } : r)),
+        );
+        toast.success("Caixa atualizado.");
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao editar caixa.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  const reopen = useCallback(
+    async (id: string) => {
+      if (!barbershopId) return null;
+      try {
+        const reopened = await cashRegistersService.reopen(barbershopId, id);
+        setRegisters((prev) =>
+          prev.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  closedAt: reopened.closedAt,
+                  countedCashInCents: reopened.countedCashInCents,
+                  cashDifferenceInCents: reopened.cashDifferenceInCents,
+                }
+              : r,
+          ),
+        );
+        toast.success("Caixa reaberto.");
+        return reopened;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao reabrir caixa.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  const getClosingSummary = useCallback(
+    async (id: string) => {
+      if (!barbershopId) return null;
+      try {
+        return await cashRegistersService.getClosingSummary(barbershopId, id);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Falha ao carregar dados de fechamento.",
         );
         return null;
       }
@@ -156,7 +239,10 @@ export function useCashRegisters(barbershopId: string | undefined) {
     create,
     getById,
     addTransactions,
+    update,
     close,
+    reopen,
+    getClosingSummary,
     remove,
   };
 }

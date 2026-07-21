@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,34 +14,48 @@ import {
   Calendar,
   Receipt,
   DollarSign,
-  CreditCard,
   BadgeCheck,
   Inbox,
   StickyNote,
+  Ban,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ConfirmDialog, Loading } from "@/components/shared";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ConfirmDialog, Loading, SelectField } from "@/components/shared";
 import { DialogEditarCliente } from "@/components/clients/DialogEditarCliente";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useDeactivatedClients } from "@/hooks/useDeactivatedClients";
-import { formatDate, formatTime } from "@/utils/format";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { formatBRL, formatDate, formatTime } from "@/utils/format";
+import { comandasService } from "@/services/comandas.service";
+import { subscriptionsService } from "@/services/subscriptions.service";
+import { CANCEL_REASON_OPTIONS, type CancelReasonCode } from "@/types/pre-cancelled-client.types";
 import type { UpdateClientPayload } from "@/types/client.types";
 import type { AppointmentStatus } from "@/types/appointment.types";
+import type { Comanda } from "@/types/orders.types";
+import type { SubscriptionCharge } from "@/types/subscription.types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
   CONFIRMED: "Confirmado",
   COMPLETED: "Concluído",
   CANCELLED: "Cancelado",
+  NO_SHOW: "Faltou",
 };
 const STATUS_TONE: Record<AppointmentStatus, string> = {
   PENDING: "bg-warning/15 text-warning-foreground",
   CONFIRMED: "bg-brand/15 text-brand",
   COMPLETED: "bg-success/15 text-success-foreground",
   CANCELLED: "bg-danger/15 text-danger-foreground",
+  NO_SHOW: "bg-danger/15 text-danger-foreground",
 };
 
 function initials(name: string): string {
@@ -66,11 +81,22 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const { clients, isLoading, update, updateNotes } = useClients(barbershop?.id);
   const { appointments } = useAppointments(barbershop?.id);
   const { deactivate, isDeactivated } = useDeactivatedClients(barbershop?.id);
+  const { subscriptions, cancel: cancelSubscription } = useSubscriptions(
+    barbershop?.id,
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDesativar, setConfirmDesativar] = useState(false);
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const [comandas, setComandas] = useState<Comanda[]>([]);
+  const [comandasLoading, setComandasLoading] = useState(true);
+  const [charges, setCharges] = useState<SubscriptionCharge[]>([]);
+  const [chargesLoading, setChargesLoading] = useState(true);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<CancelReasonCode | "">("");
+  const [cancelling, setCancelling] = useState(false);
 
   const client = useMemo(
     () => clients.find((c) => c.id === id) ?? null,
@@ -88,6 +114,53 @@ export default function ClienteDetalhePage({ params }: PageProps) {
         ),
     [appointments, id],
   );
+
+  const activeSubscription = useMemo(
+    () =>
+      subscriptions.find((s) => s.clientId === id && s.status === "ACTIVE") ??
+      null,
+    [subscriptions, id],
+  );
+
+  useEffect(() => {
+    if (!barbershop?.id) return;
+    let active = true;
+    setComandasLoading(true);
+    comandasService
+      .list(barbershop.id, { clientId: id })
+      .then((data) => {
+        if (active) setComandas(data);
+      })
+      .catch(() => {
+        if (active) toast.error("Falha ao carregar comandas do cliente.");
+      })
+      .finally(() => {
+        if (active) setComandasLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [barbershop?.id, id]);
+
+  useEffect(() => {
+    if (!barbershop?.id) return;
+    let active = true;
+    setChargesLoading(true);
+    subscriptionsService
+      .getClientCharges(barbershop.id, id)
+      .then((data) => {
+        if (active) setCharges(data);
+      })
+      .catch(() => {
+        if (active) toast.error("Falha ao carregar cobranças do cliente.");
+      })
+      .finally(() => {
+        if (active) setChargesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [barbershop?.id, id]);
 
   async function handleSaveEdit(cid: string, payload: UpdateClientPayload) {
     await update(cid, payload);
@@ -107,6 +180,17 @@ export default function ClienteDetalhePage({ params }: PageProps) {
     deactivate(client.id);
     toast.success("Cliente desativado.");
     router.push("/clients");
+  }
+
+  async function handleCancelSubscription() {
+    if (!activeSubscription || !cancelReason) return;
+    setCancelling(true);
+    const ok = await cancelSubscription(activeSubscription.id, cancelReason);
+    setCancelling(false);
+    if (ok) {
+      setCancelDialogOpen(false);
+      setCancelReason("");
+    }
   }
 
   if (isLoading) {
@@ -275,10 +359,6 @@ export default function ClienteDetalhePage({ params }: PageProps) {
               <BadgeCheck className="size-3.5" />
               Assinatura
             </TabsTrigger>
-            <TabsTrigger value="cartoes">
-              <CreditCard className="size-3.5" />
-              Cartões
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="agendamentos" className="pt-3">
@@ -322,16 +402,131 @@ export default function ClienteDetalhePage({ params }: PageProps) {
           </TabsContent>
 
           <TabsContent value="comandas" className="pt-3">
-            <EmptyTab message="Nenhuma comanda vinculada a este cliente." />
+            {comandasLoading ? (
+              <Loading label="Carregando comandas" />
+            ) : comandas.length === 0 ? (
+              <EmptyTab message="Nenhuma comanda vinculada a este cliente." />
+            ) : (
+              <div className="space-y-2">
+                {comandas.map((c) => {
+                  const totalInCents = c.itens.reduce(
+                    (sum, item) => sum + item.quantidade * item.valorUnitarioInCents,
+                    0,
+                  );
+                  return (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3"
+                    >
+                      <Receipt className="size-4 text-brand shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          Comanda #{c.numero}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(c.createdAt)} • {formatBRL(totalInCents / 100)}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                          c.status === "ABERTA"
+                            ? "bg-brand/15 text-brand"
+                            : c.status === "FECHADA"
+                              ? "bg-success/15 text-success-foreground"
+                              : "bg-danger/15 text-danger-foreground"
+                        }`}
+                      >
+                        {c.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
+
           <TabsContent value="financeiro" className="pt-3">
-            <EmptyTab message="Nenhum lançamento financeiro para este cliente." />
+            {chargesLoading ? (
+              <Loading label="Carregando cobranças" />
+            ) : charges.length === 0 ? (
+              <EmptyTab message="Nenhum lançamento financeiro para este cliente." />
+            ) : (
+              <div className="space-y-2">
+                {charges.map((charge) => (
+                  <div
+                    key={charge.id}
+                    className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3"
+                  >
+                    <DollarSign className="size-4 text-brand shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {charge.subscription.plan.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Venc. {formatDate(charge.dueDate)}
+                        {charge.paidAt ? ` • Pago em ${formatDate(charge.paidAt)}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground shrink-0">
+                      {formatBRL(charge.amountInCents / 100)}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                        charge.status === "PAID"
+                          ? "bg-success/15 text-success-foreground"
+                          : charge.status === "OVERDUE" || charge.status === "FAILED"
+                            ? "bg-danger/15 text-danger-foreground"
+                            : "bg-warning/15 text-warning-foreground"
+                      }`}
+                    >
+                      {charge.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
+
           <TabsContent value="assinatura" className="pt-3">
-            <EmptyTab message="Este cliente não possui assinatura ativa." />
-          </TabsContent>
-          <TabsContent value="cartoes" className="pt-3">
-            <EmptyTab message="Nenhum cartão cadastrado para este cliente." />
+            {!activeSubscription ? (
+              <EmptyTab message="Este cliente não possui assinatura ativa." />
+            ) : (
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {activeSubscription.plan.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Ativo desde {formatDate(activeSubscription.startedAt)}
+                    </p>
+                  </div>
+                  <span className="text-base font-bold text-foreground">
+                    {formatBRL(
+                      (activeSubscription.priceOverrideInCents ??
+                        activeSubscription.plan.priceInCents) / 100,
+                    )}
+                    <span className="text-xs font-normal text-muted-foreground">/mês</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-sm border-t border-border-subtle pt-3">
+                  <span className="text-muted-foreground">Dia de cobrança</span>
+                  <span className="text-foreground">
+                    {activeSubscription.billingDay ?? "—"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCancelDialogOpen(true)}
+                  className="w-full h-9 rounded-md border border-danger/30 bg-transparent text-sm font-semibold text-danger-foreground hover:bg-danger/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Ban className="size-3.5" />
+                  Cancelar plano atual
+                </button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -352,6 +547,49 @@ export default function ClienteDetalhePage({ params }: PageProps) {
         tone="danger"
         onConfirm={doDesativar}
       />
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
+            <DialogTitle className="text-base font-bold">
+              Cancelar plano atual
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Informe o motivo do cancelamento da assinatura de{" "}
+              <span className="font-semibold text-foreground">{client.name}</span>.
+            </p>
+            <SelectField
+              id="cancelReason"
+              label="Motivo do cancelamento"
+              value={cancelReason}
+              onChange={(v) => setCancelReason(v as CancelReasonCode)}
+              placeholder="Selecione o motivo"
+              options={CANCEL_REASON_OPTIONS}
+            />
+          </div>
+
+          <div className="px-6 pb-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setCancelDialogOpen(false)}
+              className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
+            >
+              Voltar
+            </button>
+            <button
+              type="button"
+              disabled={!cancelReason || cancelling}
+              onClick={() => void handleCancelSubscription()}
+              className="h-9 px-5 rounded-md text-sm font-bold bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-60"
+            >
+              {cancelling ? "Cancelando…" : "Confirmar cancelamento"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

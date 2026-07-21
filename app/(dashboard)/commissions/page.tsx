@@ -36,6 +36,20 @@ export default function ComissoesPage() {
     );
   }
 
+  // Total bruto = comissões (avulso + produto + clube) + bônus + vale, com os
+  // valores de bônus/vale reavaliados a cada digitação (antes de confirmar).
+  // Total líquido = bruto − vale (adiantamento já recebido pelo profissional),
+  // mesma regra usada por `generateCommissions()` no backend (§4.6).
+  function totalBrutoInCents(r: CommissionResultRow): number {
+    return (
+      r.servicesAvulsoInCents +
+      r.servicesProdutoInCents +
+      r.servicesClubInCents +
+      Math.round(parseBRL(bonusInputs[r.employeeId] ?? "0") * 100) +
+      Math.round(parseBRL(valeInputs[r.employeeId] ?? "0") * 100)
+    );
+  }
+
   async function calculate() {
     if (!barbershop?.id || !periodStart || !periodEnd) return;
     setLoading(true);
@@ -111,6 +125,7 @@ export default function ComissoesPage() {
                 <th className="px-4 py-3">Bônus</th>
                 <th className="px-4 py-3">Vales</th>
                 <th className="px-4 py-3">Total bruto</th>
+                <th className="px-4 py-3">Total líquido</th>
               </tr>
             </thead>
             <tbody>
@@ -147,11 +162,11 @@ export default function ComissoesPage() {
                     />
                   </td>
                   <td className="px-4 py-3 font-bold">
+                    {formatBRL(totalBrutoInCents(r) / 100)}
+                  </td>
+                  <td className="px-4 py-3 font-bold">
                     {formatBRL(
-                      (r.servicesAvulsoInCents +
-                        r.servicesProdutoInCents +
-                        r.servicesClubInCents +
-                        Math.round(parseBRL(bonusInputs[r.employeeId] ?? "0") * 100) +
+                      (totalBrutoInCents(r) -
                         Math.round(parseBRL(valeInputs[r.employeeId] ?? "0") * 100)) /
                         100,
                     )}

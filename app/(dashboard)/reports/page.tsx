@@ -227,10 +227,18 @@ function RelFaturamentoVisao() {
             </div>
             <div className="rounded-lg bg-surface-base border border-border-subtle p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Assinaturas ativas
+                Totalizado assinatura gateway
               </p>
               <p className="text-xl font-bold text-foreground mt-1">
-                {brl(data.totalAssinaturasInCents)}
+                {brl(data.totalAssinaturaGatewayInCents)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-surface-base border border-border-subtle p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Totalizado assinatura manual
+              </p>
+              <p className="text-xl font-bold text-foreground mt-1">
+                {brl(data.totalAssinaturaManualInCents)}
               </p>
             </div>
             <div className="rounded-lg bg-surface-base border border-border-subtle p-4">
@@ -635,6 +643,34 @@ function RelTicketMedioProfissional() {
   );
 }
 
+function RelTicketMedioAgendamento() {
+  const { barbershopId, rf, data, isLoading } = useReportPage(
+    reportsService.ticketMedioPorAgendamento,
+  );
+  return (
+    <div className="space-y-4">
+      <Filters barbershopId={barbershopId} fields={["period", "branch", "employee"]} rf={rf} />
+      {isLoading ? (
+        <LoadingState />
+      ) : !data ? (
+        <EmptyState message="Sem dados." />
+      ) : (
+        <KpiCards
+          items={[
+            { label: "Faturamento da empresa", value: brl(data.faturamentoInCents) },
+            { label: "Qtde. de atendimentos", value: data.quantidadeAtendimentos },
+            {
+              label: "Ticket médio",
+              value: brl(data.ticketMedioInCents),
+              tone: "success",
+            },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
 function RelTicketMedioClientesDistintos() {
   const { barbershopId, rf, data, isLoading } = useReportPage(
     reportsService.ticketMedioClientesDistintos,
@@ -714,7 +750,13 @@ function RelComissoesProdutos() {
             r.categoria ?? "—",
             r.quantidade,
             brl(r.totalInCents),
-            "Não configurada",
+            r.commissionPercent === null ? (
+              "Não configurada"
+            ) : (
+              <span key="c" className="text-brand font-semibold">
+                {brl(r.comissaoInCents)}
+              </span>
+            ),
           ]}
         />
       )}
@@ -965,15 +1007,51 @@ function RelAssinaturasNovas() {
 }
 
 function RelAssinaturasPorOrigem() {
-  const { barbershopId, rf, data, isLoading } = useReportPage(reportsService.assinaturasPorOrigem);
+  const { barbershop } = useAuth();
+  const rf = useReportFilters();
+  const [groupBy, setGroupBy] = useState<"origin" | "vendedor">("origin");
+  const barbershopId = barbershop?.id;
+  const filtersKey = JSON.stringify(rf.filters);
+  const { data, isLoading } = useReportData(
+    barbershopId
+      ? () => reportsService.assinaturasPorOrigem(barbershopId, { ...rf.filters, groupBy })
+      : null,
+    [barbershopId, filtersKey, groupBy],
+  );
   return (
     <div className="space-y-4">
       <Filters barbershopId={barbershopId} fields={["period"]} rf={rf} />
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Agrupar por
+        </span>
+        <div className="flex rounded-md border border-border-subtle overflow-hidden">
+          {(
+            [
+              { key: "origin" as const, label: "Canal" },
+              { key: "vendedor" as const, label: "Vendedor" },
+            ]
+          ).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setGroupBy(opt.key)}
+              className={
+                groupBy === opt.key
+                  ? "px-3 py-1.5 text-xs font-semibold bg-brand text-brand-foreground"
+                  : "px-3 py-1.5 text-xs font-semibold bg-surface-base text-muted-foreground hover:text-foreground"
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {isLoading ? (
         <LoadingState />
       ) : (
         <ReportTable
-          columns={["Origem", "Quantidade", "Total"]}
+          columns={[groupBy === "vendedor" ? "Vendedor" : "Origem", "Quantidade", "Total"]}
           rows={data ?? []}
           keyFn={(r) => r.origem}
           emptyMessage="Sem assinaturas no período."
@@ -1241,9 +1319,10 @@ function renderSubReport(key: string): React.ReactNode {
     case "estoque_atual":
       return <RelEstoqueAtual />;
     case "tm_atendimento":
-    case "tm_agendamento":
     case "tm_profissional":
       return <RelTicketMedioProfissional />;
+    case "tm_agendamento":
+      return <RelTicketMedioAgendamento />;
     case "tm_clientes_distintos":
     case "tm_cliente":
       return <RelTicketMedioClientesDistintos />;

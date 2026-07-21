@@ -17,8 +17,10 @@ export function ResumoDia({
   comandasAbertas?: number;
 }) {
   const total = agendamentos.length;
-  // Sem dados de assinatura ainda: assinantes = 0; o restante é não assinante.
-  const assinantes = 0;
+  // "Assinante" = tem contrato de assinatura (ativo ou inadimplente) — mesmo
+  // dado já resolvido por `useSchedule` (via `subscriptionsService.getContracts`)
+  // e carregado em cada `AgendamentoVM.assinante`.
+  const assinantes = agendamentos.filter((a) => a.assinante !== null).length;
   const naoAssinantes = total - assinantes;
 
   return (

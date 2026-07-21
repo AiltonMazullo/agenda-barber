@@ -18,7 +18,9 @@ import {
   UserPlus,
   UserX,
   Cake,
+  Download,
 } from "lucide-react";
+import { exportToCsv } from "@/utils/csv-export";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -278,7 +280,9 @@ function DialogEditarCliente({
 
 function ClientesContent() {
   const { barbershop } = useAuth();
-  const { clients, isLoading, create, update } = useClients(barbershop?.id);
+  const { clients, isLoading, create, update, uploadPhoto } = useClients(
+    barbershop?.id,
+  );
   const { appointments } = useAppointments(barbershop?.id);
   const { ids: deactivatedIds, deactivate } = useDeactivatedClients(
     barbershop?.id,
@@ -378,6 +382,34 @@ function ClientesContent() {
     toast.success("Cliente desativado.");
   }
 
+  function handleExportCsv() {
+    exportToCsv(
+      "clientes",
+      filtered.map((c) => ({
+        nome: c.name,
+        email: c.email,
+        telefone: c.phone ?? "",
+        atendimentosConcluidos: c.stats.completedAppointments,
+        totalAtendimentos: c.stats.totalAppointments,
+        totalGasto: c.stats.totalSpent.toFixed(2),
+        ultimaVisita: c.stats.lastVisit ? formatDate(c.stats.lastVisit) : "",
+        proximaVisita: c.stats.upcomingVisit
+          ? formatDate(c.stats.upcomingVisit)
+          : "",
+      })),
+      [
+        { key: "nome", label: "Nome" },
+        { key: "email", label: "E-mail" },
+        { key: "telefone", label: "Telefone" },
+        { key: "atendimentosConcluidos", label: "Atendimentos concluídos" },
+        { key: "totalAtendimentos", label: "Total de atendimentos" },
+        { key: "totalGasto", label: "Total gasto (R$)" },
+        { key: "ultimaVisita", label: "Última visita" },
+        { key: "proximaVisita", label: "Próxima visita" },
+      ],
+    );
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
@@ -385,6 +417,14 @@ function ClientesContent() {
         subtitle="Base de clientes da barbearia"
         actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
+            >
+              <Download className="size-3.5" />
+              CSV
+            </button>
             <Link
               href="/clients/desativados"
               className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
@@ -620,6 +660,7 @@ function ClientesContent() {
         open={novoDialog}
         onOpenChange={setNovoDialog}
         onCreate={handleCreate}
+        onUploadPhoto={uploadPhoto}
       />
 
       <ConfirmDialog

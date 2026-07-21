@@ -8,6 +8,7 @@ import {
   DialogAbrirCaixa,
   CaixaCard,
   DialogDetalheCaixa,
+  DialogEditarCaixa,
   BranchSelect,
 } from "@/components/cashier";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,14 +16,29 @@ import { useBranches } from "@/hooks/useBranches";
 import { useCashRegisters } from "@/hooks/useCashRegisters";
 import { useCaixaDetalhe } from "@/hooks/useCaixaDetalhe";
 import { OPENING_TRANSACTION_NAME } from "@/types/cash-register.types";
+import type { CashRegister } from "@/types/cash-register.types";
 
 export default function CaixaPage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
   const crud = useCashRegisters(barbershop?.id);
-  const { registers, isLoading, create, addTransactions } = crud;
+  const { registers, isLoading, create, addTransactions, update } = crud;
 
   const detalhe = useCaixaDetalhe(crud);
+
+  const [editTarget, setEditTarget] = useState<CashRegister | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  async function handleEditConfirm(branchId: string) {
+    if (!editTarget) return;
+    setEditing(true);
+    try {
+      const updated = await update(editTarget.id, { branchId });
+      if (updated) setEditTarget(null);
+    } finally {
+      setEditing(false);
+    }
+  }
 
   // ─── Filtro por filial (inicia na filial principal — 1ª da lista) ──────────
   // Quando houver login de funcionário, trocar para a filial atribuída ao
@@ -169,6 +185,7 @@ export default function CaixaPage() {
                 register={r}
                 onClick={() => void detalhe.openDetalhe(r.id)}
                 onExpand={() => void crud.getById(r.id)}
+                onEdit={() => setEditTarget(r)}
               />
             ))}
           </div>
@@ -193,8 +210,20 @@ export default function CaixaPage() {
         loading={detalhe.loading}
         busy={detalhe.busy}
         onAddTransaction={(input) => void detalhe.addTransaction(input)}
-        onClose={() => void detalhe.handleClose()}
+        onClose={(countedCashInCents) =>
+          void detalhe.handleClose({ countedCashInCents })
+        }
         onRemove={() => void detalhe.handleRemove()}
+        fetchClosingSummary={detalhe.fetchClosingSummary}
+      />
+
+      <DialogEditarCaixa
+        open={editTarget !== null}
+        onOpenChange={(v) => !v && setEditTarget(null)}
+        register={editTarget}
+        branches={branches}
+        busy={editing}
+        onConfirm={(branchId) => void handleEditConfirm(branchId)}
       />
     </div>
   );

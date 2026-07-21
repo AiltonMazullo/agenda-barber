@@ -60,6 +60,22 @@ export interface SubscriptionContractsResult {
   totals: { gateway: number; manual: number; total: number };
 }
 
+export interface SubscriptionCharge {
+  id: string;
+  subscriptionId: string;
+  dueDate: string;
+  paidAt: string | null;
+  amountInCents: number;
+  status: "PENDING" | "PAID" | "OVERDUE" | "FAILED";
+  gatewayChargeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  subscription: {
+    id: string;
+    plan: { id: string; name: string };
+  };
+}
+
 export interface ServiceUsage {
   serviceId: string;
   monthlyLimit: number;

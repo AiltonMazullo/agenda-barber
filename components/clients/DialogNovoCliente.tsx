@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect } from "react";
-import { X, Eye, EyeOff } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { X, Eye, EyeOff, Camera, User } from "lucide-react";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import {
   toCreateClientPayload,
   type ClientFormValues,
 } from "@/schemas/client.schema";
-import type { CreateClientPayload } from "@/types/client.types";
+import type { Client, CreateClientPayload } from "@/types/client.types";
 
 function FieldLabel({
   children,
@@ -47,12 +48,21 @@ export function DialogNovoCliente({
   open,
   onOpenChange,
   onCreate,
+  onUploadPhoto,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreate: (payload: CreateClientPayload) => Promise<unknown>;
+  onCreate: (payload: CreateClientPayload) => Promise<Client | null>;
+  /** Upload real da foto (rota dedicada) — chamado após o cliente ser criado. */
+  onUploadPhoto?: (clientId: string, file: File) => Promise<unknown>;
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  // Estado (não ref) de propósito: `onSubmit` lê este valor dentro do handler
+  // de submit do react-hook-form, e ler `.current` de uma ref ali dispara o
+  // lint react-hooks/refs (falso positivo de "ler ref durante o render").
+  const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -77,6 +87,8 @@ export function DialogNovoCliente({
       uf: "",
       number: "",
       complement: "",
+      notes: "",
+      remindInSchedule: false,
     },
   });
 
@@ -84,6 +96,8 @@ export function DialogNovoCliente({
     if (open) {
       reset();
       setShowPassword(false);
+      setPendingPhoto(null);
+      setPhotoPreview(null);
     }
   }, [open, reset]);
 
@@ -97,9 +111,31 @@ export function DialogNovoCliente({
     if (addr.uf) setValue("uf", addr.uf as ClientFormValues["uf"]);
   }
 
+  function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Use uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("A foto deve ter no máximo 2MB.");
+      return;
+    }
+    setPendingPhoto(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
   async function onSubmit(values: ClientFormValues) {
     const created = await onCreate(toCreateClientPayload(values));
-    if (created) onOpenChange(false);
+    if (!created) return;
+    if (pendingPhoto && onUploadPhoto) {
+      await onUploadPhoto(created.id, pendingPhoto);
+    }
+    onOpenChange(false);
   }
 
   return (
@@ -122,6 +158,42 @@ export function DialogNovoCliente({
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+            {/* Foto do cliente */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="size-16 rounded-full border border-border bg-surface-base bg-cover bg-center grid place-items-center text-muted-foreground hover:border-brand/40 transition-colors overflow-hidden shrink-0"
+                style={
+                  photoPreview
+                    ? { backgroundImage: `url(${photoPreview})` }
+                    : undefined
+                }
+              >
+                {!photoPreview && <User className="size-6" />}
+              </button>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+                >
+                  <Camera className="size-3.5" />
+                  {photoPreview ? "Trocar foto" : "Adicionar foto"}
+                </button>
+                <p className="text-[10px] text-text-faint">
+                  JPG/PNG/WebP até 2MB
+                </p>
+              </div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
+            </div>
+
             {/* Dados pessoais */}
             <div className="space-y-1.5">
               <FieldLabel required>Nome</FieldLabel>
@@ -364,6 +436,35 @@ export function DialogNovoCliente({
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Notas e preferências */}
+            <div className="pt-2 border-t border-border-subtle space-y-3">
+              <div className="space-y-1.5 mt-3">
+                <FieldLabel>Notas do cliente</FieldLabel>
+                <textarea
+                  {...register("notes")}
+                  placeholder="Anotações internas visíveis só para a equipe..."
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-surface-base text-sm text-foreground placeholder:text-text-faint p-2 outline-none focus:border-brand transition-colors resize-none"
+                />
+              </div>
+
+              <Controller
+                control={control}
+                name="remindInSchedule"
+                render={({ field }) => (
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={field.value ?? false}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      className="size-4 rounded border-border accent-brand"
+                    />
+                    Lembrar na agenda
+                  </label>
+                )}
+              />
             </div>
           </div>
 

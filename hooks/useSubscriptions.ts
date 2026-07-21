@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import type { Subscription } from "@/types/subscription.types";
+import type { CancelReasonCode } from "@/types/pre-cancelled-client.types";
 
 function startOfMonth(): Date {
   const d = new Date();
@@ -36,10 +37,10 @@ export function useSubscriptions(barbershopId: string | undefined) {
   }, [barbershopId, fetchSubscriptions]);
 
   const cancel = useCallback(
-    async (id: string) => {
+    async (id: string, reason?: CancelReasonCode) => {
       if (!barbershopId) return false;
       try {
-        await subscriptionsService.cancel(barbershopId, id);
+        await subscriptionsService.cancel(barbershopId, id, reason);
         toast.success("Assinatura cancelada.");
         await fetchSubscriptions();
         return true;
