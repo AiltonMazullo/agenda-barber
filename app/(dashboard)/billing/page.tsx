@@ -17,6 +17,7 @@ import {
   PageHeader,
   StatusBadge,
 } from "@/components/shared";
+import { BillingProfileForm } from "@/components/subscription/BillingProfileForm";
 import { usePlatformSubscription } from "@/hooks/usePlatformSubscription";
 import { platformSubscriptionService } from "@/services/platform-subscription.service";
 import { formatBRL, formatDate } from "@/utils/format";
@@ -98,6 +99,7 @@ function BillingContent() {
     subscription.status === "TRIALING" ||
     (subscription.status === "CANCELED" && !subscription.isActive) ||
     (subscription.status === "PAST_DUE" && !pendingCharge);
+  const needsBillingProfile = showSubscribeAction && !subscription.billingProfile.complete;
 
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
@@ -165,7 +167,7 @@ function BillingContent() {
             </a>
           )}
 
-          {showSubscribeAction && !pendingCharge && (
+          {showSubscribeAction && !pendingCharge && !needsBillingProfile && (
             <button
               type="button"
               onClick={handleSubscribe}
@@ -197,6 +199,10 @@ function BillingContent() {
             <CheckCircle2 className="size-4" />
             <span>Sua assinatura está em dia.</span>
           </div>
+        )}
+
+        {needsBillingProfile && (
+          <BillingProfileForm profile={subscription.billingProfile} onSaved={() => refetch()} />
         )}
       </div>
 

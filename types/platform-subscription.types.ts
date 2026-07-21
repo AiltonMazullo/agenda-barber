@@ -14,6 +14,19 @@ export interface PlatformSubscriptionCharge {
   invoiceUrl: string | null;
 }
 
+export interface BillingProfile {
+  phone: string;
+  cep: string;
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  uf: string;
+  complete: boolean;
+}
+
+export type BillingProfilePayload = Omit<BillingProfile, "complete">;
+
 export interface PlatformSubscriptionMe {
   status: PlatformSubscriptionStatus;
   /** Já considera trial vigente / assinatura ativa / cancelamento em período de carência — não recalcular no front. */
@@ -23,6 +36,7 @@ export interface PlatformSubscriptionMe {
   price: number;
   nextDueDate: string | null;
   canceledAt: string | null;
+  billingProfile: BillingProfile;
   charges: PlatformSubscriptionCharge[];
 }
 
