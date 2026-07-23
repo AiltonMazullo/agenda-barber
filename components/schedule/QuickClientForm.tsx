@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { User, Phone, Mail, UserPlus, X } from "lucide-react";
+import { User, Phone, Mail, Lock, Cake, UserPlus, X, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { maskPhone } from "@/utils/format";
+import { HOW_MET_OPTIONS } from "@/utils/constants";
 import { toast } from "sonner";
 import type { QuickClientInput } from "./types";
 
@@ -22,6 +23,10 @@ export function QuickClientForm({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
+  const [howMet, setHowMet] = useState("");
 
   function handle() {
     if (name.trim().length < 2) {
@@ -32,10 +37,29 @@ export function QuickClientForm({
       toast.error("Informe um telefone válido.");
       return;
     }
+    if (!email.trim() || !email.includes("@")) {
+      toast.error("Informe um e-mail válido.");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("A senha provisória deve ter ao menos 6 caracteres.");
+      return;
+    }
+    if (!birthDate) {
+      toast.error("Informe a data de nascimento.");
+      return;
+    }
+    if (!howMet) {
+      toast.error("Selecione como o cliente conheceu a empresa.");
+      return;
+    }
     onSubmit({
       name: name.trim(),
       phone: phone.replace(/\D/g, ""),
-      email: email.trim() || undefined,
+      email: email.trim(),
+      password,
+      birthDate: new Date(`${birthDate}T00:00:00`).toISOString(),
+      howMet,
     });
   }
 
@@ -81,11 +105,62 @@ export function QuickClientForm({
           <Input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="E-mail (opcional)"
+            placeholder="E-mail *"
             type="email"
             className={inputClass}
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-text-faint" />
+          <Input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Senha provisória *"
+            type={showPassword ? "text" : "password"}
+            className={`${inputClass} pr-9`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-faint hover:text-foreground transition-colors"
+          >
+            {showPassword ? (
+              <EyeOff className="size-3.5" />
+            ) : (
+              <Eye className="size-3.5" />
+            )}
+          </button>
+        </div>
+        <div className="relative">
+          <Cake className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-text-faint" />
+          <Input
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            type="date"
+            max={new Date().toISOString().slice(0, 10)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <select
+          value={howMet}
+          onChange={(e) => setHowMet(e.target.value)}
+          className="w-full h-9 rounded-md border border-border bg-surface-base text-sm text-foreground px-3 outline-none focus:border-brand transition-colors"
+        >
+          <option value="" disabled>
+            Como conheceu a empresa *
+          </option>
+          {HOW_MET_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
       </div>
 
       <button

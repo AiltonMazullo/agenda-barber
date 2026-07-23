@@ -13,6 +13,7 @@ import type {
 export function useHolidays(barbershopId: string | undefined) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!barbershopId) {
@@ -38,7 +39,11 @@ export function useHolidays(barbershopId: string | undefined) {
     return () => {
       active = false;
     };
-  }, [barbershopId]);
+  }, [barbershopId, refreshKey]);
+
+  const refetch = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   const create = useCallback(
     async (payload: CreateHolidayPayload) => {
@@ -94,5 +99,5 @@ export function useHolidays(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { holidays, isLoading, create, update, remove };
+  return { holidays, isLoading, create, update, remove, refetch };
 }

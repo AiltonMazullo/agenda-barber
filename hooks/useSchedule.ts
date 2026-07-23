@@ -301,20 +301,17 @@ export function useSchedule(
     [create, replaceLocal, updateStatus, employees, clients],
   );
 
-  /**
-   * Criação rápida de cliente (mini-form do dialog). Preenche defaults para os
-   * campos que o backend exige mas não são coletados no cadastro rápido.
-   */
+  /** Criação rápida de cliente (mini-form do dialog de novo agendamento). */
   const createClient = useCallback(
     async (input: QuickClientInput): Promise<Client | null> => {
       const digits = input.phone.replace(/\D/g, "");
       return createClientRaw({
         name: input.name,
-        email: input.email || `${digits || Date.now()}@sememail.cliente`,
-        password: `${Math.random().toString(36).slice(2, 10)}A1!`,
+        email: input.email,
+        password: input.password,
         phone: digits,
-        birthDate: "2000-01-01T00:00:00.000Z",
-        howMet: "Recepção",
+        birthDate: input.birthDate,
+        howMet: input.howMet,
       });
     },
     [createClientRaw],

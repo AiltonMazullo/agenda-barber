@@ -63,4 +63,6 @@ export interface ComandaDraft {
   agendamentos: ComandaAgendamento[];
   itens: ComandaItem[];
   observacoes: string;
+  branchId?: string | null;
+  employeeId?: string | null;
 }

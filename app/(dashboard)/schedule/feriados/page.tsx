@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, CalendarOff } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarOff, Download, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader, EmptyState, ConfirmDialog, Loading } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,12 +10,13 @@ import { useHolidays } from "@/hooks/useHolidays";
 import { DialogFeriado } from "@/components/holidays/DialogFeriado";
 import { HOLIDAY_STATUS_LABEL, HOLIDAY_STATUS_COLOR } from "@/components/holidays/status";
 import { formatIsoDate } from "@/components/holidays/helpers";
+import { exportToCsv } from "@/utils/csv-export";
 import type { Holiday, HolidayPayload } from "@/types/holiday.types";
 
 export default function FeriadosPage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
-  const { holidays, isLoading, create, update, remove } = useHolidays(
+  const { holidays, isLoading, create, update, remove, refetch } = useHolidays(
     barbershop?.id,
   );
 
@@ -42,23 +43,67 @@ export default function FeriadosPage() {
     }
   }
 
+  function handleExportCsv() {
+    exportToCsv(
+      "feriados",
+      sortedHolidays.map((h) => ({
+        nome: h.name,
+        data: formatIsoDate(h.date),
+        status: HOLIDAY_STATUS_LABEL[h.status],
+        horarioInicio: h.startTime ?? "",
+        horarioFim: h.endTime ?? "",
+        filial: h.branchId
+          ? (branchNameById.get(h.branchId) ?? "Filial removida")
+          : "Todas as filiais",
+      })),
+      [
+        { key: "nome", label: "Nome" },
+        { key: "data", label: "Data" },
+        { key: "status", label: "Status" },
+        { key: "horarioInicio", label: "Horário Início" },
+        { key: "horarioFim", label: "Horário Fim" },
+        { key: "filial", label: "Filial" },
+      ],
+    );
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Horário de Feriados"
         subtitle="Cadastre feriados e dias especiais — refletem na agenda e no agendamento do cliente"
         actions={
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setDialog(true);
-            }}
-            className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            Novo Feriado
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              className="size-9 rounded-md border border-border bg-surface-raised text-foreground hover:bg-surface-elevated transition-colors flex items-center justify-center disabled:opacity-50"
+              title="Atualizar lista"
+            >
+              <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={sortedHolidays.length === 0}
+              className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Download className="size-3.5" />
+              CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setDialog(true);
+              }}
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
+            >
+              <Plus className="size-3.5" />
+              Novo Feriado
+            </button>
+          </div>
         }
       />
 

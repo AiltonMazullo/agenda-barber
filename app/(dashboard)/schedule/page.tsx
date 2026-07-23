@@ -46,7 +46,7 @@ import { useBranches } from "@/hooks/useBranches";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useHolidays } from "@/hooks/useHolidays";
 import { useComandas } from "@/hooks/useComandas";
-import type { Comanda, ComandaDraft } from "@/types/orders.types";
+import type { Comanda } from "@/types/orders.types";
 import {
   AgendamentoCard,
   ProfissionalColuna,
@@ -60,6 +60,8 @@ import {
   DialogDetalhe,
   DialogConflito,
   DialogNovaComanda,
+  DialogComandaAgendamento,
+  DialogNovoBloqueio,
   DropdownButton,
   findConflicts,
   isBloqueio,
@@ -76,6 +78,7 @@ import type {
   BloqueioHorario,
   ConflitoDados,
   NovoAgendamentoInput,
+  NovoBloqueioInput,
   SlotSize,
   ViewMode,
 } from "@/components/schedule";
@@ -86,7 +89,11 @@ export default function SchedulePage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
   const { holidays } = useHolidays(barbershop?.id);
-  const { comandas, create: createComanda } = useComandas(barbershop?.id);
+  const {
+    comandas,
+    create: createComanda,
+    setStatus: setComandaStatus,
+  } = useComandas(barbershop?.id);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [filialId, setFilialId] = useState<string>("");
@@ -138,6 +145,10 @@ export default function SchedulePage() {
     novoInicio: number;
   } | null>(null);
   const [dialogComanda, setDialogComanda] = useState(false);
+  const [dialogBloqueio, setDialogBloqueio] = useState(false);
+  const [dialogComandaAgendamento, setDialogComandaAgendamento] = useState(false);
+  const [agSelecionadoComanda, setAgSelecionadoComanda] =
+    useState<AgendamentoVM | null>(null);
 
   const [prefilledHora, setPrefilledHora] = useState<string | undefined>();
   const [prefilledProfId, setPrefilledProfId] = useState<string | undefined>();
@@ -350,55 +361,24 @@ export default function SchedulePage() {
   }, []);
 
   /**
-   * Cria uma comanda do tipo AGENDAMENTO pré-preenchida a partir do
-   * agendamento aberto no modal "Editar agendamento" (item 1.5 da spec) — o
-   * serviço do próprio agendamento já entra como primeiro item da comanda.
+   * Abre o modal de composição de comanda a partir do agendamento selecionado
+   * no detalhe (item 1.5 da spec) — a comanda já vem atrelada a este
+   * agendamento (com o serviço pré-adicionado); o usuário completa com mais
+   * produtos/serviços antes de salvar.
    */
-  const handleAbrirComanda = useCallback(
-    async (ag: AgendamentoVM) => {
-      const servico = servicoById.get(ag.servicoId);
-      if (!servico) {
-        toast.error("Serviço do agendamento não encontrado.");
-        return;
-      }
-      const [ano, mes, dia] = ag.dataIso.split("-").map(Number);
-      const scheduledAt = new Date(
-        Date.UTC(ano, mes - 1, dia, Math.floor(ag.inicioMin / 60), ag.inicioMin % 60),
-      ).toISOString();
+  const handleAbrirComanda = useCallback((ag: AgendamentoVM) => {
+    setAgSelecionadoComanda(ag);
+    setDialogComandaAgendamento(true);
+    setDialogDetalhe(false);
+  }, []);
 
-      const draft: ComandaDraft = {
-        tipo: "AGENDAMENTO",
-        clienteAvulso: null,
-        agendamentos: [
-          {
-            appointmentId: ag.id,
-            clienteNome: ag.cliente,
-            servicoNome: servico.nome,
-            profissionalNome: ag.profissionalNome || null,
-            scheduledAt,
-          },
-        ],
-        itens: [
-          {
-            id: gerarId(),
-            tipo: "SERVICO",
-            refId: servico.id,
-            nome: servico.nome,
-            categoriaNome: null,
-            appointmentId: ag.id,
-            quantidade: 1,
-            valorUnitarioInCents: Math.round(servico.preco * 100),
-          },
-        ],
-        observacoes: "",
-      };
-
+  const handleFecharComandaAgendamento = useCallback(
+    async (draft: Parameters<typeof createComanda>[0]) => {
       const created = await createComanda(draft);
-      if (created) {
-        setDialogDetalhe(false);
-      }
+      if (created) await setComandaStatus(created.id, "FECHADA");
+      return created;
     },
-    [servicoById, createComanda],
+    [createComanda, setComandaStatus],
   );
 
   const handleResizeEnd = useCallback(
@@ -448,6 +428,21 @@ export default function SchedulePage() {
     },
     [],
   );
+
+  const handleSalvarBloqueioModal = useCallback((input: NovoBloqueioInput) => {
+    setBloqueios((prev) => [
+      ...prev,
+      {
+        id: gerarId(),
+        profissionalId: input.profissionalId,
+        inicioMin: input.inicioMin,
+        duracaoMin: input.duracaoMin,
+        motivo: input.motivo || "Bloqueado",
+        tipo: "bloqueio",
+      },
+    ]);
+    toast.success("Horário bloqueado.");
+  }, []);
 
   const handleDeleteBloqueio = useCallback((id: string) => {
     setBloqueios((prev) => prev.filter((b) => b.id !== id));
@@ -794,6 +789,16 @@ export default function SchedulePage() {
               {modoBloquear ? "Bloqueando..." : "Bloquear"}
             </button>
 
+            {/* Novo bloqueio (formulário com aviso de conflito) */}
+            <button
+              type="button"
+              onClick={() => setDialogBloqueio(true)}
+              className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:border-red-500/40 transition-colors flex items-center gap-1.5"
+            >
+              <Ban className="size-3.5 text-muted-foreground" />
+              Novo bloqueio
+            </button>
+
             {/* Nova comanda */}
             <button
               type="button"
@@ -1039,6 +1044,30 @@ export default function SchedulePage() {
         <DialogNovaComanda
           open={dialogComanda}
           onOpenChange={setDialogComanda}
+          barbershopId={barbershop?.id}
+          clients={clients}
+          branches={branches}
+          profissionais={profissionaisTodos}
+          onCreate={createComanda}
+        />
+        <DialogComandaAgendamento
+          key={agSelecionadoComanda?.id ?? "none"}
+          open={dialogComandaAgendamento}
+          onOpenChange={setDialogComandaAgendamento}
+          barbershopId={barbershop?.id}
+          agendamento={agSelecionadoComanda}
+          onSave={createComanda}
+          onFechar={handleFecharComandaAgendamento}
+        />
+        <DialogNovoBloqueio
+          open={dialogBloqueio}
+          onOpenChange={setDialogBloqueio}
+          branches={branches}
+          profissionais={profissionaisTodos}
+          agendamentos={agendamentosTodos}
+          selectedDate={selectedDate}
+          defaultFilialId={filialId}
+          onSave={handleSalvarBloqueioModal}
         />
       </div>
     </>

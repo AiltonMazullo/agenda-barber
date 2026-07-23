@@ -106,7 +106,11 @@ export interface NovoAgendamentoInput {
 export interface QuickClientInput {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
+  password: string;
+  /** ISO 8601. */
+  birthDate: string;
+  howMet: string;
 }
 
 /** Bloqueio de horário — apenas local (sem persistência no backend). */
