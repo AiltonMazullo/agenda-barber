@@ -5,6 +5,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useProducts } from "@/hooks/useProducts";
 import { useServices } from "@/hooks/useServices";
+import { subscriptionsService } from "@/services/subscriptions.service";
 import { comandaTotalInCents } from "@/utils/comanda";
 import { formatDate, formatTime } from "@/utils/format";
 import type { Appointment } from "@/types/appointment.types";
@@ -160,8 +161,38 @@ export function useComandaForm(
   const categoriasServicos = useMemo(() => categoriasDe(servicos), [servicos]);
 
   // ─── Itens ──────────────────────────────────────────────────────────────────
+  /**
+   * Preço de um item de serviço vinculado a agendamento: se o cliente do
+   * agendamento tiver assinatura ativa cobrindo o serviço, sobrescreve pelo
+   * valor calculado (grátis dentro da cota mensal, com desconto depois dela)
+   * em vez do preço cheio do catálogo — único ponto de cobrança de serviço
+   * do sistema é a Comanda, não há preço por agendamento.
+   */
+  const resolveServicoPrice = useCallback(
+    async (input: NovoItemInput): Promise<number> => {
+      const ref = servicos.find((c) => c.id === input.refId);
+      const precoBase = ref?.valorInCents ?? input.valorUnitarioInCents;
+      if (tipo !== "AGENDAMENTO" || !input.appointmentId || !barbershopId) {
+        return precoBase;
+      }
+      const appointment = appointments.find((a) => a.id === input.appointmentId);
+      if (!appointment) return precoBase;
+      try {
+        const pricing = await subscriptionsService.getServicePricing(
+          barbershopId,
+          appointment.clientId,
+          input.refId,
+        );
+        return pricing.covered ? pricing.priceInCents : precoBase;
+      } catch {
+        return precoBase;
+      }
+    },
+    [servicos, tipo, barbershopId, appointments],
+  );
+
   const addItem = useCallback(
-    (input: NovoItemInput): boolean => {
+    async (input: NovoItemInput): Promise<boolean> => {
       const catalogo = input.tipo === "PRODUTO" ? produtos : servicos;
       const ref = catalogo.find((c) => c.id === input.refId);
       if (!ref || input.quantidade < 1) return false;
@@ -173,6 +204,8 @@ export function useComandaForm(
       ) {
         return false;
       }
+      const valorUnitarioInCents =
+        input.tipo === "SERVICO" ? await resolveServicoPrice(input) : input.valorUnitarioInCents;
       setItens((prev) => [
         ...prev,
         {
@@ -183,13 +216,13 @@ export function useComandaForm(
           categoriaNome: ref.categoriaNome,
           appointmentId: tipo === "AVULSA" ? null : input.appointmentId,
           quantidade: input.quantidade,
-          valorUnitarioInCents: input.valorUnitarioInCents,
+          valorUnitarioInCents,
         },
       ]);
       setErro(null);
       return true;
     },
-    [produtos, servicos, tipo, agendamentoOptions],
+    [produtos, servicos, tipo, agendamentoOptions, resolveServicoPrice],
   );
 
   const removeItem = useCallback((id: string) => {

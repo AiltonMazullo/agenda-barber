@@ -3,6 +3,7 @@
 import { Crown, Lock, Repeat2, Layers, CalendarOff, Scissors } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatWeekdays } from "@/utils/plan-pricing";
+import { formatBRL } from "@/utils/format";
 import type { Plan } from "@/types/plan.types";
 import type { ServiceUsage } from "@/types/subscription.types";
 
@@ -88,10 +89,11 @@ export function PlanoRegrasCard({ plan, usage }: PlanoRegrasCardProps) {
                     </span>
                     <span
                       className={`font-semibold whitespace-nowrap ${
-                        u.remaining > 0 ? "text-green-500" : "text-danger-foreground"
+                        u.free ? "text-green-500" : "text-danger-foreground"
                       }`}
                     >
                       {u.remaining} de {u.monthlyLimit} restantes
+                      {!u.free && ` · próximo com desconto: ${formatBRL(u.priceInCents / 100)}`}
                     </span>
                   </li>
                 );

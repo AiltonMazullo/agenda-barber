@@ -81,7 +81,14 @@ export interface ServiceUsage {
   monthlyLimit: number;
   used: number;
   remaining: number;
+  free: boolean;
+  priceInCents: number;
 }
+
+export type ServicePricing =
+  | { covered: false }
+  | { covered: true; free: true; priceInCents: 0 }
+  | { covered: true; free: false; priceInCents: number; discountPercent: number };
 
 export interface MySubscription {
   subscription: Subscription & { plan: Plan };

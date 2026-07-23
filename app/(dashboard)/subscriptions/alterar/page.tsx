@@ -2,19 +2,46 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader, Loading, EmptyState } from "@/components/shared";
+import { PageHeader, Loading, EmptyState, SelectField } from "@/components/shared";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { usePlans } from "@/hooks/usePlans";
 import { subscriptionsService } from "@/services/subscriptions.service";
-import { formatBRL } from "@/utils/format";
+import { formatBRL, formatDate } from "@/utils/format";
+import type { SubscriptionBillingType } from "@/types/subscription.types";
+
+const TYPE_OPTIONS: { value: SubscriptionBillingType | "TODOS"; label: string }[] = [
+  { value: "TODOS", label: "Todos" },
+  { value: "GATEWAY", label: "Cel Cash" },
+  { value: "MANUAL", label: "Manual" },
+];
 
 export default function AlterarAssinaturasPage() {
   const { barbershop } = useAuth();
   const { activeSubscriptions, isLoading } = useSubscriptions(barbershop?.id);
+  const { plans } = usePlans(barbershop?.id);
+
+  const [billingType, setBillingType] = useState<SubscriptionBillingType | "TODOS">("TODOS");
+  const [planId, setPlanId] = useState("TODOS");
+  const [billingDayFilter, setBillingDayFilter] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState({
+    billingType: "TODOS" as SubscriptionBillingType | "TODOS",
+    planId: "TODOS",
+    billingDayFilter: "",
+  });
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newValue, setNewValue] = useState("");
@@ -22,7 +49,35 @@ export default function AlterarAssinaturasPage() {
   const [newBillingDay, setNewBillingDay] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const planOptions = useMemo(
+    () => [{ value: "TODOS", label: "Todos" }, ...plans.map((p) => ({ value: p.id, label: p.name }))],
+    [plans],
+  );
+
+  const filtered = useMemo(() => {
+    return activeSubscriptions.filter((s) => {
+      if (appliedFilters.billingType !== "TODOS" && s.billingType !== appliedFilters.billingType) {
+        return false;
+      }
+      if (appliedFilters.planId !== "TODOS" && s.planId !== appliedFilters.planId) {
+        return false;
+      }
+      if (
+        appliedFilters.billingDayFilter &&
+        String(s.billingDay ?? "") !== appliedFilters.billingDayFilter
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [activeSubscriptions, appliedFilters]);
+
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
+
+  function applyFilters() {
+    setAppliedFilters({ billingType, planId, billingDayFilter });
+    setSelected(new Set());
+  }
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -34,10 +89,10 @@ export default function AlterarAssinaturasPage() {
   }
 
   function toggleAll() {
-    if (selected.size === activeSubscriptions.length) {
+    if (selected.size === filtered.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(activeSubscriptions.map((s) => s.id)));
+      setSelected(new Set(filtered.map((s) => s.id)));
     }
   }
 
@@ -91,6 +146,44 @@ export default function AlterarAssinaturasPage() {
           </Link>
         }
       />
+
+      <div className="rounded-xl border border-border bg-surface-raised p-5 space-y-4">
+        <p className="text-sm font-bold text-foreground">Filtros</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <SelectField
+            id="billingType"
+            label="Tipo de assinatura"
+            value={billingType}
+            onChange={setBillingType}
+            options={TYPE_OPTIONS}
+          />
+          <SelectField
+            id="planId"
+            label="Plano"
+            value={planId}
+            onChange={setPlanId}
+            options={planOptions}
+          />
+          <Field className="w-48">
+            <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
+              Dia de cobrança atual
+            </FieldLabel>
+            <Input
+              value={billingDayFilter}
+              onChange={(e) => setBillingDayFilter(e.target.value.replace(/\D/g, ""))}
+              placeholder="Ex.: 15"
+              className="bg-surface-base border-border text-foreground"
+            />
+          </Field>
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="h-10 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors"
+          >
+            Filtrar
+          </button>
+        </div>
+      </div>
 
       <div className="rounded-xl border border-border bg-surface-raised p-5 space-y-4">
         <p className="text-sm font-bold text-foreground">Alterar valor</p>
@@ -153,45 +246,74 @@ export default function AlterarAssinaturasPage() {
           <p className="text-sm font-bold text-foreground">
             Resultados {selectedIds.length > 0 && `(${selectedIds.length} selecionadas)`}
           </p>
-          <button
-            type="button"
-            onClick={toggleAll}
-            className="text-xs font-semibold text-brand hover:underline"
-          >
-            {selected.size === activeSubscriptions.length ? "Limpar seleção" : "Selecionar todas"}
-          </button>
         </div>
         {isLoading ? (
           <Loading />
-        ) : activeSubscriptions.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="py-6">
-            <EmptyState message="Nenhuma assinatura ativa." />
+            <EmptyState message="Nenhuma assinatura encontrada." />
           </div>
         ) : (
-          <div className="divide-y divide-border-subtle">
-            {activeSubscriptions.map((s) => (
-              <label
-                key={s.id}
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-elevated/50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(s.id)}
-                  onChange={() => toggle(s.id)}
-                />
-                {selected.has(s.id) && <Check className="size-3 text-brand" />}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="px-4 py-3">
+                  <Checkbox
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onCheckedChange={toggleAll}
+                    aria-label="Selecionar todas"
+                    className="cursor-pointer"
+                  />
+                </TableHead>
+                {["ID", "Cliente", "Plano", "Valor", "Data de início", "Dia de cobrança"].map(
+                  (col) => (
+                    <TableHead
+                      key={col}
+                      className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+                    >
+                      {col}
+                    </TableHead>
+                  ),
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((s) => (
+                <TableRow
+                  key={s.id}
+                  className="border-border hover:bg-surface-elevated/50 transition-colors cursor-pointer"
+                  onClick={() => toggle(s.id)}
+                >
+                  <TableCell className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selected.has(s.id)}
+                      onCheckedChange={() => toggle(s.id)}
+                      aria-label={`Selecionar ${s.client.name}`}
+                      className="cursor-pointer"
+                    />
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-xs text-muted-foreground font-mono">
+                    {s.id.slice(-8)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm font-semibold text-foreground">
                     {s.client.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {s.plan.name} · {formatBRL((s.priceOverrideInCents ?? s.plan.priceInCents) / 100)}
-                    {s.billingDay != null && ` · dia ${s.billingDay}`}
-                  </p>
-                </div>
-              </label>
-            ))}
-          </div>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                    {s.plan.name}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-foreground">
+                    {formatBRL((s.priceOverrideInCents ?? s.plan.priceInCents) / 100)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                    {formatDate(s.startedAt)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                    {s.billingDay ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

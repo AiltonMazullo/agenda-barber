@@ -2,13 +2,75 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowDown, ArrowUp, Save, Star } from "lucide-react";
+import { ArrowLeft, GripVertical, Save, Star } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { PageHeader, Loading, EmptyState } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlans } from "@/hooks/usePlans";
 import { plansService } from "@/services/plans.service";
 import type { Plan } from "@/types/plan.types";
+
+function SortablePlanRow({
+  plan,
+  onToggleHighlight,
+}: {
+  plan: Plan;
+  onToggleHighlight: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: plan.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className="flex items-center gap-3 px-4 py-3"
+    >
+      <button
+        type="button"
+        {...listeners}
+        {...attributes}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors touch-none"
+        aria-label="Arrastar para reordenar"
+      >
+        <GripVertical className="size-4" />
+      </button>
+      <p className="flex-1 text-sm font-semibold text-foreground">{plan.name}</p>
+      <button
+        type="button"
+        onClick={() => onToggleHighlight(plan.id)}
+        className={`h-8 px-3 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+          plan.highlighted
+            ? "border-brand/40 bg-brand/15 text-brand"
+            : "border-border text-muted-foreground hover:bg-surface-elevated"
+        }`}
+      >
+        <Star className="size-3" />
+        Mais vendido
+      </button>
+    </div>
+  );
+}
 
 export default function ExibicaoPlanosPage() {
   const { barbershop } = useAuth();
@@ -20,13 +82,17 @@ export default function ExibicaoPlanosPage() {
     setOrdered(plans);
   }, [plans]);
 
-  function move(index: number, delta: number) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
     setOrdered((prev) => {
-      const next = [...prev];
-      const target = index + delta;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
+      const ids = prev.map((p) => p.id);
+      const oldIndex = ids.indexOf(active.id as string);
+      const newIndex = ids.indexOf(over.id as string);
+      return arrayMove(prev, oldIndex, newIndex);
     });
   }
 
@@ -76,41 +142,13 @@ export default function ExibicaoPlanosPage() {
             <EmptyState message="Nenhum plano cadastrado." />
           </div>
         ) : (
-          ordered.map((p, index) => (
-            <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex flex-col">
-                <button
-                  type="button"
-                  onClick={() => move(index, -1)}
-                  disabled={index === 0}
-                  className="size-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ArrowUp className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(index, 1)}
-                  disabled={index === ordered.length - 1}
-                  className="size-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ArrowDown className="size-3.5" />
-                </button>
-              </div>
-              <p className="flex-1 text-sm font-semibold text-foreground">{p.name}</p>
-              <button
-                type="button"
-                onClick={() => toggleHighlight(p.id)}
-                className={`h-8 px-3 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                  p.highlighted
-                    ? "border-brand/40 bg-brand/15 text-brand"
-                    : "border-border text-muted-foreground hover:bg-surface-elevated"
-                }`}
-              >
-                <Star className="size-3" />
-                Mais vendido
-              </button>
-            </div>
-          ))
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={ordered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              {ordered.map((p) => (
+                <SortablePlanRow key={p.id} plan={p} onToggleHighlight={toggleHighlight} />
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 

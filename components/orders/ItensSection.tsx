@@ -43,7 +43,7 @@ interface ItensSectionProps {
   categorias: SelectOption<string>[];
   catalogo: CatalogoOption[];
   itens: ComandaItem[];
-  onAdd: (input: NovoItemInput) => boolean;
+  onAdd: (input: NovoItemInput) => boolean | Promise<boolean>;
   onRemove: (itemId: string) => void;
 }
 
@@ -112,10 +112,10 @@ export function ItensSection({
     (!vinculaAgendamento || appointmentId !== "") &&
     (!isProduto || quantidade >= 1);
 
-  function handleAdd() {
+  async function handleAdd() {
     const ref = catalogo.find((c) => c.id === refId);
     if (!ref) return;
-    const ok = onAdd({
+    const ok = await onAdd({
       tipo,
       refId,
       appointmentId: vinculaAgendamento ? appointmentId : null,
@@ -220,7 +220,7 @@ export function ItensSection({
         <div className="flex items-end md:col-span-2 xl:col-span-1">
           <Button
             type="button"
-            onClick={handleAdd}
+            onClick={() => void handleAdd()}
             disabled={!podeAdicionar}
             aria-label={`Adicionar ${copy.selectLabel.toLowerCase()}`}
             className="h-10 w-full xl:w-10 cursor-pointer bg-brand text-brand-foreground hover:bg-brand-hover disabled:cursor-not-allowed"
@@ -258,6 +258,9 @@ export function ItensSection({
                       )}
                       {vinculo && (
                         <StatusBadge tone="brand">{vinculo}</StatusBadge>
+                      )}
+                      {!isProduto && item.valorUnitarioInCents === 0 && (
+                        <StatusBadge tone="success">Grátis (assinatura)</StatusBadge>
                       )}
                     </div>
                   </div>

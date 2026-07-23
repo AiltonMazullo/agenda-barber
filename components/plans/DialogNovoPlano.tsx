@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SelectField } from "@/components/shared";
 import { toast } from "sonner";
 import { maskBRLInput, parseBRL, formatBRL } from "@/utils/format";
 import { plansService } from "@/services/plans.service";
@@ -63,6 +64,7 @@ export function DialogNovoPlano({
   products = [],
   employees = [],
   categories = [],
+  serviceCategories = [],
   barbershopId,
 }: {
   open: boolean;
@@ -72,7 +74,10 @@ export function DialogNovoPlano({
   services?: Service[];
   products?: Product[];
   employees?: Employee[];
+  /** Categorias de produto (desconto). */
   categories?: Category[];
+  /** Categorias de serviço (desconto) — mesma tabela PlanCategory, tipo diferente. */
+  serviceCategories?: Category[];
   /** Necessário para sincronizar categorias/contrato após salvar (rotas dedicadas por planId). */
   barbershopId?: string;
 }) {
@@ -88,8 +93,8 @@ export function DialogNovoPlano({
   // regras operacionais
   const [freeDays, setFreeDays] = useState<number[]>([]);
   const [maxSimultaneous, setMaxSimultaneous] = useState("1");
-  const [lockDays, setLockDays] = useState("0");
-  const [frequencyDays, setFrequencyDays] = useState("0");
+  const [lockDays, setLockDays] = useState("30");
+  const [frequencyDays, setFrequencyDays] = useState("7");
 
   // serviços
   const [serviceRows, setServiceRows] = useState<ServiceRow[]>([]);
@@ -103,9 +108,10 @@ export function DialogNovoPlano({
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [pendingEmployeeId, setPendingEmployeeId] = useState("");
 
-  // categorias de produto (desconto %)
+  // categorias de produto e de serviço (desconto %) — mesma tabela PlanCategory
   const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
   const [pendingCategoryId, setPendingCategoryId] = useState("");
+  const [pendingServiceCategoryId, setPendingServiceCategoryId] = useState("");
 
   // contrato (só disponível ao editar, pois depende do planId)
   const [contractFile, setContractFile] = useState<File | null>(null);
@@ -128,8 +134,8 @@ export function DialogNovoPlano({
     setHidden(plan?.hidden ?? false);
     setFreeDays(plan?.freeDays ?? []);
     setMaxSimultaneous(String(plan?.maxSimultaneousServices ?? 1));
-    setLockDays(String(plan?.subscriptionLockDays ?? 0));
-    setFrequencyDays(String(plan?.serviceFrequencyDays ?? 0));
+    setLockDays(String(plan?.subscriptionLockDays ?? 30));
+    setFrequencyDays(String(plan?.serviceFrequencyDays ?? 7));
     setServiceRows(
       plan?.planServices?.map((ps) => ({
         serviceId: ps.serviceId,
@@ -157,6 +163,7 @@ export function DialogNovoPlano({
     setPendingProductId("");
     setPendingEmployeeId("");
     setPendingCategoryId("");
+    setPendingServiceCategoryId("");
   }, [open, plan]);
 
   // ─── cor hex ────────────────────────────────────────────────────────────────
@@ -262,11 +269,23 @@ export function DialogNovoPlano({
 
   const selectedCategoryIds = new Set(categoryRows.map((r) => r.categoryId));
   const availableCategories = categories.filter((c) => !selectedCategoryIds.has(c.id));
+  const availableServiceCategories = serviceCategories.filter(
+    (c) => !selectedCategoryIds.has(c.id),
+  );
 
   function addCategory() {
     if (!pendingCategoryId) return;
     setCategoryRows((prev) => [...prev, { categoryId: pendingCategoryId, discountPercent: "0" }]);
     setPendingCategoryId("");
+  }
+
+  function addServiceCategory() {
+    if (!pendingServiceCategoryId) return;
+    setCategoryRows((prev) => [
+      ...prev,
+      { categoryId: pendingServiceCategoryId, discountPercent: "0" },
+    ]);
+    setPendingServiceCategoryId("");
   }
 
   function removeCategoryRow(categoryId: string) {
@@ -534,33 +553,27 @@ export function DialogNovoPlano({
           <Section label="Regras operacionais">
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Serviços simultâneos">
-                  <Input
-                    type="number"
-                    min={1}
-                    value={maxSimultaneous}
-                    onChange={(e) => setMaxSimultaneous(e.target.value)}
-                    className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
-                  />
-                </Field>
-                <Field label="Bloqueio (dias)">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={lockDays}
-                    onChange={(e) => setLockDays(e.target.value)}
-                    className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
-                  />
-                </Field>
-                <Field label="Periodicidade (dias)">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={frequencyDays}
-                    onChange={(e) => setFrequencyDays(e.target.value)}
-                    className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
-                  />
-                </Field>
+                <SelectField
+                  id="maxSimultaneous"
+                  label="Serviços simultâneos"
+                  value={maxSimultaneous}
+                  onChange={setMaxSimultaneous}
+                  options={["1", "2", "4"]}
+                />
+                <SelectField
+                  id="lockDays"
+                  label="Bloqueio (dias)"
+                  value={lockDays}
+                  onChange={setLockDays}
+                  options={["30", "60", "90"]}
+                />
+                <SelectField
+                  id="frequencyDays"
+                  label="Periodicidade (dias)"
+                  value={frequencyDays}
+                  onChange={setFrequencyDays}
+                  options={["7", "15", "21", "30"]}
+                />
               </div>
 
               <Field label="Dias de gratuidade">
@@ -595,6 +608,10 @@ export function DialogNovoPlano({
 
           {/* ── serviços inclusos ── */}
           <Section label="Serviços inclusos">
+            <p className="text-xs text-text-faint -mt-1">
+              Qtd. grátis no mês e desconto (%) aplicado a partir do uso que exceder essa
+              quantidade. Deixe em branco para sempre grátis, sem limite.
+            </p>
             <div className="space-y-2">
               {serviceRows.length > 0 && (
                 <div className="space-y-1.5">
@@ -616,11 +633,11 @@ export function DialogNovoPlano({
                             }
                             type="number"
                             min={1}
-                            placeholder="∞"
-                            title="Limite de usos por mês"
-                            className="w-14 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 text-right px-2"
+                            placeholder="Sem limite"
+                            title="Qtd. grátis por mês"
+                            className="w-20 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 text-right px-2"
                           />
-                          <span className="text-xs text-muted-foreground">/mês</span>
+                          <span className="text-xs text-muted-foreground">grátis/mês</span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Input
@@ -831,12 +848,83 @@ export function DialogNovoPlano({
               )}
             </div>
           </Section>
+          {/* ── categorias de serviço ── */}
+          <Section label="Categorias de serviço (desconto)">
+            <div className="space-y-2">
+              {categoryRows
+                .filter((row) => serviceCategories.some((c) => c.id === row.categoryId))
+                .map((row) => {
+                  const cat = serviceCategories.find((c) => c.id === row.categoryId);
+                  return (
+                    <div
+                      key={row.categoryId}
+                      className="flex items-center gap-2 bg-surface-base border border-border rounded-md px-3 py-2"
+                    >
+                      <span className="flex-1 text-sm text-foreground truncate">
+                        {cat?.name ?? row.categoryId}
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Input
+                          value={row.discountPercent}
+                          onChange={(e) => updateCategoryDiscount(row.categoryId, e.target.value)}
+                          inputMode="decimal"
+                          className="w-16 h-7 text-xs bg-surface-raised border-border text-foreground focus-visible:ring-brand/30 text-right px-2"
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCategoryRow(row.categoryId)}
+                        className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-danger-foreground transition-colors shrink-0"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+
+              {availableServiceCategories.length > 0 ? (
+                <div className="flex gap-2">
+                  <select
+                    value={pendingServiceCategoryId}
+                    onChange={(e) => setPendingServiceCategoryId(e.target.value)}
+                    className="flex-1 h-9 rounded-md border border-border bg-surface-base text-sm text-foreground px-2 focus:outline-none focus:ring-1 focus:ring-brand/30"
+                  >
+                    <option value="">Selecionar categoria…</option>
+                    {availableServiceCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={addServiceCategory}
+                    disabled={!pendingServiceCategoryId}
+                    className="h-9 px-3 rounded-md border border-border bg-surface-base text-muted-foreground hover:text-foreground hover:border-brand/40 transition-colors disabled:opacity-40 flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="size-3.5" />
+                    Adicionar
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-text-faint">
+                  {serviceCategories.length > 0
+                    ? "Todas as categorias já foram adicionadas."
+                    : "Nenhuma categoria de serviço cadastrada na barbearia."}
+                </p>
+              )}
+            </div>
+          </Section>
+
           {/* ── categorias de produto ── */}
           <Section label="Categorias de produto (desconto)">
             <div className="space-y-2">
               {categoryRows.length > 0 && (
                 <div className="space-y-1.5">
-                  {categoryRows.map((row) => {
+                  {categoryRows
+                    .filter((row) => categories.some((c) => c.id === row.categoryId))
+                    .map((row) => {
                     const cat = categories.find((c) => c.id === row.categoryId);
                     return (
                       <div
