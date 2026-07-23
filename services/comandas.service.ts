@@ -37,10 +37,11 @@ export const comandasService = {
     barbershopId: string,
     id: string,
     status: ComandaStatus,
+    cashRegisterId?: string,
   ): Promise<Comanda> {
     const { data } = await api.patch<Comanda>(
       `${base(barbershopId)}/${id}/status`,
-      { status },
+      { status, cashRegisterId },
     );
     return data;
   },

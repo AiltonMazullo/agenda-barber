@@ -46,6 +46,7 @@ import { useBranches } from "@/hooks/useBranches";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useHolidays } from "@/hooks/useHolidays";
 import { useComandas } from "@/hooks/useComandas";
+import { DialogFecharComanda } from "@/components/orders";
 import type { Comanda } from "@/types/orders.types";
 import {
   AgendamentoCard,
@@ -149,6 +150,8 @@ export default function SchedulePage() {
   const [dialogComandaAgendamento, setDialogComandaAgendamento] = useState(false);
   const [agSelecionadoComanda, setAgSelecionadoComanda] =
     useState<AgendamentoVM | null>(null);
+  const [fecharComandaTarget, setFecharComandaTarget] =
+    useState<Comanda | null>(null);
 
   const [prefilledHora, setPrefilledHora] = useState<string | undefined>();
   const [prefilledProfId, setPrefilledProfId] = useState<string | undefined>();
@@ -375,10 +378,12 @@ export default function SchedulePage() {
   const handleFecharComandaAgendamento = useCallback(
     async (draft: Parameters<typeof createComanda>[0]) => {
       const created = await createComanda(draft);
-      if (created) await setComandaStatus(created.id, "FECHADA");
+      // A comanda é criada aqui, mas o fechamento (com escolha do caixa, se
+      // a filial tiver mais de um aberto) acontece no DialogFecharComanda.
+      if (created) setFecharComandaTarget(created);
       return created;
     },
-    [createComanda, setComandaStatus],
+    [createComanda],
   );
 
   const handleResizeEnd = useCallback(
@@ -1058,6 +1063,20 @@ export default function SchedulePage() {
           agendamento={agSelecionadoComanda}
           onSave={createComanda}
           onFechar={handleFecharComandaAgendamento}
+        />
+        <DialogFecharComanda
+          open={fecharComandaTarget !== null}
+          onOpenChange={(v) => !v && setFecharComandaTarget(null)}
+          barbershopId={barbershop?.id}
+          comanda={fecharComandaTarget}
+          onConfirm={(cashRegisterId) => {
+            if (!fecharComandaTarget) return;
+            return setComandaStatus(
+              fecharComandaTarget.id,
+              "FECHADA",
+              cashRegisterId,
+            );
+          }}
         />
         <DialogNovoBloqueio
           open={dialogBloqueio}

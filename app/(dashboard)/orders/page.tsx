@@ -43,6 +43,7 @@ import {
   StatusBadge,
   SummaryCard,
 } from "@/components/shared";
+import { DialogFecharComanda } from "@/components/orders";
 import { useAuth } from "@/hooks/useAuth";
 import { useComandas } from "@/hooks/useComandas";
 import { usePagination } from "@/hooks/usePagination";
@@ -82,6 +83,7 @@ export default function ComandasPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [deleteTarget, setDeleteTarget] = useState<Comanda | null>(null);
+  const [fecharTarget, setFecharTarget] = useState<Comanda | null>(null);
 
   const stats = useMemo(() => {
     const abertas = comandas.filter((c) => c.status === "ABERTA").length;
@@ -318,9 +320,7 @@ export default function ComandasPage() {
                             {comanda.status === "ABERTA" ? (
                               <>
                                 <DropdownMenuItem
-                                  onClick={() =>
-                                    setStatus(comanda.id, "FECHADA")
-                                  }
+                                  onClick={() => setFecharTarget(comanda)}
                                   className="text-xs cursor-pointer hover:bg-surface-elevated"
                                 >
                                   <CheckCircle2 className="size-3.5" />
@@ -388,6 +388,17 @@ export default function ComandasPage() {
         confirmLabel="Excluir"
         tone="danger"
         onConfirm={handleConfirmDelete}
+      />
+
+      <DialogFecharComanda
+        open={fecharTarget !== null}
+        onOpenChange={(v) => !v && setFecharTarget(null)}
+        barbershopId={barbershop?.id}
+        comanda={fecharTarget}
+        onConfirm={(cashRegisterId) => {
+          if (!fecharTarget) return;
+          return setStatus(fecharTarget.id, "FECHADA", cashRegisterId);
+        }}
       />
     </div>
   );

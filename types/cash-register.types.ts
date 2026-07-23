@@ -33,6 +33,17 @@ export interface CashTransaction {
   createdAt: string;
 }
 
+/** Comanda fechada registrada neste caixa (ver ajustes/Módulo Caixa.md). */
+export interface ComandaMovimento {
+  numero: number;
+  cliente: string | null;
+  profissional: string | null;
+  /** ISO datetime — horário do agendamento (AGENDAMENTO) ou de fechamento (AVULSA). */
+  horario: string | null;
+  totalInCents: number;
+  formaPagamento: string | null;
+}
+
 export interface CashRegister {
   id: string;
   barbershopId: string;
@@ -43,6 +54,8 @@ export interface CashRegister {
   branch: Branch;
   /** Presente apenas no GET por ID. */
   transactions?: CashTransaction[];
+  /** Comandas fechadas vinculadas a este caixa — presente apenas no GET por ID. */
+  comandas?: ComandaMovimento[];
   /** Valor em espécie registrado na abertura (centavos). Frontend-computed via transação "Saldo inicial". */
   openingCashInCents?: number;
   /** Dinheiro contado fisicamente na gaveta ao fechar (centavos). Só preenchido após o fechamento. */

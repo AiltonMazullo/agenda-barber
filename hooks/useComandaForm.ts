@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useBranches } from "@/hooks/useBranches";
+import { useClients } from "@/hooks/useClients";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useProducts } from "@/hooks/useProducts";
 import { useServices } from "@/hooks/useServices";
@@ -50,12 +52,10 @@ function categoriasDe(catalogo: CatalogoOption[]): SelectOption<string>[] {
 /**
  * Estado e regras do formulário de comanda (criação e edição).
  *
- * Compõe os hooks reais de agendamentos/produtos/serviços e expõe apenas o
- * que a UI precisa: opções para os selects, a composição atual (itens, cada
- * um podendo apontar direto para um agendamento real do backend) e as ações
- * com validação. O snapshot de agendamentos da comanda (`agendamentos`) é
- * derivado automaticamente dos agendamentos referenciados pelos itens — não
- * existe um passo separado de "vincular agendamento". Nenhuma regra fica no
+ * Compõe os hooks reais de agendamentos/produtos/serviços/clientes/filiais e
+ * expõe apenas o que a UI precisa: opções para os selects, a composição
+ * atual (agendamentos vinculados, itens, cada um podendo apontar direto para
+ * um agendamento vinculado) e as ações com validação. Nenhuma regra fica no
  * JSX.
  */
 export function useComandaForm(
@@ -67,13 +67,18 @@ export function useComandaForm(
   const { employees } = useEmployees(barbershopId);
   const { products, isLoading: loadingProducts } = useProducts(barbershopId);
   const { services, isLoading: loadingServices } = useServices(barbershopId);
+  const { clients } = useClients(barbershopId);
+  const { branches } = useBranches(barbershopId);
 
   const [tipo, setTipoState] = useState<ComandaTipo>(
     comanda?.tipo ?? "AGENDAMENTO",
   );
-  const [clienteAvulso, setClienteAvulso] = useState(
-    comanda?.clienteAvulso ?? "",
+  const [linkedAppointmentIds, setLinkedAppointmentIds] = useState<string[]>(
+    comanda?.agendamentos.map((a) => a.appointmentId) ?? [],
   );
+  const [clienteId, setClienteId] = useState("");
+  const [branchId, setBranchId] = useState(comanda?.branchId ?? "");
+  const [employeeId, setEmployeeId] = useState(comanda?.employeeId ?? "");
   const [itens, setItens] = useState<ComandaItem[]>(comanda?.itens ?? []);
   const [observacoes, setObservacoes] = useState(comanda?.observacoes ?? "");
   const [erro, setErro] = useState<string | null>(null);
@@ -103,7 +108,7 @@ export function useComandaForm(
     [employeeNameById],
   );
 
-  /** Agendamentos reais da barbearia disponíveis para atrelar a um item (exclui cancelados). */
+  /** Agendamentos reais da barbearia disponíveis para atrelar à comanda (exclui cancelados). */
   const agendamentoOptions = useMemo<SelectOption<string>[]>(
     () =>
       appointments
@@ -119,14 +124,54 @@ export function useComandaForm(
     [appointments],
   );
 
-  // ─── Tipo da comanda ────────────────────────────────────────────────────────
-  /** Há itens que seriam perdidos ao trocar o tipo? (a UI confirma antes) */
-  const hasComposicao = itens.length > 0;
+  /** Agendamentos já vinculados a esta comanda — únicos que os itens podem referenciar. */
+  const linkedOptions = useMemo<SelectOption<string>[]>(
+    () => agendamentoOptions.filter((o) => linkedAppointmentIds.includes(o.value)),
+    [agendamentoOptions, linkedAppointmentIds],
+  );
 
-  /** Troca o tipo zerando os itens — os vínculos deixam de fazer sentido. */
+  /** Agendamentos ainda não vinculados, disponíveis para adicionar. */
+  const availableToLinkOptions = useMemo<SelectOption<string>[]>(
+    () => agendamentoOptions.filter((o) => !linkedAppointmentIds.includes(o.value)),
+    [agendamentoOptions, linkedAppointmentIds],
+  );
+
+  const addLinkedAppointment = useCallback((appointmentId: string) => {
+    setLinkedAppointmentIds((prev) =>
+      prev.includes(appointmentId) ? prev : [...prev, appointmentId],
+    );
+  }, []);
+
+  /** Remove o vínculo e também os itens que apontavam para aquele agendamento. */
+  const removeLinkedAppointment = useCallback((appointmentId: string) => {
+    setLinkedAppointmentIds((prev) => prev.filter((id) => id !== appointmentId));
+    setItens((prev) => prev.filter((i) => i.appointmentId !== appointmentId));
+  }, []);
+
+  const clienteOptions = useMemo<SelectOption<string>[]>(
+    () => clients.map((c) => ({ value: c.id, label: c.name })),
+    [clients],
+  );
+
+  const branchOptions = useMemo<SelectOption<string>[]>(
+    () => branches.map((b) => ({ value: b.id, label: b.name })),
+    [branches],
+  );
+
+  const employeeOptions = useMemo<SelectOption<string>[]>(
+    () => employees.map((e) => ({ value: e.id, label: e.appName || e.name })),
+    [employees],
+  );
+
+  // ─── Tipo da comanda ────────────────────────────────────────────────────────
+  /** Há composição que seria perdida ao trocar o tipo? (a UI confirma antes) */
+  const hasComposicao = itens.length > 0 || linkedAppointmentIds.length > 0;
+
+  /** Troca o tipo zerando itens e agendamentos vinculados — os vínculos deixam de fazer sentido. */
   const setTipo = useCallback((next: ComandaTipo) => {
     setTipoState(next);
     setItens([]);
+    setLinkedAppointmentIds([]);
     setErro(null);
   }, []);
 
@@ -197,10 +242,10 @@ export function useComandaForm(
       const ref = catalogo.find((c) => c.id === input.refId);
       if (!ref || input.quantidade < 1) return false;
       // Em comanda de agendamento, o item precisa apontar para um
-      // agendamento real (não cancelado) da barbearia.
+      // agendamento já vinculado à comanda (seção "Agendamentos").
       if (
         tipo === "AGENDAMENTO" &&
-        !agendamentoOptions.some((a) => a.value === input.appointmentId)
+        !linkedAppointmentIds.includes(input.appointmentId ?? "")
       ) {
         return false;
       }
@@ -222,7 +267,7 @@ export function useComandaForm(
       setErro(null);
       return true;
     },
-    [produtos, servicos, tipo, agendamentoOptions, resolveServicoPrice],
+    [produtos, servicos, tipo, linkedAppointmentIds, resolveServicoPrice],
   );
 
   const removeItem = useCallback((id: string) => {
@@ -234,6 +279,10 @@ export function useComandaForm(
   // ─── Submissão ──────────────────────────────────────────────────────────────
   /** Valida e monta o draft; em caso de erro, define `erro` e retorna null. */
   const buildDraft = useCallback((): ComandaDraft | null => {
+    if (tipo === "AGENDAMENTO" && linkedAppointmentIds.length === 0) {
+      setErro("Adicione ao menos um agendamento à comanda.");
+      return null;
+    }
     if (itens.length === 0) {
       setErro("Adicione ao menos um produto ou serviço.");
       return null;
@@ -241,22 +290,21 @@ export function useComandaForm(
     setErro(null);
 
     if (tipo === "AVULSA") {
+      const cliente = clients.find((c) => c.id === clienteId);
       return {
         tipo,
-        clienteAvulso: clienteAvulso.trim() || null,
+        clienteAvulso: cliente?.name ?? null,
         agendamentos: [],
         itens,
         observacoes: observacoes.trim(),
+        branchId: branchId || null,
+        employeeId: employeeId || null,
       };
     }
 
-    // O snapshot de agendamentos da comanda é derivado dos agendamentos
-    // efetivamente referenciados pelos itens (cada item já aponta para um
-    // agendamento real, escolhido direto no seletor).
-    const uniqueIds = [...new Set(itens.map((i) => i.appointmentId))].filter(
-      (id): id is string => id !== null,
-    );
-    const agendamentos = uniqueIds
+    // O snapshot de agendamentos da comanda vem dos agendamentos vinculados
+    // na seção "Agendamentos" (independente de terem item associado ainda).
+    const agendamentos = linkedAppointmentIds
       .map((id) => appointments.find((a) => a.id === id))
       .filter((a): a is Appointment => a !== undefined)
       .map(toSnapshot);
@@ -267,29 +315,54 @@ export function useComandaForm(
       agendamentos,
       itens,
       observacoes: observacoes.trim(),
+      branchId: branchId || null,
+      employeeId: employeeId || null,
     };
-  }, [tipo, clienteAvulso, itens, observacoes, appointments, toSnapshot]);
+  }, [
+    tipo,
+    linkedAppointmentIds,
+    clients,
+    clienteId,
+    itens,
+    observacoes,
+    branchId,
+    employeeId,
+    appointments,
+    toSnapshot,
+  ]);
 
   return {
     // estado
     tipo,
-    clienteAvulso,
-    setClienteAvulso,
+    clienteId,
+    setClienteId,
+    branchId,
+    setBranchId,
+    employeeId,
+    setEmployeeId,
     observacoes,
     setObservacoes,
     itens,
+    linkedAppointmentIds,
     erro,
     totalInCents,
     isLoadingCatalog,
     hasComposicao,
     // opções
     agendamentoOptions,
+    linkedOptions,
+    availableToLinkOptions,
+    clienteOptions,
+    branchOptions,
+    employeeOptions,
     produtos,
     servicos,
     categoriasProdutos,
     categoriasServicos,
     // ações
     setTipo,
+    addLinkedAppointment,
+    removeLinkedAppointment,
     addItem,
     removeItem,
     buildDraft,

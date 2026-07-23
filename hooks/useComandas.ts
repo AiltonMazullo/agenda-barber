@@ -80,13 +80,18 @@ export function useComandas(barbershopId: string | undefined) {
   );
 
   const setStatus = useCallback(
-    async (id: string, status: ComandaStatus): Promise<Comanda | null> => {
+    async (
+      id: string,
+      status: ComandaStatus,
+      cashRegisterId?: string,
+    ): Promise<Comanda | null> => {
       if (!barbershopId) return null;
       try {
         const updated = await comandasService.setStatus(
           barbershopId,
           id,
           status,
+          cashRegisterId,
         );
         toast.success(STATUS_TOAST[status]);
         await fetchComandas();

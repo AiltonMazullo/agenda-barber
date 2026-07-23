@@ -10,6 +10,7 @@ import { ConfirmDialog, Loading } from "@/components/shared";
 import { useComandaForm } from "@/hooks/useComandaForm";
 import { formatBRL } from "@/utils/format";
 import { TipoSection } from "./TipoSection";
+import { AgendamentosSection } from "./AgendamentosSection";
 import { ItensSection } from "./ItensSection";
 import { FormSection } from "./FormSection";
 import type { Comanda, ComandaDraft, ComandaTipo } from "@/types/orders.types";
@@ -55,14 +56,30 @@ export function ComandaForm({
       <TipoSection
         tipo={form.tipo}
         onTipoChange={handleTipoChange}
-        clienteAvulso={form.clienteAvulso}
-        onClienteAvulsoChange={form.setClienteAvulso}
+        branchId={form.branchId}
+        onBranchIdChange={form.setBranchId}
+        branchOptions={form.branchOptions}
+        clienteId={form.clienteId}
+        onClienteIdChange={form.setClienteId}
+        clienteOptions={form.clienteOptions}
+        employeeId={form.employeeId}
+        onEmployeeIdChange={form.setEmployeeId}
+        employeeOptions={form.employeeOptions}
       />
+
+      {form.tipo === "AGENDAMENTO" && (
+        <AgendamentosSection
+          linkedOptions={form.linkedOptions}
+          availableToLinkOptions={form.availableToLinkOptions}
+          onAdd={form.addLinkedAppointment}
+          onRemove={form.removeLinkedAppointment}
+        />
+      )}
 
       <ItensSection
         tipo="PRODUTO"
         comandaTipo={form.tipo}
-        agendamentos={form.agendamentoOptions}
+        agendamentos={form.linkedOptions}
         categorias={form.categoriasProdutos}
         catalogo={form.produtos}
         itens={form.itens}
@@ -73,7 +90,7 @@ export function ComandaForm({
       <ItensSection
         tipo="SERVICO"
         comandaTipo={form.tipo}
-        agendamentos={form.agendamentoOptions}
+        agendamentos={form.linkedOptions}
         categorias={form.categoriasServicos}
         catalogo={form.servicos}
         itens={form.itens}

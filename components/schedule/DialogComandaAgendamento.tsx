@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Receipt, CalendarClock, NotebookPen, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Receipt, NotebookPen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,13 +9,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/shared";
 import { useComandaForm } from "@/hooks/useComandaForm";
-import { ItensSection, FormSection, LabeledSelect } from "@/components/orders";
+import {
+  ItensSection,
+  FormSection,
+  AgendamentosSection,
+} from "@/components/orders";
 import type { AgendamentoVM } from "./types";
 import type { Comanda, ComandaDraft } from "@/types/orders.types";
-import type { SelectOption } from "@/types/common.types";
 
 /**
  * Comanda aberta a partir do detalhe de um agendamento (item 1.5 da spec) —
@@ -39,15 +41,13 @@ export function DialogComandaAgendamento({
   onFechar: (draft: ComandaDraft) => Promise<Comanda | null>;
 }) {
   const form = useComandaForm(barbershopId);
-  const [linkedIds, setLinkedIds] = useState<string[]>([]);
-  const [addId, setAddId] = useState("");
   const [submitting, setSubmitting] = useState<"salvar" | "fechar" | null>(null);
   const seededRef = useRef(false);
 
   useEffect(() => {
     if (!open || !agendamento || form.isLoadingCatalog || seededRef.current) return;
     seededRef.current = true;
-    setLinkedIds([agendamento.id]);
+    form.addLinkedAppointment(agendamento.id);
     const svc = form.servicos.find((s) => s.id === agendamento.servicoId);
     if (svc) {
       form.addItem({
@@ -60,29 +60,6 @@ export function DialogComandaAgendamento({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agendamento, form.isLoadingCatalog, form.servicos]);
-
-  const linkedOptions = useMemo(
-    () => form.agendamentoOptions.filter((o) => linkedIds.includes(o.value)),
-    [form.agendamentoOptions, linkedIds],
-  );
-
-  const availableToAdd = useMemo<SelectOption<string>[]>(
-    () => form.agendamentoOptions.filter((o) => !linkedIds.includes(o.value)),
-    [form.agendamentoOptions, linkedIds],
-  );
-
-  function handleAddAgendamento() {
-    if (!addId) return;
-    setLinkedIds((prev) => [...prev, addId]);
-    setAddId("");
-  }
-
-  function handleRemoveAgendamento(id: string) {
-    setLinkedIds((prev) => prev.filter((i) => i !== id));
-    form.itens
-      .filter((i) => i.appointmentId === id)
-      .forEach((i) => form.removeItem(i.id));
-  }
 
   async function handleSubmit(kind: "salvar" | "fechar") {
     const draft = form.buildDraft();
@@ -121,65 +98,17 @@ export function DialogComandaAgendamento({
             <Loading />
           ) : (
             <>
-              <FormSection
-                icon={<CalendarClock />}
-                title="Agendamentos"
-                subtitle="Agendamentos vinculados a esta comanda"
-              >
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <LabeledSelect
-                      label="Agendamento"
-                      placeholder={
-                        availableToAdd.length === 0
-                          ? "Nenhum outro agendamento disponível"
-                          : "Selecione..."
-                      }
-                      value={addId}
-                      onValueChange={setAddId}
-                      options={availableToAdd}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleAddAgendamento}
-                    disabled={!addId}
-                    className="h-10 cursor-pointer bg-brand text-brand-foreground hover:bg-brand-hover disabled:cursor-not-allowed"
-                  >
-                    <Plus className="size-4" />
-                  </Button>
-                </div>
-
-                {linkedOptions.length > 0 && (
-                  <ul className="mt-3 space-y-2">
-                    {linkedOptions.map((o) => (
-                      <li
-                        key={o.value}
-                        className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-base px-3 py-2"
-                      >
-                        <span className="truncate text-sm text-foreground">
-                          {o.label}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveAgendamento(o.value)}
-                          aria-label={`Remover ${o.label}`}
-                          className="cursor-pointer text-muted-foreground hover:bg-danger/10 hover:text-danger-foreground shrink-0"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </FormSection>
+              <AgendamentosSection
+                linkedOptions={form.linkedOptions}
+                availableToLinkOptions={form.availableToLinkOptions}
+                onAdd={form.addLinkedAppointment}
+                onRemove={form.removeLinkedAppointment}
+              />
 
               <ItensSection
                 tipo="PRODUTO"
                 comandaTipo="AGENDAMENTO"
-                agendamentos={linkedOptions}
+                agendamentos={form.linkedOptions}
                 categorias={form.categoriasProdutos}
                 catalogo={form.produtos}
                 itens={form.itens}
@@ -190,7 +119,7 @@ export function DialogComandaAgendamento({
               <ItensSection
                 tipo="SERVICO"
                 comandaTipo="AGENDAMENTO"
-                agendamentos={linkedOptions}
+                agendamentos={form.linkedOptions}
                 categorias={form.categoriasServicos}
                 catalogo={form.servicos}
                 itens={form.itens}

@@ -41,6 +41,14 @@ export interface ComandaItem {
   valorUnitarioInCents: number;
 }
 
+/** Forma de pagamento da comanda (enum legado, ver spec-financeiro). */
+export type ComandaFormaPagamento =
+  | "DINHEIRO"
+  | "CREDITO"
+  | "DEBITO"
+  | "PIX"
+  | "OUTRO";
+
 export interface Comanda {
   id: string;
   /** Número sequencial por barbearia, exibido como #1024. */
@@ -52,6 +60,13 @@ export interface Comanda {
   agendamentos: ComandaAgendamento[];
   itens: ComandaItem[];
   observacoes: string;
+  /** Filial da comanda — usada para baixa de estoque e vínculo com o caixa. */
+  branchId: string | null;
+  /** Profissional responsável, em comandas de Consumo. */
+  employeeId: string | null;
+  formaPagamento: ComandaFormaPagamento | null;
+  /** Caixa aberto da filial no momento em que a comanda foi fechada. */
+  cashRegisterId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,4 +80,5 @@ export interface ComandaDraft {
   observacoes: string;
   branchId?: string | null;
   employeeId?: string | null;
+  formaPagamento?: ComandaFormaPagamento | null;
 }

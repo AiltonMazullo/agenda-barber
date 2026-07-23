@@ -2,32 +2,51 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  X,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Lock,
-  Trash2,
-  Receipt,
-} from "lucide-react";
+import { Lock, Trash2, Receipt, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Loading } from "@/components/shared";
 import { FormMovimentacao } from "./FormMovimentacao";
 import { DialogFechamentoCaixa } from "./DialogFechamentoCaixa";
 import { formatBRL, formatDate, formatTime } from "@/utils/format";
 import {
   OPENING_TRANSACTION_NAME,
-  PAYMENT_METHOD_LABELS,
   type CashRegister,
   type CashRegisterClosingSummary,
   type NewTransactionInput,
-  type PaymentMethod,
 } from "@/types/cash-register.types";
+
+/** Forma de pagamento de Comanda usa um enum diferente do de CashTransaction. */
+const COMANDA_PAGAMENTO_LABELS: Record<string, string> = {
+  DINHEIRO: "Dinheiro",
+  CREDITO: "Cartão de Crédito",
+  DEBITO: "Cartão de Débito",
+  PIX: "PIX",
+  OUTRO: "Outro",
+};
+
+/** Uma linha da tabela de movimentações — de uma comanda fechada ou de um lançamento manual. */
+interface MovimentoRow {
+  key: string;
+  comanda: string;
+  cliente: string;
+  profissional: string;
+  horario: string | null;
+  totalInCents: number;
+  pagamento: string;
+}
 
 export function DialogDetalheCaixa({
   open,
@@ -74,32 +93,54 @@ export function DialogDetalheCaixa({
 
   const aberto = register?.closedAt === null;
   const transactions = useMemo(() => register?.transactions ?? [], [register]);
+  const comandas = useMemo(() => register?.comandas ?? [], [register]);
 
-  const { entradas, saidas, abertura } = useMemo(() => {
-    let entradas = 0;
-    let saidas = 0;
-    let abertura = 0;
-    for (const t of transactions) {
-      if (t.name === OPENING_TRANSACTION_NAME && t.type === "ENTRY") {
-        abertura = t.valueInCents;
-      }
-      if (t.type === "ENTRY") entradas += t.valueInCents;
-      else saidas += t.valueInCents;
-    }
-    return { entradas, saidas, abertura };
+  const abertura = useMemo(() => {
+    const t = transactions.find(
+      (t) => t.name === OPENING_TRANSACTION_NAME && t.type === "ENTRY",
+    );
+    return t?.valueInCents ?? 0;
   }, [transactions]);
 
-  const saldo = entradas - saidas;
+  const movimentos = useMemo<MovimentoRow[]>(() => {
+    const daComandas: MovimentoRow[] = comandas.map((c) => ({
+      key: `comanda-${c.numero}`,
+      comanda: `#${c.numero}`,
+      cliente: c.cliente ?? "—",
+      profissional: c.profissional ?? "—",
+      horario: c.horario,
+      totalInCents: c.totalInCents,
+      pagamento: c.formaPagamento
+        ? (COMANDA_PAGAMENTO_LABELS[c.formaPagamento] ?? c.formaPagamento)
+        : "—",
+    }));
 
-  function labelFor(t: { paymentMethod?: string | null }): string {
-    if (!t.paymentMethod) return "";
-    return PAYMENT_METHOD_LABELS[t.paymentMethod as PaymentMethod] ?? t.paymentMethod;
-  }
+    const manuais: MovimentoRow[] = transactions
+      .filter((t) => t.name !== OPENING_TRANSACTION_NAME)
+      .map((t) => ({
+        key: `transacao-${t.id}`,
+        comanda: "—",
+        cliente: "—",
+        profissional: "—",
+        horario: t.createdAt,
+        totalInCents: t.type === "ENTRY" ? t.valueInCents : -t.valueInCents,
+        pagamento: t.type === "ENTRY" ? "Entrada manual" : "Saída manual",
+      }));
+
+    return [...daComandas, ...manuais].sort((a, b) =>
+      (a.horario ?? "").localeCompare(b.horario ?? ""),
+    );
+  }, [comandas, transactions]);
+
+  const totalInCents = useMemo(
+    () => movimentos.reduce((sum, m) => sum + m.totalInCents, 0),
+    [movimentos],
+  );
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-surface-raised border border-border text-foreground max-w-lg p-0 gap-0">
+        <DialogContent className="bg-surface-raised border border-border text-foreground max-w-3xl p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
@@ -135,43 +176,27 @@ export function DialogDetalheCaixa({
             )}
           </DialogHeader>
 
-          <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
             {loading ? (
               <Loading />
             ) : (
               <>
-                {/* Resumo com abertura */}
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="rounded-lg border border-border-subtle bg-surface-base p-3 text-center">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                      Abertura
+                {/* Faixa com Valor Inicial e Total, ver ajustes/Módulo Caixa.md */}
+                <div className="flex items-center justify-between gap-4 rounded-lg bg-foreground px-4 py-3 text-background">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-background/60">
+                      Valor Inicial
                     </p>
-                    <p className="text-sm font-bold text-foreground">
+                    <p className="text-sm font-bold">
                       {formatBRL(abertura / 100)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border-subtle bg-surface-base p-3 text-center">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                      Entradas
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-background/60">
+                      Total
                     </p>
-                    <p className="text-sm font-bold text-success-foreground">
-                      {formatBRL(entradas / 100)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border-subtle bg-surface-base p-3 text-center">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                      Saídas
-                    </p>
-                    <p className="text-sm font-bold text-danger-foreground">
-                      {formatBRL(saidas / 100)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border-subtle bg-surface-base p-3 text-center">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                      Saldo
-                    </p>
-                    <p className="text-sm font-bold text-foreground">
-                      {formatBRL(saldo / 100)}
+                    <p className="text-lg font-bold">
+                      {formatBRL(totalInCents / 100)}
                     </p>
                   </div>
                 </div>
@@ -181,53 +206,55 @@ export function DialogDetalheCaixa({
                   <FormMovimentacao onAdd={onAddTransaction} submitting={busy} />
                 )}
 
-                {/* Transações */}
+                {/* Movimentações: comandas fechadas + lançamentos manuais */}
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Movimentações ({transactions.length})
+                    {movimentos.length}{" "}
+                    {movimentos.length === 1 ? "registro" : "registros"}
                   </p>
-                  {transactions.length === 0 ? (
+                  {movimentos.length === 0 ? (
                     <p className="text-sm text-text-faint text-center py-6">
                       Nenhuma movimentação registrada.
                     </p>
                   ) : (
-                    transactions.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-base p-3"
-                      >
-                        {t.type === "ENTRY" ? (
-                          <ArrowDownCircle className="size-4 text-success-foreground shrink-0" />
-                        ) : (
-                          <ArrowUpCircle className="size-4 text-danger-foreground shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {t.name}
-                          </p>
-                          {t.paymentMethod && (
-                            <p className="text-[11px] text-muted-foreground">
-                              {labelFor(t)}
-                            </p>
-                          )}
-                          {t.description && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {t.description}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={`text-sm font-bold shrink-0 ${
-                            t.type === "ENTRY"
-                              ? "text-success-foreground"
-                              : "text-danger-foreground"
-                          }`}
-                        >
-                          {t.type === "ENTRY" ? "+" : "−"}
-                          {formatBRL(t.valueInCents / 100)}
-                        </span>
-                      </div>
-                    ))
+                    <div className="overflow-x-auto rounded-lg border border-border-subtle">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border-subtle hover:bg-transparent">
+                            <TableHead>Comanda</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Profissional</TableHead>
+                            <TableHead>Horário</TableHead>
+                            <TableHead>Total</TableHead>
+                            <TableHead>Pagamento</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {movimentos.map((m) => (
+                            <TableRow key={m.key} className="border-border-subtle">
+                              <TableCell className="font-mono text-xs text-muted-foreground">
+                                {m.comanda}
+                              </TableCell>
+                              <TableCell>{m.cliente}</TableCell>
+                              <TableCell>{m.profissional}</TableCell>
+                              <TableCell className="whitespace-nowrap text-muted-foreground">
+                                {m.horario
+                                  ? `${formatDate(m.horario)} ${formatTime(m.horario)}`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell
+                                className={`font-semibold ${m.totalInCents < 0 ? "text-danger-foreground" : "text-foreground"}`}
+                              >
+                                {formatBRL(m.totalInCents / 100)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {m.pagamento}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </div>
               </>
