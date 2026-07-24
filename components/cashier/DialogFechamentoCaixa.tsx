@@ -12,19 +12,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatBRL, maskBRLInput, parseBRL } from "@/utils/format";
+import { COMANDA_FORMA_PAGAMENTO_LABELS } from "@/utils/comanda";
 import {
   PAYMENT_METHOD_LABELS,
   OPENING_TRANSACTION_NAME,
   type CashRegisterClosingSummary,
   type CashTransaction,
+  type ComandaMovimento,
   type PaymentMethod,
 } from "@/types/cash-register.types";
+import type { ComandaFormaPagamento } from "@/types/orders.types";
 
 interface DialogFechamentoCaixaProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   branchName: string;
   transactions: CashTransaction[];
+  comandas?: ComandaMovimento[];
   /** Dinheiro esperado + assinaturas manuais do dia (ver §2.2). `null` enquanto carrega. */
   summary?: CashRegisterClosingSummary | null;
   loadingSummary?: boolean;
@@ -37,6 +41,7 @@ export function DialogFechamentoCaixa({
   onOpenChange,
   branchName,
   transactions,
+  comandas = [],
   summary,
   loadingSummary,
   busy,
@@ -57,7 +62,7 @@ export function DialogFechamentoCaixa({
     summary && countedCashInCents !== undefined
       ? countedCashInCents - summary.expectedCashInCents
       : null;
-  /** Agrupa entradas por meio de pagamento (ignora a transação de abertura na contagem). */
+  /** Agrupa entradas por meio de pagamento — transações manuais + comandas fechadas (ignora a transação de abertura). */
   const byPayment = useMemo(() => {
     const map = new Map<string, number>();
     for (const t of transactions) {
@@ -66,8 +71,12 @@ export function DialogFechamentoCaixa({
       const key: string = t.paymentMethod ?? "SEM_CLASSIFICACAO";
       map.set(key, (map.get(key) ?? 0) + t.valueInCents);
     }
+    for (const c of comandas) {
+      const key: string = c.formaPagamento ?? "SEM_CLASSIFICACAO";
+      map.set(key, (map.get(key) ?? 0) + c.totalInCents);
+    }
     return map;
-  }, [transactions]);
+  }, [transactions, comandas]);
 
   const { totalEntradas, saldoFinal, abertura } = useMemo(() => {
     let totalEntradas = 0;
@@ -83,8 +92,11 @@ export function DialogFechamentoCaixa({
         totalSaidas += t.valueInCents;
       }
     }
+    for (const c of comandas) {
+      totalEntradas += c.totalInCents;
+    }
     return { totalEntradas, saldoFinal: totalEntradas - totalSaidas, abertura };
-  }, [transactions]);
+  }, [transactions, comandas]);
 
   const paymentRows = Array.from(byPayment.entries()).sort((a, b) =>
     b[1] - a[1],
@@ -92,7 +104,11 @@ export function DialogFechamentoCaixa({
 
   function labelFor(key: string): string {
     if (key === "SEM_CLASSIFICACAO") return "Sem classificação";
-    return PAYMENT_METHOD_LABELS[key as PaymentMethod] ?? key;
+    return (
+      PAYMENT_METHOD_LABELS[key as PaymentMethod] ??
+      COMANDA_FORMA_PAGAMENTO_LABELS[key as ComandaFormaPagamento] ??
+      key
+    );
   }
 
   return (

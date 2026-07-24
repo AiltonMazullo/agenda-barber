@@ -285,6 +285,7 @@ export function DialogDetalheCaixa({
         onOpenChange={setConfirmFechar}
         branchName={register?.branch?.name ?? "Caixa"}
         transactions={transactions}
+        comandas={comandas}
         summary={closingSummary}
         loadingSummary={loadingSummary}
         busy={busy}
