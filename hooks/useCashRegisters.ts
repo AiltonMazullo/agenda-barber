@@ -62,9 +62,10 @@ export function useCashRegisters(barbershopId: string | undefined) {
   );
 
   /**
-   * Busca o detalhe (com transações) de um caixa e actualiza o item na lista
-   * para que o CaixaCard exiba o resumo (abertura/entradas/total) sem nova
-   * requisição.
+   * Busca o detalhe (com transações e comandas) de um caixa e actualiza o
+   * item na lista para que o CaixaCard exiba o resumo (abertura/entradas/
+   * total) sem nova requisição — precisa das duas fontes porque "total" já
+   * inclui as comandas vinculadas, não só as movimentações manuais.
    */
   const getById = useCallback(
     async (id: string) => {
@@ -73,7 +74,11 @@ export function useCashRegisters(barbershopId: string | undefined) {
         const full = await cashRegistersService.getById(barbershopId, id);
         if (full) {
           setRegisters((prev) =>
-            prev.map((r) => (r.id === id ? { ...r, transactions: full.transactions } : r)),
+            prev.map((r) =>
+              r.id === id
+                ? { ...r, transactions: full.transactions, comandas: full.comandas }
+                : r,
+            ),
           );
         }
         return full;

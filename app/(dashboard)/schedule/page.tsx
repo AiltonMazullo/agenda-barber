@@ -392,6 +392,18 @@ export default function SchedulePage() {
     setDialogDetalhe(true);
   }, []);
 
+  /** Comanda ainda aberta já vinculada ao agendamento selecionado, se houver. */
+  const comandaAbertaDoAgendamento = useMemo(() => {
+    if (!agSelecionado) return null;
+    return (
+      comandas.find(
+        (c) =>
+          c.status === "ABERTA" &&
+          c.agendamentos.some((a) => a.appointmentId === agSelecionado.id),
+      ) ?? null
+    );
+  }, [comandas, agSelecionado]);
+
   /**
    * Abre o modal de composição de comanda a partir do agendamento selecionado
    * no detalhe (item 1.5 da spec) — a comanda já vem atrelada a este
@@ -1075,6 +1087,7 @@ export default function SchedulePage() {
           onDelete={handleDelete}
           onUpdateStatus={handleUpdateStatus}
           onAbrirComanda={handleAbrirComanda}
+          comandaAberta={comandaAbertaDoAgendamento}
         />
         <DialogConflito
           open={dialogConflito}

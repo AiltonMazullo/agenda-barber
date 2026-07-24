@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   X,
   User,
@@ -41,6 +42,7 @@ import type {
   AppointmentStatus,
   UpdatableAppointmentStatus,
 } from "@/types/appointment.types";
+import type { Comanda } from "@/types/orders.types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
@@ -73,6 +75,7 @@ export function DialogDetalhe({
   onDelete,
   onUpdateStatus,
   onAbrirComanda,
+  comandaAberta,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -83,7 +86,10 @@ export function DialogDetalhe({
   onUpdateStatus: (id: string, status: UpdatableAppointmentStatus) => void;
   /** Cria uma comanda do tipo AGENDAMENTO pré-preenchida com este agendamento. */
   onAbrirComanda?: (agendamento: AgendamentoVM) => void | Promise<void>;
+  /** Comanda ainda aberta já vinculada a este agendamento, se houver. */
+  comandaAberta?: Comanda | null;
 }) {
+  const router = useRouter();
   const { barbershop } = useAuth();
   const { data: whatsappSettings } = useWhatsappSettings(barbershop?.id);
   const [abrindoComanda, setAbrindoComanda] = useState(false);
@@ -134,6 +140,10 @@ export function DialogDetalhe({
   }
 
   async function handleAbrirComanda() {
+    if (comandaAberta) {
+      router.push(`/orders/${comandaAberta.id}`);
+      return;
+    }
     if (!agendamento || !onAbrirComanda) return;
     setAbrindoComanda(true);
     try {
@@ -306,7 +316,7 @@ export function DialogDetalhe({
               <MessageCircle className="size-3.5" />
               Enviar confirmação
             </button>
-            {onAbrirComanda && (
+            {(onAbrirComanda || comandaAberta) && (
               <button
                 type="button"
                 onClick={() => void handleAbrirComanda()}
@@ -314,7 +324,11 @@ export function DialogDetalhe({
                 className="h-8 px-3 rounded-md border border-border bg-surface-elevated text-xs text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5 disabled:opacity-60"
               >
                 <Receipt className="size-3.5" />
-                {abrindoComanda ? "Abrindo…" : "Abrir comanda"}
+                {abrindoComanda
+                  ? "Abrindo…"
+                  : comandaAberta
+                    ? "Ver comanda"
+                    : "Abrir comanda"}
               </button>
             )}
           </div>

@@ -16,6 +16,11 @@ import { OPENING_TRANSACTION_NAME } from "@/types/cash-register.types";
 import { cn } from "@/lib/utils";
 import type { CashRegister } from "@/types/cash-register.types";
 
+/**
+ * Mesma soma usada no detalhe do caixa (DialogDetalheCaixa): "Total" precisa
+ * incluir as comandas vinculadas, senão os dois lugares mostram números
+ * diferentes pro mesmo caixa (movimentações manuais isoladas != total real).
+ */
 function computeSummary(register: CashRegister) {
   const txs = register.transactions;
   if (!txs) return null;
@@ -30,7 +35,11 @@ function computeSummary(register: CashRegister) {
     if (t.type === "ENTRY") entradas += t.valueInCents;
     else saidas += t.valueInCents;
   }
-  return { abertura, entradas, total: entradas - saidas };
+  const comandasTotal = (register.comandas ?? []).reduce(
+    (sum, c) => sum + c.totalInCents,
+    0,
+  );
+  return { abertura, entradas, total: entradas - saidas + comandasTotal };
 }
 
 export function CaixaCard({
