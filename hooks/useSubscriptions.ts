@@ -64,7 +64,10 @@ export function useSubscriptions(barbershopId: string | undefined) {
     const newThisMonth = subscriptions.filter(
       (s) => new Date(s.createdAt) >= monthStart,
     ).length;
-    const mrrInCents = activeSubscriptions.reduce((acc, s) => acc + s.plan.priceInCents, 0);
+    const mrrInCents = activeSubscriptions.reduce(
+      (acc, s) => acc + (s.priceOverrideInCents ?? s.plan.priceInCents),
+      0,
+    );
 
     const byPlanMap = new Map<
       string,
@@ -99,5 +102,6 @@ export function useSubscriptions(barbershopId: string | undefined) {
     summary,
     isLoading,
     cancel,
+    refetch: fetchSubscriptions,
   };
 }

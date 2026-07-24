@@ -31,7 +31,7 @@ const TYPE_OPTIONS: { value: SubscriptionBillingType | "TODOS"; label: string }[
 
 export default function AlterarAssinaturasPage() {
   const { barbershop } = useAuth();
-  const { activeSubscriptions, isLoading } = useSubscriptions(barbershop?.id);
+  const { activeSubscriptions, isLoading, refetch } = useSubscriptions(barbershop?.id);
   const { plans } = usePlans(barbershop?.id);
 
   const [billingType, setBillingType] = useState<SubscriptionBillingType | "TODOS">("TODOS");
@@ -107,6 +107,7 @@ export default function AlterarAssinaturasPage() {
       });
       toast.success("Valor atualizado.");
       setNewValue("");
+      await refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao alterar valor.");
     } finally {
@@ -124,6 +125,7 @@ export default function AlterarAssinaturasPage() {
       });
       toast.success("Dia de cobrança atualizado.");
       setNewBillingDay("");
+      await refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao alterar dia de cobrança.");
     } finally {
