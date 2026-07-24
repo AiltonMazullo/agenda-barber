@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { LabeledSelect } from "./FormField";
 import { useCashRegisters } from "@/hooks/useCashRegisters";
 import { formatDate, formatTime } from "@/utils/format";
-import type { Comanda } from "@/types/orders.types";
+import { COMANDA_FORMA_PAGAMENTO_OPTIONS } from "@/utils/comanda";
+import type { Comanda, ComandaFormaPagamento } from "@/types/orders.types";
 import type { SelectOption } from "@/types/common.types";
 
 /**
@@ -32,10 +33,14 @@ export function DialogFecharComanda({
   onOpenChange: (v: boolean) => void;
   barbershopId: string | undefined;
   comanda: Comanda | null;
-  onConfirm: (cashRegisterId?: string) => Promise<unknown> | void;
+  onConfirm: (
+    cashRegisterId: string | undefined,
+    formaPagamento: ComandaFormaPagamento,
+  ) => Promise<unknown> | void;
 }) {
   const { registers } = useCashRegisters(barbershopId);
   const [cashRegisterId, setCashRegisterId] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState<ComandaFormaPagamento | "">("");
   const [submitting, setSubmitting] = useState(false);
 
   const openRegisters = useMemo(
@@ -49,6 +54,7 @@ export function DialogFecharComanda({
   useEffect(() => {
     if (!open) return;
     setCashRegisterId(openRegisters.length === 1 ? openRegisters[0].id : "");
+    setFormaPagamento("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, openRegisters.length]);
 
@@ -61,13 +67,15 @@ export function DialogFecharComanda({
     [openRegisters],
   );
 
-  const precisaEscolher = comanda?.branchId && openRegisters.length > 1;
-  const podeConfirmar = !precisaEscolher || cashRegisterId !== "";
+  const precisaEscolherCaixa = comanda?.branchId && openRegisters.length > 1;
+  const podeConfirmar =
+    (!precisaEscolherCaixa || cashRegisterId !== "") && formaPagamento !== "";
 
   async function handleConfirmar() {
+    if (!formaPagamento) return;
     setSubmitting(true);
     try {
-      await onConfirm(cashRegisterId || undefined);
+      await onConfirm(cashRegisterId || undefined, formaPagamento);
       onOpenChange(false);
     } finally {
       setSubmitting(false);
@@ -121,6 +129,15 @@ export function DialogFecharComanda({
               options={registerOptions}
             />
           )}
+
+          <LabeledSelect
+            label="Forma de pagamento"
+            required
+            placeholder="Selecione..."
+            value={formaPagamento}
+            onValueChange={(v) => setFormaPagamento(v as ComandaFormaPagamento)}
+            options={COMANDA_FORMA_PAGAMENTO_OPTIONS}
+          />
         </div>
 
         <div className="px-6 pb-6 flex justify-end gap-3 border-t border-border-subtle pt-4">

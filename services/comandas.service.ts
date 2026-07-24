@@ -1,5 +1,10 @@
 import { api } from "@/lib/api";
-import type { Comanda, ComandaDraft, ComandaStatus } from "@/types/orders.types";
+import type {
+  Comanda,
+  ComandaDraft,
+  ComandaFormaPagamento,
+  ComandaStatus,
+} from "@/types/orders.types";
 
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/comandas`;
 
@@ -38,10 +43,11 @@ export const comandasService = {
     id: string,
     status: ComandaStatus,
     cashRegisterId?: string,
+    formaPagamento?: ComandaFormaPagamento,
   ): Promise<Comanda> {
     const { data } = await api.patch<Comanda>(
       `${base(barbershopId)}/${id}/status`,
-      { status, cashRegisterId },
+      { status, cashRegisterId, formaPagamento },
     );
     return data;
   },

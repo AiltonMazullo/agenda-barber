@@ -6,6 +6,7 @@ import { comandasService } from "@/services/comandas.service";
 import type {
   Comanda,
   ComandaDraft,
+  ComandaFormaPagamento,
   ComandaStatus,
 } from "@/types/orders.types";
 
@@ -84,6 +85,7 @@ export function useComandas(barbershopId: string | undefined) {
       id: string,
       status: ComandaStatus,
       cashRegisterId?: string,
+      formaPagamento?: ComandaFormaPagamento,
     ): Promise<Comanda | null> => {
       if (!barbershopId) return null;
       try {
@@ -92,6 +94,7 @@ export function useComandas(barbershopId: string | undefined) {
           id,
           status,
           cashRegisterId,
+          formaPagamento,
         );
         toast.success(STATUS_TOAST[status]);
         await fetchComandas();

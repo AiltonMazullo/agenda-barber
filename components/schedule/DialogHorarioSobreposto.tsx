@@ -18,6 +18,8 @@ export interface ConflitoHorario {
   /** "HH:mm – HH:mm" */
   horario: string;
   servicoNome: string;
+  /** "bloqueio" = horário bloqueado, não um agendamento existente. */
+  tipo?: "bloqueio";
 }
 
 export function DialogHorarioSobreposto({
@@ -50,13 +52,27 @@ export function DialogHorarioSobreposto({
               key={i}
               className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm"
             >
-              Já existe um agendamento para o profissional{" "}
-              <span className="font-bold text-foreground">
-                {c.profissionalNome}
-              </span>{" "}
-              nesse horário{" "}
-              <span className="font-bold text-foreground">{c.horario}</span>{" "}
-              <span className="text-muted-foreground">({c.servicoNome})</span>.
+              {c.tipo === "bloqueio" ? (
+                <>
+                  Horário bloqueado para{" "}
+                  <span className="font-bold text-foreground">
+                    {c.profissionalNome}
+                  </span>{" "}
+                  às{" "}
+                  <span className="font-bold text-foreground">{c.horario}</span>{" "}
+                  <span className="text-muted-foreground">({c.servicoNome})</span>.
+                </>
+              ) : (
+                <>
+                  Já existe um agendamento para o profissional{" "}
+                  <span className="font-bold text-foreground">
+                    {c.profissionalNome}
+                  </span>{" "}
+                  nesse horário{" "}
+                  <span className="font-bold text-foreground">{c.horario}</span>{" "}
+                  <span className="text-muted-foreground">({c.servicoNome})</span>.
+                </>
+              )}
             </div>
           ))}
         </div>

@@ -279,6 +279,10 @@ export function useComandaForm(
   // ─── Submissão ──────────────────────────────────────────────────────────────
   /** Valida e monta o draft; em caso de erro, define `erro` e retorna null. */
   const buildDraft = useCallback((): ComandaDraft | null => {
+    if (!branchId) {
+      setErro("Selecione a filial.");
+      return null;
+    }
     if (tipo === "AGENDAMENTO" && linkedAppointmentIds.length === 0) {
       setErro("Adicione ao menos um agendamento à comanda.");
       return null;
@@ -355,6 +359,8 @@ export function useComandaForm(
     clienteOptions,
     branchOptions,
     employeeOptions,
+    /** Lista crua de profissionais, para derivar a filial de um agendamento. */
+    employees,
     produtos,
     servicos,
     categoriasProdutos,

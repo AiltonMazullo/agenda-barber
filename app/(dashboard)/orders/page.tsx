@@ -395,9 +395,9 @@ export default function ComandasPage() {
         onOpenChange={(v) => !v && setFecharTarget(null)}
         barbershopId={barbershop?.id}
         comanda={fecharTarget}
-        onConfirm={(cashRegisterId) => {
+        onConfirm={(cashRegisterId, formaPagamento) => {
           if (!fecharTarget) return;
-          return setStatus(fecharTarget.id, "FECHADA", cashRegisterId);
+          return setStatus(fecharTarget.id, "FECHADA", cashRegisterId, formaPagamento);
         }}
       />
     </div>

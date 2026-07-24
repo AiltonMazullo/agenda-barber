@@ -45,6 +45,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useHolidays } from "@/hooks/useHolidays";
+import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useComandas } from "@/hooks/useComandas";
 import { DialogFecharComanda } from "@/components/orders";
 import type { Comanda } from "@/types/orders.types";
@@ -68,8 +69,9 @@ import {
   isBloqueio,
   minToTime,
   snapToSlot,
-  gerarId,
   buildMonthDates,
+  localDateIso,
+  toDateInputValue,
   SLOT_OPTIONS,
   START_HOUR,
   END_HOUR,
@@ -122,8 +124,35 @@ export default function SchedulePage() {
     rescheduleAgendamento,
   } = useSchedule(barbershop?.id, selectedDate, filialId || undefined);
 
+  // Bloqueios de horário (persistidos — ver ajustes/Módulo Agenda.md)
+  const {
+    blocks: scheduleBlocks,
+    create: createScheduleBlock,
+    remove: removeScheduleBlock,
+  } = useScheduleBlocks(barbershop?.id);
+
+  const selectedDateIsoForBlocks = toDateInputValue(selectedDate);
+  const bloqueios = useMemo<BloqueioHorario[]>(
+    () =>
+      scheduleBlocks
+        .filter((b) => localDateIso(b.startAt) === selectedDateIsoForBlocks)
+        .map((b) => {
+          const start = new Date(b.startAt);
+          const end = new Date(b.endAt);
+          return {
+            id: b.id,
+            profissionalId: b.employeeId ?? "todos",
+            inicioMin: start.getUTCHours() * 60 + start.getUTCMinutes(),
+            duracaoMin: Math.round((end.getTime() - start.getTime()) / 60_000),
+            motivo: b.reason || "Bloqueado",
+            tipo: "bloqueio" as const,
+            dataIso: localDateIso(b.startAt),
+          };
+        }),
+    [scheduleBlocks, selectedDateIsoForBlocks],
+  );
+
   // UI state
-  const [bloqueios, setBloqueios] = useState<BloqueioHorario[]>([]);
   const [slotSize, setSlotSize] = useState<SlotSize>(10);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
@@ -418,41 +447,48 @@ export default function SchedulePage() {
 
   const handleCriarBloqueio = useCallback(
     (profissionalId: string, inicioMin: number, duracaoMin: number) => {
-      setBloqueios((prev) => [
-        ...prev,
-        {
-          id: gerarId(),
-          profissionalId,
-          inicioMin,
-          duracaoMin,
-          motivo: "Bloqueado",
-          tipo: "bloqueio",
-        },
-      ]);
-      toast.success("Horário bloqueado.");
+      if (!filialId) {
+        toast.error("Selecione a filial antes de bloquear um horário.");
+        return;
+      }
+      const start = new Date(selectedDate);
+      start.setUTCHours(0, 0, 0, 0);
+      start.setUTCMinutes(inicioMin);
+      const end = new Date(start.getTime() + duracaoMin * 60_000);
+      void createScheduleBlock({
+        branchId: filialId,
+        employeeId: profissionalId,
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
+        reason: "Bloqueado",
+      });
     },
-    [],
+    [filialId, selectedDate, createScheduleBlock],
   );
 
-  const handleSalvarBloqueioModal = useCallback((input: NovoBloqueioInput) => {
-    setBloqueios((prev) => [
-      ...prev,
-      {
-        id: gerarId(),
-        profissionalId: input.profissionalId,
-        inicioMin: input.inicioMin,
-        duracaoMin: input.duracaoMin,
-        motivo: input.motivo || "Bloqueado",
-        tipo: "bloqueio",
-      },
-    ]);
-    toast.success("Horário bloqueado.");
-  }, []);
+  const handleSalvarBloqueioModal = useCallback(
+    (input: NovoBloqueioInput) => {
+      const start = new Date(input.data);
+      start.setUTCHours(0, 0, 0, 0);
+      start.setUTCMinutes(input.inicioMin);
+      const end = new Date(start.getTime() + input.duracaoMin * 60_000);
+      void createScheduleBlock({
+        branchId: input.branchId,
+        employeeId: input.profissionalId === "todos" ? null : input.profissionalId,
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
+        reason: input.motivo || "Bloqueado",
+      });
+    },
+    [createScheduleBlock],
+  );
 
-  const handleDeleteBloqueio = useCallback((id: string) => {
-    setBloqueios((prev) => prev.filter((b) => b.id !== id));
-    toast.success("Bloqueio removido.");
-  }, []);
+  const handleDeleteBloqueio = useCallback(
+    (id: string) => {
+      void removeScheduleBlock(id);
+    },
+    [removeScheduleBlock],
+  );
 
   const filialAtual = branches.find((f) => f.id === filialId);
   const dataFormatada = format(selectedDate, "EEEE, dd MMM yyyy", {
@@ -1023,6 +1059,7 @@ export default function SchedulePage() {
           branches={branches}
           defaultBranchId={filialId || undefined}
           agendamentos={agendamentos}
+          bloqueios={bloqueios}
           clients={clients}
           defaultDate={selectedDate}
           prefilledHora={prefilledHora}
@@ -1069,12 +1106,13 @@ export default function SchedulePage() {
           onOpenChange={(v) => !v && setFecharComandaTarget(null)}
           barbershopId={barbershop?.id}
           comanda={fecharComandaTarget}
-          onConfirm={(cashRegisterId) => {
+          onConfirm={(cashRegisterId, formaPagamento) => {
             if (!fecharComandaTarget) return;
             return setComandaStatus(
               fecharComandaTarget.id,
               "FECHADA",
               cashRegisterId,
+              formaPagamento,
             );
           }}
         />

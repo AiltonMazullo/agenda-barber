@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Receipt, NotebookPen } from "lucide-react";
+import { X, Receipt, NotebookPen, Building2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import {
   ItensSection,
   FormSection,
   AgendamentosSection,
+  LabeledSelect,
 } from "@/components/orders";
 import type { AgendamentoVM } from "./types";
 import type { Comanda, ComandaDraft } from "@/types/orders.types";
@@ -48,6 +49,10 @@ export function DialogComandaAgendamento({
     if (!open || !agendamento || form.isLoadingCatalog || seededRef.current) return;
     seededRef.current = true;
     form.addLinkedAppointment(agendamento.id);
+    // Pré-seleciona a filial do profissional do agendamento — o usuário
+    // ainda pode trocar (obrigatório: ver ajustes/Módulo Caixa.md).
+    const profissional = form.employees.find((e) => e.id === agendamento.profissionalId);
+    if (profissional) form.setBranchId(profissional.branchId);
     const svc = form.servicos.find((s) => s.id === agendamento.servicoId);
     if (svc) {
       form.addItem({
@@ -59,7 +64,7 @@ export function DialogComandaAgendamento({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, agendamento, form.isLoadingCatalog, form.servicos]);
+  }, [open, agendamento, form.isLoadingCatalog, form.servicos, form.employees]);
 
   async function handleSubmit(kind: "salvar" | "fechar") {
     const draft = form.buildDraft();
@@ -98,6 +103,27 @@ export function DialogComandaAgendamento({
             <Loading />
           ) : (
             <>
+              <FormSection
+                icon={<Building2 />}
+                title="Filial"
+                subtitle="Filial responsável por esta comanda"
+              >
+                <div className="md:max-w-xs">
+                  <LabeledSelect
+                    label="Filial"
+                    required
+                    placeholder={
+                      form.branchOptions.length === 0
+                        ? "Nenhuma filial cadastrada"
+                        : "Selecionar filial"
+                    }
+                    value={form.branchId}
+                    onValueChange={form.setBranchId}
+                    options={form.branchOptions}
+                  />
+                </div>
+              </FormSection>
+
               <AgendamentosSection
                 linkedOptions={form.linkedOptions}
                 availableToLinkOptions={form.availableToLinkOptions}

@@ -64,7 +64,12 @@ export function TipoSection({
 
         <LabeledSelect
           label="Filial"
-          placeholder="Selecionar (opcional)"
+          required
+          placeholder={
+            branchOptions.length === 0
+              ? "Nenhuma filial cadastrada"
+              : "Selecionar filial"
+          }
           value={branchId}
           onValueChange={onBranchIdChange}
           options={branchOptions}

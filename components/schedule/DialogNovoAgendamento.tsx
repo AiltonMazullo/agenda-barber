@@ -32,6 +32,7 @@ import {
 import { maskCpf } from "@/utils/format";
 import type {
   AgendamentoVM,
+  BloqueioHorario,
   NovoAgendamentoInput,
   ProfissionalVM,
   QuickClientInput,
@@ -66,6 +67,7 @@ export function DialogNovoAgendamento({
   branches,
   defaultBranchId,
   agendamentos,
+  bloqueios,
   clients,
   defaultDate,
   prefilledHora,
@@ -85,6 +87,8 @@ export function DialogNovoAgendamento({
   /** Filial pré-selecionada ao abrir (a filial ativa na página da Agenda). */
   defaultBranchId?: string;
   agendamentos: AgendamentoVM[];
+  /** Bloqueios de horário do dia atualmente carregado na agenda. */
+  bloqueios: BloqueioHorario[];
   clients: Client[];
   defaultDate: Date;
   prefilledHora?: string;
@@ -216,9 +220,21 @@ export function DialogNovoAgendamento({
           row.profissionalId,
           cursor,
           row.duracao,
+          undefined,
+          bloqueios,
         );
         for (const c of conflicts) {
-          if (isBloqueio(c)) continue;
+          if (isBloqueio(c)) {
+            out.push({
+              profissionalNome:
+                profissionais.find((p) => p.id === row.profissionalId)?.nome ??
+                "profissional",
+              horario: `${minToTime(c.inicioMin)} – ${minToTime(c.inicioMin + c.duracaoMin)}`,
+              servicoNome: c.motivo || "Bloqueado",
+              tipo: "bloqueio",
+            });
+            continue;
+          }
           out.push({
             profissionalNome: c.profissionalNome,
             horario: `${minToTime(c.inicioMin)} – ${minToTime(c.inicioMin + c.duracao)}`,

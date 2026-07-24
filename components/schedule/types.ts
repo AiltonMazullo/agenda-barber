@@ -121,4 +121,6 @@ export interface BloqueioHorario {
   duracaoMin: number;
   motivo?: string;
   tipo: "bloqueio";
+  /** Dia do bloqueio no fuso local, "yyyy-MM-dd" — só se aplica nesse dia. */
+  dataIso: string;
 }

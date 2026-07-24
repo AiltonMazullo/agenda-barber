@@ -23,6 +23,9 @@ export interface NovoBloqueioInput {
   inicioMin: number;
   duracaoMin: number;
   motivo: string;
+  /** "yyyy-MM-dd" — dia em que o bloqueio se aplica. */
+  data: string;
+  branchId: string;
 }
 
 /**
@@ -103,6 +106,8 @@ export function DialogNovoBloqueio({
       inicioMin,
       duracaoMin,
       motivo: observacoes.trim(),
+      data,
+      branchId: filialId,
     });
     onOpenChange(false);
   }

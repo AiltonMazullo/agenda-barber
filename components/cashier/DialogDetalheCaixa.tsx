@@ -21,21 +21,14 @@ import { Loading } from "@/components/shared";
 import { FormMovimentacao } from "./FormMovimentacao";
 import { DialogFechamentoCaixa } from "./DialogFechamentoCaixa";
 import { formatBRL, formatDate, formatTime } from "@/utils/format";
+import { COMANDA_FORMA_PAGAMENTO_LABELS } from "@/utils/comanda";
 import {
   OPENING_TRANSACTION_NAME,
   type CashRegister,
   type CashRegisterClosingSummary,
   type NewTransactionInput,
 } from "@/types/cash-register.types";
-
-/** Forma de pagamento de Comanda usa um enum diferente do de CashTransaction. */
-const COMANDA_PAGAMENTO_LABELS: Record<string, string> = {
-  DINHEIRO: "Dinheiro",
-  CREDITO: "Cartão de Crédito",
-  DEBITO: "Cartão de Débito",
-  PIX: "PIX",
-  OUTRO: "Outro",
-};
+import type { ComandaFormaPagamento } from "@/types/orders.types";
 
 /** Uma linha da tabela de movimentações — de uma comanda fechada ou de um lançamento manual. */
 interface MovimentoRow {
@@ -111,7 +104,8 @@ export function DialogDetalheCaixa({
       horario: c.horario,
       totalInCents: c.totalInCents,
       pagamento: c.formaPagamento
-        ? (COMANDA_PAGAMENTO_LABELS[c.formaPagamento] ?? c.formaPagamento)
+        ? (COMANDA_FORMA_PAGAMENTO_LABELS[c.formaPagamento as ComandaFormaPagamento] ??
+          c.formaPagamento)
         : "—",
     }));
 
