@@ -94,5 +94,5 @@ export function usePlans(barbershopId: string | undefined) {
     [barbershopId, fetchPlans],
   );
 
-  return { plans, isLoading, create, update, deactivate, activate };
+  return { plans, isLoading, create, update, deactivate, activate, refresh: fetchPlans };
 }

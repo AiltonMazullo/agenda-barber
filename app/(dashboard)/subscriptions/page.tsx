@@ -405,7 +405,7 @@ function SortablePlanRow({
 
 function PlanosTab() {
   const { barbershop } = useAuth();
-  const { plans, isLoading, create, update, deactivate, activate } = usePlans(
+  const { plans, isLoading, create, update, deactivate, activate, refresh } = usePlans(
     barbershop?.id,
   );
   const { services } = useServices(barbershop?.id);
@@ -451,6 +451,7 @@ function PlanosTab() {
         barbershop.id,
         ordered.map((p, index) => ({ id: p.id, order: index, highlighted: p.highlighted })),
       );
+      await refresh();
       toast.success("Ordenação salva.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao salvar ordenação.");
