@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useBranches } from "@/hooks/useBranches";
+import { useCategories } from "@/hooks/useCategories";
 import { useClients } from "@/hooks/useClients";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useProducts } from "@/hooks/useProducts";
@@ -38,14 +39,10 @@ export interface NovoItemInput {
   valorUnitarioInCents: number;
 }
 
-/** Categorias existentes no catálogo informado (únicas, ordenadas). */
-function categoriasDe(catalogo: CatalogoOption[]): SelectOption<string>[] {
-  const map = new Map<string, string>();
-  catalogo.forEach((c) => {
-    if (c.categoriaId && c.categoriaNome) map.set(c.categoriaId, c.categoriaNome);
-  });
-  return [...map.entries()]
-    .map(([value, label]) => ({ value, label }))
+/** Todas as categorias cadastradas (não só as usadas por algum produto/serviço), ordenadas. */
+function toOptions(categories: { id: string; name: string }[]): SelectOption<string>[] {
+  return [...categories]
+    .map((c) => ({ value: c.id, label: c.name }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -69,6 +66,14 @@ export function useComandaForm(
   const { services, isLoading: loadingServices } = useServices(barbershopId);
   const { clients } = useClients(barbershopId);
   const { branches } = useBranches(barbershopId);
+  const { categories: categoriasProdutosRaw } = useCategories(
+    barbershopId,
+    "PRODUTO",
+  );
+  const { categories: categoriasServicosRaw } = useCategories(
+    barbershopId,
+    "SERVICO",
+  );
 
   const [tipo, setTipoState] = useState<ComandaTipo>(
     comanda?.tipo ?? "AGENDAMENTO",
@@ -202,8 +207,14 @@ export function useComandaForm(
     [services],
   );
 
-  const categoriasProdutos = useMemo(() => categoriasDe(produtos), [produtos]);
-  const categoriasServicos = useMemo(() => categoriasDe(servicos), [servicos]);
+  const categoriasProdutos = useMemo(
+    () => toOptions(categoriasProdutosRaw),
+    [categoriasProdutosRaw],
+  );
+  const categoriasServicos = useMemo(
+    () => toOptions(categoriasServicosRaw),
+    [categoriasServicosRaw],
+  );
 
   // ─── Itens ──────────────────────────────────────────────────────────────────
   /**
