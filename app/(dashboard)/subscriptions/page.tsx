@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CreditCard,
@@ -14,9 +14,28 @@ import {
   Search,
   Mail,
   Phone,
+  GripVertical,
+  Save,
 } from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -43,6 +62,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useCategories } from "@/hooks/useCategories";
 import { usePagination } from "@/hooks/usePagination";
+import { plansService } from "@/services/plans.service";
 import type { CreatePlanPayload, Plan } from "@/types/plan.types";
 import type { Subscription } from "@/types/subscription.types";
 
@@ -54,7 +74,6 @@ const QUICK_LINKS = [
   { href: "/subscriptions/calendario", label: "Calendário" },
   { href: "/subscriptions/alterar", label: "Alterar assinaturas" },
   { href: "/subscriptions/contratos", label: "Contratos ativos" },
-  { href: "/subscriptions/planos/exibicao", label: "Exibição de planos" },
   { href: "/subscriptions/comissao", label: "Comissão de assinaturas" },
 ] as const;
 
@@ -285,6 +304,105 @@ function AssinantesTab() {
   );
 }
 
+function SortablePlanRow({
+  plan,
+  onToggleHighlight,
+  onEdit,
+  onToggleActive,
+}: {
+  plan: Plan;
+  onToggleHighlight: (id: string) => void;
+  onEdit: (plan: Plan) => void;
+  onToggleActive: (plan: Plan) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: plan.id,
+  });
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className={`border-border hover:bg-surface-elevated/50 transition-colors ${plan.status === "INACTIVE" ? "opacity-50" : ""}`}
+    >
+      <TableCell className="px-4 py-3 w-10">
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors touch-none"
+          aria-label="Arrastar para reordenar"
+        >
+          <GripVertical className="size-4" />
+        </button>
+      </TableCell>
+      <TableCell className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-foreground">{plan.name}</p>
+          {plan.status === "INACTIVE" && (
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
+              Inativo
+            </span>
+          )}
+          {plan.hidden && (
+            <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint border border-border rounded px-1.5 py-0.5 shrink-0">
+              Oculto
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {formatBRL(plan.priceInCents / 100)}
+          {plan.availableQuantity != null
+            ? ` · ${plan.availableQuantity} vagas`
+            : " · Vagas ilimitadas"}
+        </p>
+      </TableCell>
+      <TableCell className="px-4 py-3">
+        <Checkbox
+          checked={plan.highlighted}
+          onCheckedChange={() => onToggleHighlight(plan.id)}
+          aria-label={`Marcar "${plan.name}" como mais vendido`}
+          className="cursor-pointer"
+        />
+      </TableCell>
+      <TableCell className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(plan)}
+            className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+          >
+            <Pencil className="size-3" />
+          </button>
+          {plan.status === "ACTIVE" ? (
+            <button
+              type="button"
+              onClick={() => onToggleActive(plan)}
+              title="Desativar plano"
+              className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+            >
+              <PowerOff className="size-3" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onToggleActive(plan)}
+              title="Ativar plano"
+              className="size-7 rounded-md border border-border bg-transparent text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+            >
+              <Power className="size-3" />
+            </button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function PlanosTab() {
   const { barbershop } = useAuth();
   const { plans, isLoading, create, update, deactivate, activate } = usePlans(
@@ -298,6 +416,48 @@ function PlanosTab() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);
+  const [ordered, setOrdered] = useState<Plan[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  useEffect(() => {
+    setOrdered(plans);
+  }, [plans]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setOrdered((prev) => {
+      const ids = prev.map((p) => p.id);
+      const oldIndex = ids.indexOf(active.id as string);
+      const newIndex = ids.indexOf(over.id as string);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }
+
+  function toggleHighlight(id: string) {
+    setOrdered((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, highlighted: !p.highlighted } : p)),
+    );
+  }
+
+  async function saveOrder() {
+    if (!barbershop) return;
+    setSavingOrder(true);
+    try {
+      await plansService.reorder(
+        barbershop.id,
+        ordered.map((p, index) => ({ id: p.id, order: index, highlighted: p.highlighted })),
+      );
+      toast.success("Ordenação salva.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao salvar ordenação.");
+    } finally {
+      setSavingOrder(false);
+    }
+  }
 
   function openCreate() {
     setEditing(null);
@@ -307,6 +467,14 @@ function PlanosTab() {
   function openEdit(plan: Plan) {
     setEditing(plan);
     setDialogOpen(true);
+  }
+
+  function toggleActive(plan: Plan) {
+    if (plan.status === "ACTIVE") {
+      deactivate(plan.id);
+    } else {
+      activate(plan.id);
+    }
   }
 
   async function handleSave(payload: CreatePlanPayload) {
@@ -340,95 +508,63 @@ function PlanosTab() {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card
-              key={i}
-              className="bg-surface-raised border-border animate-pulse"
-            >
-              <CardContent className="p-4 h-20" />
-            </Card>
-          ))}
+      <div className="rounded-xl border border-border bg-surface-raised overflow-hidden">
+        <div className="px-4 py-3 border-b border-border-subtle">
+          <p className="text-sm font-bold text-foreground">Registros Ativos</p>
+          <p className="text-xs text-muted-foreground">Planos do sistema</p>
         </div>
-      ) : plans.length === 0 ? (
-        <EmptyState message="Nenhum plano cadastrado. Crie um plano para oferecer aos seus clientes." />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {plans.map((p) => (
-            <Card
-              key={p.id}
-              className={`bg-surface-raised border-border ${p.status === "INACTIVE" ? "opacity-50" : ""}`}
-            >
-              <CardContent className="p-4 flex items-start gap-3">
-                <div
-                  className="size-10 rounded-lg grid place-items-center shrink-0"
-                  style={{
-                    backgroundColor: `${p.labelColor}26`,
-                    color: p.labelColor,
-                  }}
-                >
-                  <CreditCard className="size-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {p.name}
-                    </p>
-                    {p.status === "INACTIVE" && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
-                        Inativo
-                      </span>
-                    )}
-                    {p.hidden && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint border border-border rounded px-1.5 py-0.5 shrink-0">
-                        Oculto
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatBRL(p.priceInCents / 100)}
-                    {p.availableQuantity != null
-                      ? ` · ${p.availableQuantity} vagas`
-                      : " · Vagas ilimitadas"}
-                  </p>
-                  {p.planServices?.length > 0 && (
-                    <p className="text-xs text-text-faint mt-1 truncate">
-                      {p.planServices?.map((ps) => ps.service.name).join(", ")}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(p)}
-                    className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                  >
-                    <Pencil className="size-3" />
-                  </button>
-                  {p.status === "ACTIVE" ? (
-                    <button
-                      type="button"
-                      onClick={() => deactivate(p.id)}
-                      title="Desativar plano"
-                      className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
-                    >
-                      <PowerOff className="size-3" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => activate(p.id)}
-                      title="Ativar plano"
-                      className="size-7 rounded-md border border-border bg-transparent text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                    >
-                      <Power className="size-3" />
-                    </button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {isLoading ? (
+          <Loading />
+        ) : ordered.length === 0 ? (
+          <div className="py-6">
+            <EmptyState message="Nenhum plano cadastrado. Crie um plano para oferecer aos seus clientes." />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="px-4 py-3 w-10" />
+                <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
+                  Nome
+                </TableHead>
+                <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
+                  Mais vendido
+                </TableHead>
+                <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
+                  Ações
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={ordered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                <TableBody>
+                  {ordered.map((p) => (
+                    <SortablePlanRow
+                      key={p.id}
+                      plan={p}
+                      onToggleHighlight={toggleHighlight}
+                      onEdit={openEdit}
+                      onToggleActive={toggleActive}
+                    />
+                  ))}
+                </TableBody>
+              </SortableContext>
+            </DndContext>
+          </Table>
+        )}
+      </div>
+
+      {ordered.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={saveOrder}
+            disabled={savingOrder}
+            className="h-10 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Save className="size-3.5" />
+            Salvar
+          </button>
         </div>
       )}
 
