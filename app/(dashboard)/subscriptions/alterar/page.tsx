@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { usePlans } from "@/hooks/usePlans";
 import { subscriptionsService } from "@/services/subscriptions.service";
-import { formatBRL, formatDate } from "@/utils/format";
+import { formatBRL, formatDate, maskBRLInput } from "@/utils/format";
 import type { SubscriptionBillingType } from "@/types/subscription.types";
 
 const TYPE_OPTIONS: { value: SubscriptionBillingType | "TODOS"; label: string }[] = [
@@ -102,7 +102,7 @@ export default function AlterarAssinaturasPage() {
     try {
       await subscriptionsService.bulkUpdate(barbershop!.id, {
         subscriptionIds: selectedIds,
-        newValueInCents: Math.round(Number(newValue.replace(",", ".")) * 100),
+        newValueInCents: parseInt(newValue.replace(/\D/g, ""), 10) || 0,
         applyOnlyNextInvoice,
       });
       toast.success("Valor atualizado.");
@@ -194,8 +194,9 @@ export default function AlterarAssinaturasPage() {
             </FieldLabel>
             <Input
               value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
+              onChange={(e) => setNewValue(maskBRLInput(e.target.value))}
               placeholder="R$ 0,00"
+              inputMode="numeric"
               className="bg-surface-base border-border text-foreground"
             />
           </Field>
@@ -225,8 +226,14 @@ export default function AlterarAssinaturasPage() {
             </FieldLabel>
             <Input
               value={newBillingDay}
-              onChange={(e) => setNewBillingDay(e.target.value.replace(/\D/g, ""))}
-              placeholder="Insira um número entre 1 e 28"
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                const num = Number(digits);
+                if (digits !== "" && num > 30) return;
+                setNewBillingDay(digits);
+              }}
+              placeholder="Insira um número entre 1 e 30"
+              inputMode="numeric"
               className="bg-surface-base border-border text-foreground"
             />
           </Field>

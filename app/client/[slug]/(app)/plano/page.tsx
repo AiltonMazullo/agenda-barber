@@ -12,6 +12,7 @@ import {
   Lock,
   Repeat2,
   AlertCircle,
+  Star,
 } from "lucide-react";
 import { Loading } from "@/components/shared/Loading";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -52,9 +53,16 @@ function PlanCard({
       : null;
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-raised overflow-hidden flex flex-col">
+    <div className="relative rounded-xl border border-border-subtle bg-surface-raised overflow-hidden flex flex-col">
       {/* Color bar */}
       <div className="h-1.5 w-full" style={{ backgroundColor: accentColor }} />
+
+      {plan.highlighted && (
+        <div className="absolute top-3 right-3 h-6 px-2.5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold flex items-center gap-1 shadow-sm">
+          <Star className="size-3 fill-current" />
+          Mais vendido
+        </div>
+      )}
 
       <div className="p-5 flex flex-col flex-1 gap-4">
         {/* Header */}

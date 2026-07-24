@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, GripVertical, Save, Star } from "lucide-react";
+import { ArrowLeft, GripVertical, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -20,6 +20,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PageHeader, Loading, EmptyState } from "@/components/shared";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlans } from "@/hooks/usePlans";
 import { plansService } from "@/services/plans.service";
@@ -37,38 +39,36 @@ function SortablePlanRow({
   });
 
   return (
-    <div
+    <TableRow
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
       }}
-      className="flex items-center gap-3 px-4 py-3"
+      className="border-border hover:bg-surface-elevated/50 transition-colors"
     >
-      <button
-        type="button"
-        {...listeners}
-        {...attributes}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors touch-none"
-        aria-label="Arrastar para reordenar"
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <p className="flex-1 text-sm font-semibold text-foreground">{plan.name}</p>
-      <button
-        type="button"
-        onClick={() => onToggleHighlight(plan.id)}
-        className={`h-8 px-3 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-          plan.highlighted
-            ? "border-brand/40 bg-brand/15 text-brand"
-            : "border-border text-muted-foreground hover:bg-surface-elevated"
-        }`}
-      >
-        <Star className="size-3" />
-        Mais vendido
-      </button>
-    </div>
+      <TableCell className="px-4 py-3 w-10">
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors touch-none"
+          aria-label="Arrastar para reordenar"
+        >
+          <GripVertical className="size-4" />
+        </button>
+      </TableCell>
+      <TableCell className="px-4 py-3 text-sm font-semibold text-foreground">{plan.name}</TableCell>
+      <TableCell className="px-4 py-3">
+        <Checkbox
+          checked={plan.highlighted}
+          onCheckedChange={() => onToggleHighlight(plan.id)}
+          aria-label={`Marcar "${plan.name}" como mais vendido`}
+          className="cursor-pointer"
+        />
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -119,7 +119,7 @@ export default function ExibicaoPlanosPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-2xl">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-3xl">
       <PageHeader
         title="Exibição de planos"
         subtitle="Ordenar e destacar planos"
@@ -134,7 +134,11 @@ export default function ExibicaoPlanosPage() {
         }
       />
 
-      <div className="rounded-xl border border-border bg-surface-raised divide-y divide-border-subtle">
+      <div className="rounded-xl border border-border bg-surface-raised overflow-hidden">
+        <div className="px-4 py-3 border-b border-border-subtle">
+          <p className="text-sm font-bold text-foreground">Registros Ativos</p>
+          <p className="text-xs text-muted-foreground">Planos do sistema</p>
+        </div>
         {isLoading ? (
           <Loading />
         ) : ordered.length === 0 ? (
@@ -142,13 +146,28 @@ export default function ExibicaoPlanosPage() {
             <EmptyState message="Nenhum plano cadastrado." />
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={ordered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-              {ordered.map((p) => (
-                <SortablePlanRow key={p.id} plan={p} onToggleHighlight={toggleHighlight} />
-              ))}
-            </SortableContext>
-          </DndContext>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="px-4 py-3 w-10" />
+                <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
+                  Nome
+                </TableHead>
+                <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
+                  Mais vendido
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={ordered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                <TableBody>
+                  {ordered.map((p) => (
+                    <SortablePlanRow key={p.id} plan={p} onToggleHighlight={toggleHighlight} />
+                  ))}
+                </TableBody>
+              </SortableContext>
+            </DndContext>
+          </Table>
         )}
       </div>
 
