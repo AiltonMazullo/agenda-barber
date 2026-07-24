@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Wallet, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Wallet, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,9 @@ import type { SelectOption } from "@/types/common.types";
 /**
  * Confirmação de fechamento de comanda — se a filial da comanda tiver mais
  * de um caixa aberto, exige a escolha de qual caixa recebe o registro (ver
- * ajustes/Módulo Caixa.md); com um só, já vem selecionado; sem nenhum, fecha
- * sem vínculo (comportamento anterior, para quem não usa o módulo de caixa).
+ * ajustes/Módulo Caixa.md); com um só, já vem selecionado; sem nenhum caixa
+ * aberto (ou sem filial vinculada), o fechamento é bloqueado — o backend
+ * exige um caixa aberto para registrar a venda.
  */
 export function DialogFecharComanda({
   open,
@@ -67,9 +68,12 @@ export function DialogFecharComanda({
     [openRegisters],
   );
 
+  const semCaixaDisponivel = !comanda?.branchId || openRegisters.length === 0;
   const precisaEscolherCaixa = comanda?.branchId && openRegisters.length > 1;
   const podeConfirmar =
-    (!precisaEscolherCaixa || cashRegisterId !== "") && formaPagamento !== "";
+    !semCaixaDisponivel &&
+    (!precisaEscolherCaixa || cashRegisterId !== "") &&
+    formaPagamento !== "";
 
   async function handleConfirmar() {
     if (!formaPagamento) return;
@@ -105,15 +109,21 @@ export function DialogFecharComanda({
 
         <div className="px-6 py-5 space-y-4">
           {!comanda?.branchId ? (
-            <p className="text-sm text-muted-foreground">
-              Esta comanda não está vinculada a uma filial — será fechada sem
-              vínculo com nenhum caixa.
-            </p>
+            <div className="flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2.5">
+              <AlertTriangle className="size-4 text-warning-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Esta comanda não está vinculada a uma filial. Vincule uma
+                filial para poder fechá-la.
+              </p>
+            </div>
           ) : openRegisters.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum caixa aberto nesta filial. A comanda será fechada sem
-              vínculo com nenhum caixa.
-            </p>
+            <div className="flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2.5">
+              <AlertTriangle className="size-4 text-warning-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Nenhum caixa aberto nesta filial. É necessário abrir um caixa
+                para finalizar a comanda.
+              </p>
+            </div>
           ) : openRegisters.length === 1 ? (
             <div className="flex items-center gap-2 rounded-md border border-border bg-surface-base px-3 py-2.5 text-sm text-foreground">
               <Wallet className="size-4 text-brand shrink-0" />
