@@ -137,7 +137,7 @@ export function ClientProfileForm({
   function buildPayload(): UpdateMePayload {
     const payload: UpdateMePayload = {};
     const addText = (
-      key: keyof UpdateMePayload,
+      key: Exclude<keyof UpdateMePayload, "remindInSchedule">,
       value: string,
       original: string | null,
     ) => {
