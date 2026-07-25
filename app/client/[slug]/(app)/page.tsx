@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -14,14 +14,17 @@ import {
 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
+import { clientCatalogService } from "@/services/client-catalog.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
 import { FeaturedFlag } from "@/components/client/FeaturedFlag";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
 import { Loading } from "@/components/shared/Loading";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
+import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import type { Service } from "@/types/service.types";
 import type { ClientAppointment } from "@/types/appointment.types";
+import type { Employee } from "@/types/employee.types";
 
 function formatBRLFromCents(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -41,6 +44,8 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
   const [services, setServices] = useState<Service[]>([]);
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const { map: apptEmployeeMap } = useAppointmentEmployeeMap();
 
   useEffect(() => {
     if (!barbershop) return;
@@ -74,8 +79,47 @@ export default function BarbershopPublicPage({ params }: PageProps) {
     };
   }, [isAuthenticated]);
 
+  // Lista de profissionais (via catálogo público) para popular `employee` a
+  // partir do vínculo local — o backend não retorna o profissional em
+  // /me/appointments.
+  useEffect(() => {
+    let active = true;
+    clientCatalogService
+      .listEmployees(slug)
+      .then((list) => {
+        if (active) setEmployees(list);
+      })
+      .catch(() => {
+        /* silencioso — sem a lista, cai em "Sem preferência" */
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug]);
+
+  const empById = useMemo(() => {
+    const m = new Map<string, Employee>();
+    employees.forEach((e) => m.set(e.id, e));
+    return m;
+  }, [employees]);
+
+  const resolvedAppointments = useMemo(
+    () =>
+      appointments.map((a) => {
+        if (a.employee) return a;
+        const empId = a.employeeId ?? apptEmployeeMap[a.id] ?? null;
+        const emp = empId ? empById.get(empId) : undefined;
+        if (!emp) return a;
+        return {
+          ...a,
+          employee: { id: emp.id, name: emp.name, appName: emp.appName },
+        };
+      }),
+    [appointments, apptEmployeeMap, empById],
+  );
+
   const now = Date.now();
-  const allUpcomingAppointments = appointments
+  const allUpcomingAppointments = resolvedAppointments
     .filter(
       (a) =>
         (a.status === "PENDING" || a.status === "CONFIRMED") &&
