@@ -8,8 +8,10 @@ import {
   IdCard,
   MapPin,
   Home,
+  MessageCircleQuestion,
+  Bell,
 } from "lucide-react";
-import { formatDate, formatPhone } from "@/utils/format";
+import { formatDate, formatPhone, maskCpf, maskCep } from "@/utils/format";
 import type { Client } from "@/types/client.types";
 
 function Row({
@@ -92,7 +94,17 @@ export function ClientProfileCard({ client }: { client: Client }) {
         <Row
           icon={<IdCard className="size-4" />}
           label="CPF"
-          value={client.cpf}
+          value={client.cpf ? maskCpf(client.cpf) : null}
+        />
+        <Row
+          icon={<MessageCircleQuestion className="size-4" />}
+          label="Como conheceu"
+          value={client.howMet}
+        />
+        <Row
+          icon={<Bell className="size-4" />}
+          label="Notificações de agendamento"
+          value={client.remindInSchedule ? "Ativadas" : "Desativadas"}
         />
       </Section>
 
@@ -100,7 +112,7 @@ export function ClientProfileCard({ client }: { client: Client }) {
         <Row
           icon={<MapPin className="size-4" />}
           label="CEP"
-          value={client.cep}
+          value={client.cep ? maskCep(client.cep) : null}
         />
         <Row
           icon={<Home className="size-4" />}

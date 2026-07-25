@@ -17,15 +17,12 @@ export default function PerfilClientePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-2xl font-bold tracking-tight shrink-0">
-          Meu perfil
-        </h1>
-        {client && !editing && (
-          <div className="flex flex-wrap items-center gap-2">
-            <InstallAppButton />
-            <GoogleCalendarButton />
-            <TwoFactorButton clientId={client.id} />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight shrink-0">
+            Meu perfil
+          </h1>
+          {client && !editing && (
             <Button
               type="button"
               variant="outline"
@@ -35,6 +32,13 @@ export default function PerfilClientePage() {
               <Pencil className="size-4 mr-1.5" />
               Editar
             </Button>
+          )}
+        </div>
+        {client && !editing && (
+          <div className="flex flex-wrap items-center gap-2">
+            <InstallAppButton />
+            <GoogleCalendarButton />
+            <TwoFactorButton clientId={client.id} />
           </div>
         )}
       </div>
