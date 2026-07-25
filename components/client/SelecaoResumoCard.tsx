@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { priceServiceUnderSubscription } from "@/utils/plan-pricing";
 import type { Service } from "@/types/service.types";
-import type { MySubscription } from "@/types/subscription.types";
+import type { MySubscription, ServiceUsage } from "@/types/subscription.types";
 
 interface SelecaoResumoCardProps {
   /** Serviços selecionados, na ordem de seleção. */
@@ -15,6 +15,8 @@ interface SelecaoResumoCardProps {
   onRemove?: (id: string) => void;
   /** Assinatura ativa → preços recalculados pelas regras do plano. */
   subscription?: MySubscription["subscription"] | null;
+  /** Uso mensal por serviço (cota grátis restante) da assinatura ativa. */
+  usage?: ServiceUsage[];
 }
 
 function formatBRLFromCents(cents: number): string {
@@ -29,10 +31,11 @@ export function SelecaoResumoCard({
   services,
   onRemove,
   subscription,
+  usage = [],
 }: SelecaoResumoCardProps) {
   const totalMin = services.reduce((acc, s) => acc + s.durationMin, 0);
   const totalCents = services.reduce(
-    (acc, s) => acc + priceServiceUnderSubscription(s, subscription).effectiveCents,
+    (acc, s) => acc + priceServiceUnderSubscription(s, subscription, usage).effectiveCents,
     0,
   );
   const planActive = !!subscription;
@@ -74,7 +77,7 @@ export function SelecaoResumoCard({
                 </div>
                 <span className="text-sm font-bold text-brand whitespace-nowrap">
                   {formatBRLFromCents(
-                    priceServiceUnderSubscription(s, subscription).effectiveCents,
+                    priceServiceUnderSubscription(s, subscription, usage).effectiveCents,
                   )}
                 </span>
               </div>

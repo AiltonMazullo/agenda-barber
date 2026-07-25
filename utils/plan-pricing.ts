@@ -1,5 +1,5 @@
 import type { Service } from "@/types/service.types";
-import type { MySubscription } from "@/types/subscription.types";
+import type { MySubscription, ServiceUsage } from "@/types/subscription.types";
 
 export type ServicePriceStatus = "included" | "discount" | "full";
 
@@ -16,14 +16,17 @@ type ActiveSubscription = MySubscription["subscription"] | null | undefined;
 /**
  * Calcula o preço de um serviço sob as regras da assinatura ativa do cliente.
  * - Sem assinatura ativa → preço cheio.
- * - Serviço coberto pelo plano (`PlanService.discountPercent`) → desconto real
- *   aplicado (100% = incluso/grátis).
+ * - Serviço coberto pelo plano com cota mensal (`monthlyLimit`) ainda
+ *   disponível (`usage[].free`) → grátis (R$ 0,00).
+ * - Cota esgotada ou plano sem cota → desconto (`PlanService.discountPercent`,
+ *   100% = incluso/grátis mesmo sem cota).
  * - Fora do plano → preço cheio (o plano real não define desconto genérico
  *   para serviços que não estão nele).
  */
 export function priceServiceUnderSubscription(
   service: Service,
   subscription: ActiveSubscription,
+  usage: ServiceUsage[] = [],
 ): ServicePricing {
   const originalCents = service.priceInCents;
 
@@ -33,6 +36,11 @@ export function priceServiceUnderSubscription(
 
   if (!planService) {
     return { originalCents, effectiveCents: originalCents, status: "full", discountPct: 0 };
+  }
+
+  const serviceUsage = usage.find((u) => u.serviceId === service.id);
+  if (serviceUsage?.free) {
+    return { originalCents, effectiveCents: 0, status: "included", discountPct: 100 };
   }
 
   const pct = planService.discountPercent;

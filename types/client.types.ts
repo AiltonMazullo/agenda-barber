@@ -78,4 +78,5 @@ export interface UpdateMePayload {
   uf?: string;
   number?: string;
   complement?: string;
+  remindInSchedule?: boolean;
 }

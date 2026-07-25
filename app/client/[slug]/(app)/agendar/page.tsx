@@ -517,7 +517,7 @@ export default function AgendarPage({ params }: PageProps) {
                           selected={selectedServices.some((x) => x.id === s.id)}
                           pricing={
                             isSubscriber
-                              ? priceServiceUnderSubscription(s, subscription)
+                              ? priceServiceUnderSubscription(s, subscription, usage)
                               : undefined
                           }
                           onSelect={() =>
@@ -541,6 +541,7 @@ export default function AgendarPage({ params }: PageProps) {
                         )
                       }
                       subscription={isSubscriber ? subscription : null}
+                      usage={usage}
                     />
                     {isSubscriber && subscription ? (
                       <>
@@ -658,6 +659,7 @@ export default function AgendarPage({ params }: PageProps) {
                           priceServiceUnderSubscription(
                             s,
                             isSubscriber ? subscription : null,
+                            usage,
                           ).effectiveCents,
                         0,
                       ),

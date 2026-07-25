@@ -10,14 +10,18 @@ import {
   Clock,
   AlertCircle,
   CalendarPlus,
+  CalendarDays,
 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
+import { clientAppointmentsService } from "@/services/client-appointments.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
 import { FeaturedFlag } from "@/components/client/FeaturedFlag";
+import { AppointmentItem } from "@/components/client/AppointmentItem";
 import { Loading } from "@/components/shared/Loading";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import type { Service } from "@/types/service.types";
+import type { ClientAppointment } from "@/types/appointment.types";
 
 function formatBRLFromCents(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -36,6 +40,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
   const { isAuthenticated } = useClientAuth();
 
   const [services, setServices] = useState<Service[]>([]);
+  const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
 
   useEffect(() => {
     if (!barbershop) return;
@@ -52,6 +57,35 @@ export default function BarbershopPublicPage({ params }: PageProps) {
       active = false;
     };
   }, [barbershop]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    clientAppointmentsService
+      .listMine()
+      .then((list) => {
+        if (active) setAppointments(list);
+      })
+      .catch(() => {
+        /* silencioso — widget é complemento da home */
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated]);
+
+  const now = Date.now();
+  const allUpcomingAppointments = appointments
+    .filter(
+      (a) =>
+        (a.status === "PENDING" || a.status === "CONFIRMED") &&
+        new Date(a.scheduledAt).getTime() >= now,
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+    );
+  const upcomingAppointments = allUpcomingAppointments.slice(0, 5);
 
   const agendarHref = isAuthenticated
     ? `/client/${slug}/agendar`
@@ -105,6 +139,36 @@ export default function BarbershopPublicPage({ params }: PageProps) {
               Agendar agora →
             </Link>
           </section>
+
+          {upcomingAppointments.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="size-4 text-brand" />
+                  <h2 className="text-sm font-bold uppercase tracking-widest">
+                    Próximos agendamentos
+                  </h2>
+                </div>
+                {allUpcomingAppointments.length > upcomingAppointments.length && (
+                  <Link
+                    href={`/client/${slug}/agendamentos`}
+                    className="text-xs font-medium text-brand hover:underline whitespace-nowrap"
+                  >
+                    Ver todos
+                  </Link>
+                )}
+              </div>
+              <div className="space-y-3">
+                {upcomingAppointments.map((appointment) => (
+                  <AppointmentItem
+                    key={appointment.id}
+                    appointment={appointment}
+                    variant="upcoming"
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">

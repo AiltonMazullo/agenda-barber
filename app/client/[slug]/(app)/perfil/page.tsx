@@ -21,6 +21,22 @@ export default function PerfilClientePage() {
         <h1 className="text-2xl font-bold tracking-tight shrink-0">
           Meu perfil
         </h1>
+        {client && !editing && (
+          <div className="flex flex-wrap items-center gap-2">
+            <InstallAppButton />
+            <GoogleCalendarButton />
+            <TwoFactorButton clientId={client.id} />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditing(true)}
+              className="cursor-pointer"
+            >
+              <Pencil className="size-4 mr-1.5" />
+              Editar
+            </Button>
+          </div>
+        )}
       </div>
 
       {isLoading ? (

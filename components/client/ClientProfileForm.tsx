@@ -47,6 +47,42 @@ function Field({
   );
 }
 
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors cursor-pointer ${
+          checked ? "bg-brand" : "bg-surface-base border border-border"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 size-5 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-[22px]" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 function Section({
   title,
   children,
@@ -90,9 +126,10 @@ export function ClientProfileForm({
     neighborhood: client.neighborhood ?? "",
     city: client.city ?? "",
     uf: client.uf ?? "",
+    remindInSchedule: client.remindInSchedule,
   });
 
-  function set<K extends keyof typeof form>(key: K, value: string) {
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -135,6 +172,10 @@ export function ClientProfileForm({
     }
 
     if (form.password.trim()) payload.password = form.password;
+
+    if (form.remindInSchedule !== client.remindInSchedule) {
+      payload.remindInSchedule = form.remindInSchedule;
+    }
 
     return payload;
   }
@@ -282,6 +323,18 @@ export function ClientProfileForm({
           />
         </Field>
       </Section>
+
+      <section className="rounded-xl border border-border-subtle bg-surface-raised p-5">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-brand mb-4">
+          Notificações
+        </h3>
+        <ToggleRow
+          label="Lembretes de agendamento"
+          description="Receba lembretes sobre seus próximos agendamentos."
+          checked={form.remindInSchedule}
+          onChange={(value) => set("remindInSchedule", value)}
+        />
+      </section>
 
       <div className="flex justify-end gap-3">
         <button
