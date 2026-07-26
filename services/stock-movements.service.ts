@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import type {
+  NewStockMovementBatchInput,
   NewStockMovementInput,
   StockMovement,
   StockMovementApiResponse,
@@ -44,5 +45,19 @@ export const stockMovementsService = {
       note: input.note,
     });
     return toStockMovement(data);
+  },
+
+  async createBatch(
+    barbershopId: string,
+    input: NewStockMovementBatchInput,
+  ): Promise<StockMovement[]> {
+    const { data } = await api.post<StockMovementApiResponse[]>(
+      `${base(barbershopId)}/batch`,
+      {
+        branchId: input.branchId || undefined,
+        items: input.items,
+      },
+    );
+    return data.map(toStockMovement);
   },
 };

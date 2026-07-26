@@ -4,12 +4,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { categoriesService } from "@/services/categories.service";
-import type { Category, CategoryType } from "@/types/category.types";
+import type {
+  Category,
+  CategoryStatus,
+  CategoryType,
+} from "@/types/category.types";
 
-/** Categorias são sempre de um tipo só — cada chamador escolhe PRODUTO ou SERVICO. */
+/**
+ * Categorias são sempre de um tipo só — cada chamador escolhe PRODUTO ou
+ * SERVICO. `status` é opcional: quando omitido, o backend retorna categorias
+ * de todos os status; passe `"ACTIVE"` para trazer só as ativas (ex.: ao
+ * ocultar registros inativos numa listagem).
+ */
 export function useCategories(
   barbershopId: string | undefined,
   type: CategoryType,
+  status?: CategoryStatus,
 ) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +32,7 @@ export function useCategories(
     let active = true;
     setIsLoading(true);
     categoriesService
-      .list(barbershopId, type)
+      .list(barbershopId, type, status)
       .then((data) => {
         if (active) setCategories(data);
       })
@@ -38,13 +48,17 @@ export function useCategories(
     return () => {
       active = false;
     };
-  }, [barbershopId, type]);
+  }, [barbershopId, type, status]);
 
   const create = useCallback(
-    async (name: string) => {
+    async (name: string, createStatus?: CategoryStatus) => {
       if (!barbershopId) return null;
       try {
-        const created = await categoriesService.create(barbershopId, { name, type });
+        const created = await categoriesService.create(barbershopId, {
+          name,
+          type,
+          status: createStatus,
+        });
         setCategories((prev) => [...prev, created]);
         toast.success("Categoria criada.");
         return created;
@@ -59,11 +73,22 @@ export function useCategories(
   );
 
   const update = useCallback(
-    async (id: string, name: string) => {
+    async (id: string, name: string, updateStatus?: CategoryStatus) => {
       if (!barbershopId) return null;
       try {
-        const updated = await categoriesService.update(barbershopId, id, { name });
-        setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+        const updated = await categoriesService.update(barbershopId, id, {
+          name,
+          status: updateStatus,
+        });
+        setCategories((prev) => {
+          // Se a listagem atual está filtrada por status (ex.: só ativas) e o
+          // registro atualizado deixou de atender o filtro, remove da lista
+          // local em vez de deixá-lo "preso" até o próximo refetch.
+          if (status && updated.status !== status) {
+            return prev.filter((c) => c.id !== id);
+          }
+          return prev.map((c) => (c.id === id ? updated : c));
+        });
         toast.success("Categoria atualizada.");
         return updated;
       } catch (err) {
@@ -73,7 +98,7 @@ export function useCategories(
         return null;
       }
     },
-    [barbershopId],
+    [barbershopId, status],
   );
 
   const remove = useCallback(

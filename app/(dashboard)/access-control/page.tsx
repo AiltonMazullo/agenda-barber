@@ -1,29 +1,27 @@
 "use client";
 
+import { Pencil, Shield, Trash2, X, AlertTriangle, Plus } from "lucide-react";
 import { useState } from "react";
-import { Shield, Plus, Pencil, Trash2, Users, X, AlertTriangle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader, SummaryCard, EmptyState, Loading, Can } from "@/components/shared";
+import { PageHeader, SummaryCard, Can } from "@/components/shared";
+import {
+  RegistrosAtivosTable,
+  type Column,
+} from "@/components/shared/RegistrosAtivosTable";
 import { DialogGrupoAcesso } from "@/components/access-control/DialogGrupoAcesso";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { usePermissionsCatalog } from "@/hooks/usePermissionsCatalog";
+import { formatDate } from "@/utils/format";
 import type {
   AccessGroup,
   CreateAccessGroupPayload,
 } from "@/types/access-group.types";
-
-function permissionsSummary(group: AccessGroup): string {
-  const count = group.permissions.length;
-  if (count === 0) return "Sem permissões";
-  return count === 1 ? "1 permissão selecionada" : `${count} permissões selecionadas`;
-}
 
 export default function ControleAcessoPage() {
   const { barbershop } = useAuth();
@@ -67,6 +65,24 @@ export default function ControleAcessoPage() {
     }
   }
 
+  const columns: Column<AccessGroup>[] = [
+    {
+      key: "name",
+      label: "Nome",
+      render: (g) => <span className="font-medium text-foreground">{g.name}</span>,
+    },
+    {
+      key: "createdAt",
+      label: "Criado em",
+      render: (g) => formatDate(g.createdAt),
+    },
+    {
+      key: "updatedAt",
+      label: "Atualizado em",
+      render: (g) => formatDate(g.updatedAt),
+    },
+  ];
+
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
@@ -96,51 +112,37 @@ export default function ControleAcessoPage() {
         />
       </div>
 
-      {isLoading ? (
-        <Loading label="Carregando grupos" />
-      ) : groups.length === 0 ? (
-        <EmptyState message="Nenhum grupo de acesso. Crie um para definir permissões dos profissionais." />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {groups.map((g) => (
-            <Card key={g.id} className="bg-surface-raised border-border">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="size-10 rounded-lg bg-brand/15 text-brand grid place-items-center shrink-0">
-                  <Users className="size-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">
-                    {g.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {permissionsSummary(g)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Can permission="grupo_de_permissoes.atualizar">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(g)}
-                      className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                    >
-                      <Pencil className="size-3" />
-                    </button>
-                  </Can>
-                  <Can permission="grupo_de_permissoes.apagar">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget(g)}
-                      className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
-                    >
-                      <Trash2 className="size-3" />
-                    </button>
-                  </Can>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <RegistrosAtivosTable<AccessGroup>
+        title="Grupos"
+        subtitle="Grupos de acesso cadastrados"
+        columns={columns}
+        rows={groups}
+        isLoading={isLoading}
+        emptyLabel="Nenhum grupo de acesso. Crie um para definir permissões dos profissionais."
+        searchPlaceholder="Buscar grupo..."
+        renderActions={(g) => (
+          <>
+            <Can permission="grupo_de_permissoes.atualizar">
+              <button
+                type="button"
+                onClick={() => openEdit(g)}
+                className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+              >
+                <Pencil className="size-3" />
+              </button>
+            </Can>
+            <Can permission="grupo_de_permissoes.apagar">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(g)}
+                className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </Can>
+          </>
+        )}
+      />
 
       <DialogGrupoAcesso
         open={dialogOpen}

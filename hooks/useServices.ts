@@ -7,12 +7,21 @@ import { servicesService } from "@/services/services.service";
 import type {
   CreateServicePayload,
   Service,
+  ServiceStatus,
   UpdateServicePayload,
 } from "@/types/service.types";
 
-export function useServices(barbershopId: string | undefined) {
+/**
+ * `status` é opcional: quando omitido, traz serviços de todos os status;
+ * passe `"ACTIVE"` para ocultar registros inativos numa listagem.
+ */
+export function useServices(
+  barbershopId: string | undefined,
+  status?: ServiceStatus,
+) {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!barbershopId) {
@@ -22,7 +31,7 @@ export function useServices(barbershopId: string | undefined) {
     let active = true;
     setIsLoading(true);
     servicesService
-      .list(barbershopId)
+      .list(barbershopId, status)
       .then((data) => {
         if (active) setServices(data);
       })
@@ -38,7 +47,11 @@ export function useServices(barbershopId: string | undefined) {
     return () => {
       active = false;
     };
-  }, [barbershopId]);
+  }, [barbershopId, status, refreshKey]);
+
+  const refetch = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   const create = useCallback(
     async (payload: CreateServicePayload) => {
@@ -63,7 +76,14 @@ export function useServices(barbershopId: string | undefined) {
       if (!barbershopId) return null;
       try {
         const updated = await servicesService.update(barbershopId, id, payload);
-        setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
+        setServices((prev) => {
+          // Se a listagem atual está filtrada por status e o registro
+          // atualizado deixou de atender o filtro, remove da lista local.
+          if (status && updated.status !== status) {
+            return prev.filter((s) => s.id !== id);
+          }
+          return prev.map((s) => (s.id === id ? updated : s));
+        });
         toast.success("Serviço atualizado.");
         return updated;
       } catch (err) {
@@ -73,7 +93,7 @@ export function useServices(barbershopId: string | undefined) {
         return null;
       }
     },
-    [barbershopId],
+    [barbershopId, status],
   );
 
   const remove = useCallback(
@@ -134,5 +154,14 @@ export function useServices(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { services, isLoading, create, update, remove, setFeatured, reorder };
+  return {
+    services,
+    isLoading,
+    create,
+    update,
+    remove,
+    setFeatured,
+    reorder,
+    refetch,
+  };
 }

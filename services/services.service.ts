@@ -2,13 +2,15 @@ import { api } from "@/lib/api";
 import type {
   CreateServicePayload,
   Service,
+  ServiceStatus,
   UpdateServicePayload,
 } from "@/types/service.types";
 
 export const servicesService = {
-  async list(barbershopId: string): Promise<Service[]> {
+  async list(barbershopId: string, status?: ServiceStatus): Promise<Service[]> {
     const { data } = await api.get<Service[]>(
       `/barbershops/${barbershopId}/services`,
+      { params: { status } },
     );
     return data;
   },

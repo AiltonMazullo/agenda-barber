@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import type {
   AgendamentoReportRow,
+  AlteracaoAssinaturaRow,
   AniversarianteRow,
   CaptacaoRow,
   ClienteAusenteRow,
@@ -8,12 +9,14 @@ import type {
   ClienteSemPreferenciaRow,
   ComissaoProdutoRow,
   ComissaoServicoRow,
+  DocumentoProfissionalRow,
   FaturamentoDetalheRow,
   FaturamentoVisaoGeral,
   FormaPagamentoRow,
   FrequenciaClienteKpis,
   FrequenciaClienteRow,
   HistoricoVendaProdutoRow,
+  ListaEsperaPlanoRow,
   MovimentacaoRow,
   NovoClienteRow,
   ReportFilters,
@@ -23,6 +26,7 @@ import type {
   TicketMedioAgendamento,
   TicketMedioClienteRow,
   TicketMedioProfissionalRow,
+  TransacaoAssinaturaRow,
   VendaItemRow,
   VendaPorOrigemRow,
 } from "@/types/report.types";
@@ -292,6 +296,50 @@ export const reportsService = {
     const { data } = await api.get<ReviewRow[]>(`/barbershops/${barbershopId}/reviews`, {
       params: params(filters),
     });
+    return data;
+  },
+
+  async alteracoesAssinaturas(
+    barbershopId: string,
+    filters: ReportFilters,
+  ): Promise<AlteracaoAssinaturaRow[]> {
+    const { data } = await api.get<AlteracaoAssinaturaRow[]>(
+      `${base(barbershopId)}/alteracoes-assinaturas`,
+      { params: params(filters) },
+    );
+    return data;
+  },
+
+  async historicoTransacoesAssinaturas(
+    barbershopId: string,
+    filters: ReportFilters,
+  ): Promise<TransacaoAssinaturaRow[]> {
+    const { data } = await api.get<TransacaoAssinaturaRow[]>(
+      `${base(barbershopId)}/historico-transacoes-assinaturas`,
+      { params: params(filters) },
+    );
+    return data;
+  },
+
+  async listaEsperaPlano(
+    barbershopId: string,
+    filters: ReportFilters,
+  ): Promise<ListaEsperaPlanoRow[]> {
+    const { data } = await api.get<ListaEsperaPlanoRow[]>(
+      `${base(barbershopId)}/lista-espera-plano`,
+      { params: params(filters) },
+    );
+    return data;
+  },
+
+  async documentosProfissional(
+    barbershopId: string,
+    filters: ReportFilters,
+  ): Promise<DocumentoProfissionalRow[]> {
+    const { data } = await api.get<DocumentoProfissionalRow[]>(
+      `${base(barbershopId)}/documentos-profissional`,
+      { params: params(filters) },
+    );
     return data;
   },
 };

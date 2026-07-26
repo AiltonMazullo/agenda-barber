@@ -55,3 +55,18 @@ export interface NewStockMovementInput {
   unitPriceInCents?: number;
   note?: string;
 }
+
+/** Item de uma movimentação em lote (`POST .../stock-movements/batch`). */
+export interface NewStockMovementBatchItem {
+  productId: string;
+  type: StockMovementType;
+  quantity: number;
+  unitCostInCents?: number;
+  unitPriceInCents?: number;
+  note?: string;
+}
+
+export interface NewStockMovementBatchInput {
+  branchId?: string;
+  items: NewStockMovementBatchItem[];
+}

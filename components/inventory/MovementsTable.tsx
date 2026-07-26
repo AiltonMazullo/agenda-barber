@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Eye } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,11 +17,13 @@ import {
   MOVEMENT_TONE,
   formatBRLFromCents,
 } from "./helpers";
+import { DialogVisualizarMovimentacao } from "./DialogVisualizarMovimentacao";
 
 type Mode = "movimentacoes" | "vendas" | "historico";
 
 const COLS: Record<Mode, string[]> = {
   movimentacoes: [
+    "ID",
     "Data/Hora",
     "Tipo",
     "Produto",
@@ -27,8 +31,10 @@ const COLS: Record<Mode, string[]> = {
     "Qtd.",
     "Valor un.",
     "Usuário",
+    "Opções",
   ],
   historico: [
+    "ID",
     "Data/Hora",
     "Tipo",
     "Produto",
@@ -36,8 +42,10 @@ const COLS: Record<Mode, string[]> = {
     "Qtd.",
     "Valor un.",
     "Usuário",
+    "Opções",
   ],
   vendas: [
+    "ID",
     "Data/Hora",
     "Produto",
     "Filial",
@@ -45,6 +53,7 @@ const COLS: Record<Mode, string[]> = {
     "Preço un.",
     "Total",
     "Usuário",
+    "Opções",
   ],
 };
 
@@ -67,6 +76,7 @@ export function MovementsTable({
   isLoading?: boolean;
 }) {
   const cols = COLS[mode];
+  const [viewing, setViewing] = useState<StockMovement | null>(null);
 
   return (
     <div className="overflow-x-auto">
@@ -105,6 +115,9 @@ export function MovementsTable({
                   key={m.id}
                   className="border-border hover:bg-surface-elevated/50 transition-colors"
                 >
+                  <TableCell className="px-4 py-4 text-muted-foreground text-xs font-mono">
+                    {m.id.slice(0, 8)}…
+                  </TableCell>
                   <TableCell className="px-4 py-4 text-muted-foreground text-xs whitespace-nowrap">
                     {formatDate(m.createdAt)}
                     <span className="text-text-faint"> · {formatTime(m.createdAt)}</span>
@@ -160,12 +173,28 @@ export function MovementsTable({
                   <TableCell className="px-4 py-4 text-muted-foreground text-xs">
                     {m.user}
                   </TableCell>
+                  <TableCell className="px-4 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setViewing(m)}
+                      title="Visualizar"
+                      className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                    >
+                      <Eye className="size-3.5" />
+                    </button>
+                  </TableCell>
                 </TableRow>
               );
             })
           )}
         </TableBody>
       </Table>
+
+      <DialogVisualizarMovimentacao
+        open={viewing !== null}
+        onOpenChange={(v) => !v && setViewing(null)}
+        movement={viewing}
+      />
     </div>
   );
 }

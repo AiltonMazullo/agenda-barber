@@ -41,12 +41,20 @@ export function parseBRLToCents(input: string): number {
 
 export type StockStatus = "ok" | "baixo" | "critico" | "vazio";
 
-export function deriveStatus(p: ProductWithStock): StockStatus {
-  if (p.totalMin === 0 && p.totalCurrent === 0) return "vazio";
-  if (p.totalCurrent === 0) return "critico";
-  if (p.totalCurrent < p.totalMin * 0.5) return "critico";
-  if (p.totalCurrent < p.totalMin) return "baixo";
+/** Deriva a situação do estoque a partir de quantidade atual/mínima (genérico). */
+export function deriveStockStatus(
+  currentStock: number,
+  minStock: number,
+): StockStatus {
+  if (minStock === 0 && currentStock === 0) return "vazio";
+  if (currentStock === 0) return "critico";
+  if (currentStock < minStock * 0.5) return "critico";
+  if (currentStock < minStock) return "baixo";
   return "ok";
+}
+
+export function deriveStatus(p: ProductWithStock): StockStatus {
+  return deriveStockStatus(p.totalCurrent, p.totalMin);
 }
 
 export const STOCK_TONE: Record<StockStatus, Tone> = {

@@ -23,6 +23,14 @@ import {
   ChevronDown,
   Flame,
   CalendarOff,
+  ClipboardCheck,
+  Ban,
+  Repeat,
+  Megaphone,
+  Image as ImageIcon,
+  Handshake,
+  Ticket,
+  Percent,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -81,7 +89,17 @@ const navOperacional: NavItem[] = [
       { title: "Horário de Feriados", href: "/schedule/feriados", icon: CalendarOff },
     ],
   },
-  { title: "Clientes", href: "/clients", icon: Users, module: "cliente" },
+  {
+    title: "Clientes",
+    href: "/clients",
+    icon: Users,
+    module: "cliente",
+    children: [
+      { title: "Clientes", href: "/clients", icon: Users },
+      { title: "Clientes Bloqueados", href: "/clients/bloqueados", icon: Ban },
+      { title: "Clientes Recompras", href: "/clients/recompras", icon: Repeat },
+    ],
+  },
   {
     title: "Profissionais",
     href: "/professionals",
@@ -103,6 +121,43 @@ const navGestao: NavItem[] = [
     module: ["categoria_financeira", "movimentacoes", "contas_bancarias", "formas_de_pagamentos"],
   },
   { title: "Relatórios", href: "/reports", icon: BarChart2, module: "relatorio" },
+  { title: "Auditorias", href: "/auditorias", icon: ClipboardCheck, module: "relatorio" },
+];
+
+const navMarketing: NavItem[] = [
+  {
+    title: "Marketing",
+    href: "/marketing/banners-painel-cliente",
+    icon: Megaphone,
+    module: ["banners_painel_cliente", "empresas_parceiras", "promocao_de_servicos"],
+    children: [
+      {
+        title: "Banners Painel Cliente",
+        href: "/marketing/banners-painel-cliente",
+        icon: ImageIcon,
+      },
+      {
+        title: "Clube - Banners",
+        href: "/marketing/clube-assinante/banners",
+        icon: ImageIcon,
+      },
+      {
+        title: "Clube - Empresas Parceiras",
+        href: "/marketing/clube-assinante/empresas-parceiras",
+        icon: Handshake,
+      },
+      {
+        title: "Clube - Utilização dos Cupons",
+        href: "/marketing/clube-assinante/cupons",
+        icon: Ticket,
+      },
+      {
+        title: "Promoções - Serviços",
+        href: "/marketing/promocoes/servicos",
+        icon: Percent,
+      },
+    ],
+  },
 ];
 
 const navBottom: NavItem[] = [
@@ -141,6 +196,7 @@ export function Navbar() {
 
   const operacional = visible(navOperacional);
   const gestao = visible(navGestao);
+  const marketing = visible(navMarketing);
   const bottom = visible(navBottom);
 
   async function handleLogout() {
@@ -251,6 +307,65 @@ export function Navbar() {
             {/* MENU: Adicionado gap-1 aqui também */}
             <SidebarMenu>
               {gestao.map((item) => {
+                const hasChildren = !!item.children?.length;
+                const isChildActive = item.children?.some(
+                  (c) => pathname === c.href,
+                );
+                const isOpen = openItems.has(item.href) || isChildActive;
+
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      render={<Link href={item.href} />}
+                      isActive={pathname === item.href}
+                      tooltip={item.title}
+                      className="h-8"
+                    >
+                      <item.icon className="size-4" />
+                      <span className="font-medium flex-1">{item.title}</span>
+                      {hasChildren && (
+                        <ChevronDown
+                          className={cn(
+                            "size-3.5 shrink-0 text-muted-foreground transition-transform",
+                            isOpen && "rotate-180",
+                          )}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleOpen(item.href);
+                          }}
+                        />
+                      )}
+                    </SidebarMenuButton>
+                    {hasChildren && isOpen && (
+                      <SidebarMenuSub>
+                        {item.children!.map((child) => (
+                          <SidebarMenuSubItem key={child.href}>
+                            <SidebarMenuSubButton
+                              render={<Link href={child.href} />}
+                              isActive={pathname === child.href}
+                            >
+                              <child.icon className="size-3.5" />
+                              <span>{child.title}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {/* Marketing */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-bold text-[#8b949e]">
+            Marketing
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {marketing.map((item) => {
                 const hasChildren = !!item.children?.length;
                 const isChildActive = item.children?.some(
                   (c) => pathname === c.href,

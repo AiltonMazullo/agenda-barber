@@ -237,3 +237,43 @@ export interface ReviewRow {
   client: { id: string; name: string };
   employee: { id: string; name: string } | null;
 }
+
+export interface AlteracaoAssinaturaRow {
+  id: string;
+  data: string;
+  assinaturaId: string;
+  cliente: { id: string; name: string } | null;
+  acao: string;
+  campoAlterado: string;
+  valorAnterior: string | null;
+  valorNovo: string | null;
+  responsavel: string;
+}
+
+export interface TransacaoAssinaturaRow {
+  id: string;
+  subscriptionId: string;
+  cliente: { id: string; name: string; email: string; phone: string | null };
+  plano: { id: string; name: string; priceInCents: number };
+  dataVencimento: string;
+  dataPagamento: string | null;
+  status: "PENDING" | "PAID" | "OVERDUE" | "FAILED";
+  valorInCents: number;
+  gatewayChargeId: string | null;
+  gatewayProvider: string | null;
+}
+
+export interface ListaEsperaPlanoRow {
+  id: string;
+  data: string;
+  cliente: { id: string; name: string; email: string; phone: string | null } | null;
+  plano: { id: string; name: string } | null;
+}
+
+export interface DocumentoProfissionalRow {
+  id: string;
+  data: string;
+  profissional: { id: string; name: string } | null;
+  nome: string;
+  fileUrl: string;
+}

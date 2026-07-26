@@ -1068,6 +1068,145 @@ function RelAssinaturasPorOrigem() {
   );
 }
 
+function RelAlteracoesAssinaturas() {
+  const { barbershopId, rf, data, isLoading } = useReportPage(
+    reportsService.alteracoesAssinaturas,
+  );
+  return (
+    <div className="space-y-4">
+      <Filters barbershopId={barbershopId} fields={["period"]} rf={rf} />
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <ReportTable
+          columns={["Data", "Cliente", "Ação", "Campo", "De", "Para", "Responsável"]}
+          rows={data ?? []}
+          keyFn={(r) => r.id}
+          emptyMessage="Sem alterações de assinatura registradas no período."
+          renderRow={(r) => [
+            dt(r.data),
+            r.cliente?.name ?? "—",
+            r.acao,
+            r.campoAlterado,
+            r.valorAnterior ?? "—",
+            r.valorNovo ?? "—",
+            r.responsavel,
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+function RelHistoricoTransacoesAssinaturas() {
+  const { barbershopId, rf, data, isLoading } = useReportPage(
+    reportsService.historicoTransacoesAssinaturas,
+  );
+  const statusLabel: Record<string, string> = {
+    PENDING: "Pendente",
+    PAID: "Paga",
+    OVERDUE: "Atrasada",
+    FAILED: "Falhou",
+  };
+  const statusTone: Record<string, Tone> = {
+    PENDING: "warning",
+    PAID: "success",
+    OVERDUE: "danger",
+    FAILED: "danger",
+  };
+  return (
+    <div className="space-y-4">
+      <Filters barbershopId={barbershopId} fields={["period"]} rf={rf} />
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <ReportTable
+          columns={["Vencimento", "Pagamento", "Cliente", "Plano", "Status", "Valor"]}
+          rows={data ?? []}
+          keyFn={(r) => r.id}
+          emptyMessage="Sem transações de assinatura no período."
+          renderRow={(r) => [
+            dt(r.dataVencimento),
+            r.dataPagamento ? dt(r.dataPagamento) : "—",
+            r.cliente.name,
+            r.plano.name,
+            <StatusBadge key="st" tone={statusTone[r.status] ?? "neutral"}>
+              {statusLabel[r.status] ?? r.status}
+            </StatusBadge>,
+            <span key="v" className="text-brand font-semibold">
+              {brl(r.valorInCents)}
+            </span>,
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Marketing de Experiência ───────────────────────────────────────────────
+
+function RelListaEsperaPlano() {
+  const { barbershopId, rf, data, isLoading } = useReportPage(reportsService.listaEsperaPlano);
+  return (
+    <div className="space-y-4">
+      <Filters barbershopId={barbershopId} fields={["period"]} rf={rf} />
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <ReportTable
+          columns={["Data", "Cliente", "E-mail", "Plano"]}
+          rows={data ?? []}
+          keyFn={(r) => r.id}
+          emptyMessage="Sem clientes na lista de espera no período."
+          renderRow={(r) => [
+            dt(r.data),
+            r.cliente?.name ?? "—",
+            r.cliente?.email ?? "—",
+            r.plano?.name ?? "—",
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Profissionais ────────────────────────────────────────────────────────
+
+function RelDocumentosProfissional() {
+  const { barbershopId, rf, data, isLoading } = useReportPage(
+    reportsService.documentosProfissional,
+  );
+  return (
+    <div className="space-y-4">
+      <Filters barbershopId={barbershopId} fields={["period", "employee"]} rf={rf} />
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <ReportTable
+          columns={["Data", "Profissional", "Documento", "Arquivo"]}
+          rows={data ?? []}
+          keyFn={(r) => r.id}
+          emptyMessage="Sem documentos cadastrados no período."
+          renderRow={(r) => [
+            dt(r.data),
+            r.profissional?.name ?? "—",
+            r.nome,
+            <a
+              key="f"
+              href={r.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand font-semibold underline"
+            >
+              Abrir
+            </a>,
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Configuração dos grupos ──────────────────────────────────────────────
 
 interface ReportItem {
@@ -1200,6 +1339,11 @@ const REPORT_GROUPS: ReportGroup[] = [
         label: "Comissões de produtos",
         description: "Venda de produtos por profissional e categoria.",
       },
+      {
+        key: "documentos_profissional",
+        label: "Documentos",
+        description: "Documentos anexados ao cadastro de cada profissional, com data de upload.",
+      },
     ],
   },
   {
@@ -1237,6 +1381,11 @@ const REPORT_GROUPS: ReportGroup[] = [
         label: "Clientes sem preferência",
         description: "Clientes sem vínculo com um profissional específico.",
       },
+      {
+        key: "lista_espera_plano",
+        label: "Lista de espera de plano",
+        description: "Clientes interessados em assinar um plano à espera de vaga disponível.",
+      },
     ],
   },
   {
@@ -1263,6 +1412,16 @@ const REPORT_GROUPS: ReportGroup[] = [
         key: "vendas_por_origem",
         label: "Vendas por origem",
         description: "Agrupa vendas de plano por origem.",
+      },
+      {
+        key: "alteracoes_assinaturas",
+        label: "Alterações nas assinaturas",
+        description: "Histórico de mudanças de plano e status registradas em cada assinatura.",
+      },
+      {
+        key: "historico_transacoes_assinaturas",
+        label: "Histórico de Transações",
+        description: "Cobranças de assinatura no período, com status e valor.",
       },
     ],
   },
@@ -1350,6 +1509,14 @@ function renderSubReport(key: string): React.ReactNode {
       return <RelAssinaturasNovas />;
     case "vendas_por_origem":
       return <RelAssinaturasPorOrigem />;
+    case "alteracoes_assinaturas":
+      return <RelAlteracoesAssinaturas />;
+    case "historico_transacoes_assinaturas":
+      return <RelHistoricoTransacoesAssinaturas />;
+    case "lista_espera_plano":
+      return <RelListaEsperaPlano />;
+    case "documentos_profissional":
+      return <RelDocumentosProfissional />;
     default:
       return null;
   }

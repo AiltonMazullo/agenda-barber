@@ -19,6 +19,7 @@ import {
   UserX,
   Cake,
   Download,
+  Copy,
 } from "lucide-react";
 import { exportToCsv } from "@/utils/csv-export";
 import { Card, CardContent } from "@/components/ui/card";
@@ -386,6 +387,7 @@ function ClientesContent() {
     exportToCsv(
       "clientes",
       filtered.map((c) => ({
+        id: c.id,
         nome: c.name,
         email: c.email,
         telefone: c.phone ?? "",
@@ -396,8 +398,11 @@ function ClientesContent() {
         proximaVisita: c.stats.upcomingVisit
           ? formatDate(c.stats.upcomingVisit)
           : "",
+        criadoEm: formatDate(c.createdAt),
+        atualizadoEm: formatDate(c.updatedAt),
       })),
       [
+        { key: "id", label: "ID" },
         { key: "nome", label: "Nome" },
         { key: "email", label: "E-mail" },
         { key: "telefone", label: "Telefone" },
@@ -406,8 +411,15 @@ function ClientesContent() {
         { key: "totalGasto", label: "Total gasto (R$)" },
         { key: "ultimaVisita", label: "Última visita" },
         { key: "proximaVisita", label: "Próxima visita" },
+        { key: "criadoEm", label: "Criado em" },
+        { key: "atualizadoEm", label: "Atualizado em" },
       ],
     );
+  }
+
+  function copyId(id: string) {
+    navigator.clipboard.writeText(id);
+    toast.success("ID copiado.");
   }
 
   return (
@@ -509,12 +521,15 @@ function ClientesContent() {
               <TableHeader className="border-t border-border">
                 <TableRow className="border-border hover:bg-transparent">
                   {[
+                    "ID",
                     "Cliente",
                     "Contato",
                     "Atendimentos",
                     "Total gasto",
                     "Última visita",
                     "Próxima",
+                    "Criado em",
+                    "Atualizado em",
                     "",
                   ].map((col) => (
                     <TableHead
@@ -529,13 +544,13 @@ function ClientesContent() {
               <TableBody>
                 {isLoading ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={7} className="py-4">
+                    <TableCell colSpan={9} className="py-4">
                       <Loading />
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={7} className="py-4">
+                    <TableCell colSpan={9} className="py-4">
                       <EmptyState
                         message={
                           clients.length === 0
@@ -551,6 +566,17 @@ function ClientesContent() {
                       key={c.id}
                       className="border-border hover:bg-surface-elevated/50 transition-colors"
                     >
+                      <TableCell className="px-4 py-4 text-xs text-muted-foreground">
+                        <button
+                          type="button"
+                          onClick={() => copyId(c.id)}
+                          title={c.id}
+                          className="flex items-center gap-1 font-mono hover:text-brand transition-colors"
+                        >
+                          {c.id.slice(0, 8)}…
+                          <Copy className="size-3" />
+                        </button>
+                      </TableCell>
                       <TableCell className="px-4 py-4 font-semibold text-sm">
                         <Link
                           href={`/clients/${c.id}`}
@@ -594,6 +620,12 @@ function ClientesContent() {
                         ) : (
                           <span className="text-text-faint">—</span>
                         )}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-muted-foreground text-xs whitespace-nowrap">
+                        {formatDate(c.createdAt)}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-muted-foreground text-xs whitespace-nowrap">
+                        {formatDate(c.updatedAt)}
                       </TableCell>
                       <TableCell className="px-4 py-4">
                         <div className="flex items-center gap-2">

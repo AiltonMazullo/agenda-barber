@@ -4,7 +4,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { stockMovementsService } from "@/services/stock-movements.service";
-import type { NewStockMovementInput, StockMovement } from "@/types/inventory.types";
+import type {
+  NewStockMovementBatchInput,
+  NewStockMovementInput,
+  StockMovement,
+} from "@/types/inventory.types";
 
 /**
  * Histórico de movimentações de estoque (entradas, saídas e vendas),
@@ -57,5 +61,22 @@ export function useStockMovements(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { movements, isLoading, addMovement };
+  const addBatch = useCallback(
+    async (input: NewStockMovementBatchInput) => {
+      if (!barbershopId) return null;
+      try {
+        const created = await stockMovementsService.createBatch(barbershopId, input);
+        setMovements((prev) => [...created, ...prev]);
+        return created;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao registrar movimentações.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  return { movements, isLoading, addMovement, addBatch };
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -20,6 +21,9 @@ import {
   GripVertical,
   Tags,
   ChevronDown,
+  Download,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import {
   DndContext,
@@ -65,9 +69,17 @@ import {
   DataTablePagination,
   Loading,
 } from "@/components/shared";
+import {
+  RegistrosAtivosTable,
+  type Column,
+} from "@/components/shared/RegistrosAtivosTable";
+import { InfoTooltip } from "@/components/shared/InfoTooltip";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn } from "@/lib/utils";
 import { apiAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
+import { formatDate } from "@/utils/format";
+import { exportToCsv } from "@/utils/csv-export";
 
 import { usePagination } from "@/hooks/usePagination";
 import { useAuth } from "@/hooks/useAuth";
@@ -101,8 +113,16 @@ import {
 } from "@/types/cash-register.types";
 import type { CreateEmployeePayload, Employee } from "@/types/employee.types";
 import type { AccessGroup } from "@/types/access-group.types";
-import type { CreateServicePayload, Service } from "@/types/service.types";
-import type { Category, CategoryType } from "@/types/category.types";
+import type {
+  CreateServicePayload,
+  Service,
+  ServiceStatus,
+} from "@/types/service.types";
+import type {
+  Category,
+  CategoryStatus,
+  CategoryType,
+} from "@/types/category.types";
 import {
   maskBRLInput,
   maskCep,
@@ -1298,86 +1318,86 @@ function TabFiliais() {
     await remove(id);
   }
 
-  return (
-    <Card className="bg-surface-raised border-border">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-          <h2 className="text-sm font-bold text-white">Filiais</h2>
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setDialog(true);
-            }}
-            className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            Nova Filial
-          </button>
+  const columns: Column<Branch>[] = [
+    {
+      key: "id",
+      label: "ID",
+      render: (b) => (
+        <span className="font-mono text-xs text-muted-foreground" title={b.id}>
+          {b.id.slice(0, 8)}…
+        </span>
+      ),
+    },
+    {
+      key: "neighborhood",
+      label: "Bairro",
+      render: (b) => (
+        <div>
+          <p className="font-semibold text-foreground text-sm">{b.name}</p>
+          <p className="text-xs text-muted-foreground">{b.neighborhood}</p>
         </div>
+      ),
+    },
+    {
+      key: "createdAt",
+      label: "Criado em",
+      render: (b) => (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {formatDate(b.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: "updatedAt",
+      label: "Atualizado em",
+      render: (b) => (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {formatDate(b.updatedAt)}
+        </span>
+      ),
+    },
+  ];
 
-        <div className="divide-y divide-border-subtle">
-          {isLoading ? (
-            <Loading />
-          ) : branches.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-text-faint">
-              Nenhuma filial cadastrada.
-            </div>
-          ) : (
-            branches.map((b) => (
-              <div
-                key={b.id}
-                className="flex items-center justify-between px-5 py-4 hover:bg-surface-elevated/40 transition-colors"
-              >
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-white">{b.name}</p>
-                    {b.isReceivingBranch && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-success-bg text-success-foreground">
-                        Recebimentos
-                      </span>
-                    )}
-                    {b.isHidden && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-surface-elevated text-muted-foreground">
-                        Oculta
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {b.street}, {b.number}
-                    {b.complement ? ` — ${b.complement}` : ""}
-                  </p>
-                  <p className="text-xs text-text-faint mt-0.5">
-                    {b.neighborhood} · {b.city}/{b.uf} · CEP {b.cep}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {b.email} · {b.phone}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(b);
-                      setDialog(true);
-                    }}
-                    className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
-                  >
-                    <Pencil className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(b.id)}
-                    className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </CardContent>
+  return (
+    <>
+      <RegistrosAtivosTable<Branch>
+        title="Filiais"
+        subtitle="Unidades físicas cadastradas na sua barbearia."
+        columns={columns}
+        rows={branches}
+        isLoading={isLoading}
+        emptyLabel="Nenhuma filial cadastrada."
+        searchPlaceholder="Buscar por nome ou bairro..."
+        onCreate={() => {
+          setEditing(null);
+          setDialog(true);
+        }}
+        createLabel="Nova Filial"
+        createTooltip="Cadastre as unidades físicas da sua barbearia"
+        renderActions={(b) => (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(b);
+                setDialog(true);
+              }}
+              title="Editar filial"
+              className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
+            >
+              <Pencil className="size-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(b.id)}
+              title="Remover filial"
+              className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          </>
+        )}
+      />
       <DialogFilial
         open={dialog}
         onOpenChange={setDialog}
@@ -1395,7 +1415,7 @@ function TabFiliais() {
         }
         isFirstBranch={branches.length === 0}
       />
-    </Card>
+    </>
   );
 }
 
@@ -2132,6 +2152,11 @@ interface ServiceFormState {
   priceBRL: string;
   hex: string;
   categoryId: string | null;
+  fichaValue: string;
+  repurchasePeriodDays: string;
+  startingFrom: boolean;
+  hidden: boolean;
+  fitIn: boolean;
 }
 
 const EMPTY_SERVICE_FORM: ServiceFormState = {
@@ -2141,6 +2166,11 @@ const EMPTY_SERVICE_FORM: ServiceFormState = {
   priceBRL: "",
   hex: DEFAULT_HEX,
   categoryId: null,
+  fichaValue: "",
+  repurchasePeriodDays: "",
+  startingFrom: false,
+  hidden: false,
+  fitIn: false,
 };
 
 function DialogServico({
@@ -2149,15 +2179,19 @@ function DialogServico({
   service,
   categories,
   onSave,
+  onCreateCategory,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   service: Service | null;
   categories: Category[];
   onSave: (payload: CreateServicePayload) => Promise<void>;
+  /** Cria uma categoria de serviço sem sair do formulário (reaproveita o `create` de `useCategories`). */
+  onCreateCategory: (name: string) => Promise<Category | null>;
 }) {
   const [form, setForm] = useState<ServiceFormState>(EMPTY_SERVICE_FORM);
   const [saving, setSaving] = useState(false);
+  const [newCategoryDialog, setNewCategoryDialog] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -2169,11 +2203,27 @@ function DialogServico({
         priceBRL: maskBRLInput(String(service.priceInCents)),
         hex: service.hex ?? DEFAULT_HEX,
         categoryId: service.categoryId ?? null,
+        fichaValue: service.fichaValue != null ? String(service.fichaValue) : "",
+        repurchasePeriodDays:
+          service.repurchasePeriodDays != null
+            ? String(service.repurchasePeriodDays)
+            : "",
+        startingFrom: service.startingFrom,
+        hidden: service.hidden,
+        fitIn: service.fitIn,
       });
     } else {
       setForm(EMPTY_SERVICE_FORM);
     }
   }, [open, service]);
+
+  async function handleCreateCategory(name: string) {
+    const created = await onCreateCategory(name);
+    if (created) {
+      setForm((p) => ({ ...p, categoryId: created.id }));
+      setNewCategoryDialog(false);
+    }
+  }
 
   async function handleSave() {
     if (form.name.trim().length < 2)
@@ -2185,6 +2235,13 @@ function DialogServico({
     const priceInCents = parseBRLToCents(form.priceBRL);
     if (priceInCents <= 0) return toast.error("Informe um preço válido.");
 
+    const fichaValue = form.fichaValue.trim()
+      ? Number(form.fichaValue.replace(/\D/g, ""))
+      : null;
+    const repurchasePeriodDays = form.repurchasePeriodDays.trim()
+      ? Number(form.repurchasePeriodDays.replace(/\D/g, ""))
+      : null;
+
     setSaving(true);
     try {
       await onSave({
@@ -2194,6 +2251,11 @@ function DialogServico({
         priceInCents,
         hex: form.hex,
         categoryId: form.categoryId,
+        fichaValue,
+        repurchasePeriodDays,
+        startingFrom: form.startingFrom,
+        hidden: form.hidden,
+        fitIn: form.fitIn,
       });
       onOpenChange(false);
     } finally {
@@ -2275,7 +2337,17 @@ function DialogServico({
             </div>
           </div>
           <div className="space-y-1.5">
-            <FormLabel>Categoria</FormLabel>
+            <div className="flex items-center justify-between">
+              <FormLabel>Categoria</FormLabel>
+              <button
+                type="button"
+                onClick={() => setNewCategoryDialog(true)}
+                title="Criar nova categoria"
+                className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-brand hover:bg-surface-elevated transition-colors"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger className="w-full">
                 <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm flex items-center justify-between gap-2 text-left">
@@ -2341,6 +2413,76 @@ function DialogServico({
               />
             </div>
           </div>
+
+          <SectionTitle>Configurações adicionais</SectionTitle>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1">
+                <FormLabel>Valor em fichas</FormLabel>
+                <InfoTooltip text="Valor em fichas equivalente a este serviço, usado no controle de recompensas." />
+              </div>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={form.fichaValue}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    fichaValue: e.target.value.replace(/\D/g, ""),
+                  }))
+                }
+                placeholder="Ex.: 10"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <FormLabel>Período p/ recompra (dias)</FormLabel>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={form.repurchasePeriodDays}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    repurchasePeriodDays: e.target.value.replace(/\D/g, ""),
+                  }))
+                }
+                placeholder="Ex.: 30"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <Checkbox
+                checked={form.startingFrom}
+                onCheckedChange={(c) =>
+                  setForm((p) => ({ ...p, startingFrom: c === true }))
+                }
+              />
+              <span className="text-sm text-white">A partir de</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <Checkbox
+                checked={form.hidden}
+                onCheckedChange={(c) =>
+                  setForm((p) => ({ ...p, hidden: c === true }))
+                }
+              />
+              <span className="text-sm text-white">Oculto</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <Checkbox
+                checked={form.fitIn}
+                onCheckedChange={(c) =>
+                  setForm((p) => ({ ...p, fitIn: c === true }))
+                }
+              />
+              <span className="text-sm text-white">Serviço de encaixe</span>
+            </label>
+          </div>
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
           <button
@@ -2357,6 +2499,96 @@ function DialogServico({
             className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
           >
             {saving ? "Salvando…" : service ? "Salvar" : "Criar Serviço"}
+          </button>
+        </div>
+      </DialogContent>
+      <DialogNovaCategoriaInline
+        open={newCategoryDialog}
+        onOpenChange={setNewCategoryDialog}
+        onCreate={handleCreateCategory}
+      />
+    </Dialog>
+  );
+}
+
+/**
+ * Mini-dialog para criar uma categoria de serviço sem sair do formulário de
+ * serviço. Delega a criação ao `onCreate` (que, por sua vez, reaproveita o
+ * `create` já usado em `TabCategorias`/`useCategories` — sem duplicar a
+ * chamada de API).
+ */
+function DialogNovaCategoriaInline({
+  open,
+  onOpenChange,
+  onCreate,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onCreate: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) setName("");
+  }, [open]);
+
+  async function handleCreate() {
+    if (name.trim().length < 2) {
+      toast.error("Informe o nome da categoria.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onCreate(name.trim());
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-surface-raised border border-border text-white max-w-xs p-0 gap-0">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border-subtle">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-sm font-bold">
+              Nova Categoria de Serviço
+            </DialogTitle>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-white hover:bg-surface-elevated transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </DialogHeader>
+        <div className="px-5 py-4 space-y-1.5">
+          <FormLabel required>Nome</FormLabel>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            placeholder="Ex: Cortes, Barba…"
+            autoFocus
+            className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+          />
+        </div>
+        <div className="px-5 pb-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-8 px-4 rounded-md border border-border bg-transparent text-xs text-white hover:bg-surface-elevated transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleCreate}
+            className="h-8 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+          >
+            {saving ? "Criando…" : "Criar"}
           </button>
         </div>
       </DialogContent>
@@ -2435,6 +2667,22 @@ function SortableServiceRow({
         </div>
       </TableCell>
       <TableCell className="px-5 py-4">
+        <span className="font-mono text-xs text-muted-foreground" title={s.id}>
+          {s.id.slice(0, 8)}…
+        </span>
+      </TableCell>
+      <TableCell className="px-5 py-4">
+        <StatusBadge tone={s.status === "ACTIVE" ? "success" : "neutral"}>
+          {s.status === "ACTIVE" ? "Ativo" : "Inativo"}
+        </StatusBadge>
+      </TableCell>
+      <TableCell className="px-5 py-4 text-muted-foreground text-xs whitespace-nowrap">
+        {formatDate(s.createdAt)}
+      </TableCell>
+      <TableCell className="px-5 py-4 text-muted-foreground text-xs whitespace-nowrap">
+        {formatDate(s.updatedAt)}
+      </TableCell>
+      <TableCell className="px-5 py-4">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -2458,9 +2706,24 @@ function SortableServiceRow({
 
 function TabServicos() {
   const { barbershop } = useAuth();
-  const { services, isLoading, create, update, remove, setFeatured, reorder } =
-    useServices(barbershop?.id);
-  const { categories } = useCategories(barbershop?.id, "SERVICO");
+  const [showInactive, setShowInactive] = useState(false);
+  const statusFilter: ServiceStatus | undefined = showInactive
+    ? undefined
+    : "ACTIVE";
+  const {
+    services,
+    isLoading,
+    create,
+    update,
+    remove,
+    setFeatured,
+    reorder,
+    refetch,
+  } = useServices(barbershop?.id, statusFilter);
+  const { categories, create: createCategory } = useCategories(
+    barbershop?.id,
+    "SERVICO",
+  );
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const pag = usePagination(services, 10);
@@ -2502,22 +2765,85 @@ function TabServicos() {
     reorder(newAll.map((s) => s.id));
   }
 
+  function handleExportCsv() {
+    exportToCsv(
+      "servicos",
+      services.map((s) => ({
+        id: s.id,
+        nome: s.name,
+        status: s.status === "ACTIVE" ? "Ativo" : "Inativo",
+        duracao: `${s.durationMin} min`,
+        preco: formatBRL(s.priceInCents),
+        criadoEm: formatDate(s.createdAt),
+        atualizadoEm: formatDate(s.updatedAt),
+      })),
+      [
+        { key: "id", label: "ID" },
+        { key: "nome", label: "Nome" },
+        { key: "status", label: "Status" },
+        { key: "duracao", label: "Duração" },
+        { key: "preco", label: "Preço" },
+        { key: "criadoEm", label: "Criado em" },
+        { key: "atualizadoEm", label: "Atualizado em" },
+      ],
+    );
+  }
+
   return (
     <Card className="bg-surface-raised border-border">
       <CardContent className="p-0">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-          <h2 className="text-sm font-bold text-white">Serviços</h2>
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setDialog(true);
-            }}
-            className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            Novo Serviço
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-border-subtle">
+          <div className="flex items-center gap-4 flex-wrap">
+            <h2 className="text-sm font-bold text-white">Serviços</h2>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground select-none cursor-pointer">
+              <Checkbox
+                checked={showInactive}
+                onCheckedChange={(c) => setShowInactive(c === true)}
+              />
+              Mostrar registros inativos?
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/services/exibicao"
+              title="Definir ordem e destaques na vitrine pública"
+              className="h-9 px-4 rounded-md border border-border bg-surface-raised text-xs text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles className="size-3.5" />
+              Exibição
+            </Link>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Exportar CSV"
+              className="size-9 rounded-md border border-border bg-surface-raised text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+            >
+              <Download className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={refetch}
+              aria-label="Atualizar"
+              title="Atualizar"
+              className="size-9 rounded-md border border-border bg-surface-raised text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+            >
+              <RefreshCw className="size-3.5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(null);
+                  setDialog(true);
+                }}
+                className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
+              >
+                <Plus className="size-3.5" />
+                Novo Serviço
+              </button>
+              <InfoTooltip text="Cadastre os serviços oferecidos pela barbearia." />
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -2532,11 +2858,15 @@ function TabServicos() {
                   "Duração",
                   "Preço",
                   "Destaque",
+                  "ID",
+                  "Status",
+                  "Criado em",
+                  "Atualizado em",
                   "",
                 ].map((h, i) => (
                   <TableHead
                     key={i}
-                    className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto ${
+                    className={`text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto whitespace-nowrap ${
                       h === "Destaque" ? "text-center" : ""
                     }`}
                   >
@@ -2557,14 +2887,14 @@ function TabServicos() {
                 <TableBody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={8} className="py-4">
+                      <td colSpan={12} className="py-4">
                         <Loading />
                       </td>
                     </tr>
                   ) : services.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={12}
                         className="py-12 text-center text-sm text-text-faint"
                       >
                         Nenhum serviço cadastrado.
@@ -2608,6 +2938,7 @@ function TabServicos() {
         service={editing}
         categories={categories}
         onSave={handleSave}
+        onCreateCategory={createCategory}
       />
     </Card>
   );
@@ -2625,12 +2956,15 @@ function DialogCategoria({
   onOpenChange,
   category,
   type,
+  onTypeChange,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   category: Category | null;
   type: CategoryType;
+  /** Fornecido apenas no modo de criação — permite escolher o tipo (imutável depois de criada). */
+  onTypeChange?: (t: CategoryType) => void;
   onSave: (name: string) => Promise<void>;
 }) {
   const [name, setName] = useState("");
@@ -2671,7 +3005,29 @@ function DialogCategoria({
             </button>
           </div>
         </DialogHeader>
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 space-y-4">
+          {!category && onTypeChange && (
+            <div className="space-y-1.5">
+              <FormLabel required>Tipo</FormLabel>
+              <div className="grid grid-cols-2 gap-2">
+                {(["SERVICO", "PRODUTO"] as CategoryType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onTypeChange(t)}
+                    className={cn(
+                      "h-9 rounded-md border text-xs font-semibold transition-colors",
+                      type === t
+                        ? "border-brand bg-brand/10 text-brand"
+                        : "border-border bg-surface-base text-muted-foreground hover:border-brand/30",
+                    )}
+                  >
+                    {CATEGORY_TYPE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <FormLabel required>Nome</FormLabel>
             <Input
@@ -2713,155 +3069,180 @@ function DialogCategoria({
 
 // ─── Tab: Categorias ─────────────────────────────────────────────────────────
 
-/** Uma seção autocontida de categorias de um único tipo (produto OU serviço) — nunca misturadas. */
-function CategoriasSection({
-  barbershopId,
-  type,
-  title,
-}: {
-  barbershopId: string | undefined;
-  type: CategoryType;
-  title: string;
-}) {
-  const { categories, isLoading, create, update, remove } = useCategories(
-    barbershopId,
-    type,
-  );
+/**
+ * Listagem unificada de categorias (produtos e serviços numa só tabela).
+ * Cada tipo é gerenciado por uma instância própria de `useCategories` — o
+ * tipo de uma categoria nunca é alterado depois de criada, então cada
+ * operação (criar/atualizar/remover) é despachada para o hook do tipo certo.
+ */
+function TabCategorias() {
+  const { barbershop } = useAuth();
+  const [showInactive, setShowInactive] = useState(false);
+  const statusFilter: CategoryStatus | undefined = showInactive
+    ? undefined
+    : "ACTIVE";
+
+  const produtoCategories = useCategories(barbershop?.id, "PRODUTO", statusFilter);
+  const servicoCategories = useCategories(barbershop?.id, "SERVICO", statusFilter);
+
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
+  const [createType, setCreateType] = useState<CategoryType>("SERVICO");
+
+  const isLoading = produtoCategories.isLoading || servicoCategories.isLoading;
+
+  const rows = useMemo(
+    () =>
+      [...produtoCategories.categories, ...servicoCategories.categories].sort(
+        (a, b) => a.name.localeCompare(b.name),
+      ),
+    [produtoCategories.categories, servicoCategories.categories],
+  );
+
+  function hookFor(type: CategoryType) {
+    return type === "PRODUTO" ? produtoCategories : servicoCategories;
+  }
 
   async function handleSave(name: string) {
     if (editing) {
-      await update(editing.id, name);
+      await hookFor(editing.type).update(editing.id, name);
     } else {
-      await create(name);
+      await hookFor(createType).create(name);
     }
   }
 
-  async function handleDelete(id: string) {
-    const linkedThing = type === "PRODUTO" ? "Produtos" : "Serviços";
+  async function handleDelete(category: Category) {
+    const linkedThing = category.type === "PRODUTO" ? "Produtos" : "Serviços";
     if (
       !confirm(
         `Remover esta categoria? ${linkedThing} vinculados serão desvinculados automaticamente.`,
       )
     )
       return;
-    await remove(id);
+    await hookFor(category.type).remove(category.id);
   }
 
-  return (
-    <Card className="bg-surface-raised border-border">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-          <h2 className="text-sm font-bold text-white">{title}</h2>
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setDialog(true);
-            }}
-            className="h-9 px-4 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-all flex items-center gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            Nova Categoria
-          </button>
-        </div>
+  async function handleToggleStatus(category: Category) {
+    const nextStatus: CategoryStatus =
+      category.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    await hookFor(category.type).update(category.id, category.name, nextStatus);
+  }
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                {["Nome", "Criada em", ""].map((h, i) => (
-                  <TableHead
-                    key={i}
-                    className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-5 py-3 h-auto"
-                  >
-                    {h}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={3} className="py-4">
-                    <Loading />
-                  </td>
-                </tr>
-              ) : categories.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="py-12 text-center text-sm text-text-faint"
-                  >
-                    Nenhuma categoria cadastrada.
-                  </td>
-                </tr>
+  const columns: Column<Category>[] = [
+    {
+      key: "id",
+      label: "ID",
+      render: (c) => (
+        <span className="font-mono text-xs text-muted-foreground" title={c.id}>
+          {c.id.slice(0, 8)}…
+        </span>
+      ),
+    },
+    {
+      key: "name",
+      label: "Nome",
+      render: (c) => (
+        <span className="font-semibold text-foreground text-sm">{c.name}</span>
+      ),
+    },
+    {
+      key: "type",
+      label: "Tipo",
+      render: (c) => (
+        <StatusBadge tone={c.type === "PRODUTO" ? "info" : "brand"}>
+          {CATEGORY_TYPE_LABELS[c.type].toUpperCase()}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "createdAt",
+      label: "Criado em",
+      render: (c) => (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {formatDate(c.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: "updatedAt",
+      label: "Atualizado em",
+      render: (c) => (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {formatDate(c.updatedAt)}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <label className="flex items-center gap-2 text-sm text-muted-foreground select-none cursor-pointer">
+        <Checkbox
+          checked={showInactive}
+          onCheckedChange={(c) => setShowInactive(c === true)}
+        />
+        Mostrar registros inativos?
+      </label>
+
+      <RegistrosAtivosTable<Category>
+        title="Categorias"
+        subtitle="Categorias de produtos e serviços cadastradas na barbearia."
+        columns={columns}
+        rows={rows}
+        isLoading={isLoading}
+        emptyLabel="Nenhuma categoria cadastrada."
+        searchPlaceholder="Buscar por nome..."
+        onCreate={() => {
+          setEditing(null);
+          setCreateType("SERVICO");
+          setDialog(true);
+        }}
+        createLabel="Nova Categoria"
+        createTooltip="Cadastre categorias para organizar produtos e serviços."
+        renderActions={(c) => (
+          <>
+            <button
+              type="button"
+              onClick={() => handleToggleStatus(c)}
+              title={c.status === "ACTIVE" ? "Inativar categoria" : "Ativar categoria"}
+              className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
+            >
+              {c.status === "ACTIVE" ? (
+                <Eye className="size-3" />
               ) : (
-                categories.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    className="border-border hover:bg-surface-elevated/40 transition-colors"
-                  >
-                    <TableCell className="px-5 py-4 font-semibold text-white text-sm">
-                      {c.name}
-                    </TableCell>
-                    <TableCell className="px-5 py-4 text-muted-foreground text-sm">
-                      {new Date(c.createdAt).toLocaleDateString("pt-BR")}
-                    </TableCell>
-                    <TableCell className="px-5 py-4">
-                      <div className="flex items-center gap-2 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(c);
-                            setDialog(true);
-                          }}
-                          className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(c.id)}
-                          className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                <EyeOff className="size-3" />
               )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(c);
+                setDialog(true);
+              }}
+              title="Editar categoria"
+              className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-[#f5b82e]/40 hover:text-brand transition-colors"
+            >
+              <Pencil className="size-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(c)}
+              title="Remover categoria"
+              className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          </>
+        )}
+      />
+
       <DialogCategoria
         open={dialog}
         onOpenChange={setDialog}
         category={editing}
-        type={type}
+        type={editing ? editing.type : createType}
+        onTypeChange={editing ? undefined : setCreateType}
         onSave={handleSave}
-      />
-    </Card>
-  );
-}
-
-function TabCategorias() {
-  const { barbershop } = useAuth();
-
-  return (
-    <div className="space-y-5">
-      <CategoriasSection
-        barbershopId={barbershop?.id}
-        type="PRODUTO"
-        title="Categorias de produtos"
-      />
-      <CategoriasSection
-        barbershopId={barbershop?.id}
-        type="SERVICO"
-        title="Categorias de serviços"
       />
     </div>
   );

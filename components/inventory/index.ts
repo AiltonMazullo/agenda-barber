@@ -3,6 +3,7 @@ export { InventoryTabs } from "./InventoryTabs";
 export { DialogProduto } from "./DialogProduto";
 export { DialogEstoque } from "./DialogEstoque";
 export { DialogMovimentacao } from "./DialogMovimentacao";
+export { DialogVisualizarMovimentacao } from "./DialogVisualizarMovimentacao";
 export { TabEstoque } from "./TabEstoque";
 export { TabProdutos } from "./TabProdutos";
 export { MovementsTable } from "./MovementsTable";

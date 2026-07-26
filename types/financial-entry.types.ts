@@ -101,6 +101,10 @@ export interface GenerateCommissionsPayload {
   dryRun: boolean;
   bonusByEmployee: Record<string, number>;
   valeByEmployee: Record<string, number>;
+  /** Valor total recebido de assinaturas no período (centavos). */
+  subscriptionRevenueInCents?: number;
+  /** Percentual do pote de comissão do Clube (0–100) aplicado sobre `subscriptionRevenueInCents`. */
+  commissionPercent?: number;
 }
 
 export interface CommissionResultRow {

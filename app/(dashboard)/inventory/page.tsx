@@ -18,7 +18,10 @@ import { useCategories } from "@/hooks/useCategories";
 import { useProductCosts } from "@/hooks/useProductCosts";
 import { useStockMovements } from "@/hooks/useStockMovements";
 import type { CreateProductPayload } from "@/types/product.types";
-import type { NewStockMovementInput } from "@/types/inventory.types";
+import type {
+  NewStockMovementBatchInput,
+  NewStockMovementInput,
+} from "@/types/inventory.types";
 import {
   SummaryCards,
   InventoryTabs,
@@ -39,9 +42,12 @@ export default function EstoquePage() {
   const { categories } = useCategories(barbershop?.id, "PRODUTO");
   const { branches } = useBranches(barbershop?.id);
   const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
-  const { movements, isLoading: movementsLoading, addMovement } = useStockMovements(
-    barbershop?.id,
-  );
+  const {
+    movements,
+    isLoading: movementsLoading,
+    addMovement,
+    addBatch,
+  } = useStockMovements(barbershop?.id);
 
   const [activeTab, setActiveTab] = useState<TabKey>("estoque");
   const [search, setSearch] = useState("");
@@ -166,6 +172,25 @@ export default function EstoquePage() {
     // Entrada com custo atualiza o custo unitário do produto (cache local).
     if (input.type === "ENTRADA" && input.unitCostInCents) {
       setCost(input.productId, input.unitCostInCents);
+    }
+  }
+
+  async function handleMovimentacaoBatch(input: NewStockMovementBatchInput) {
+    const created = await addBatch(input);
+    if (!created) return;
+
+    // Recarrega o estoque local dos produtos afetados e atualiza custos
+    // (mesma lógica aplicada por item no fluxo single).
+    const affectedProductIds = Array.from(
+      new Set(input.items.map((i) => i.productId)),
+    );
+    if (input.branchId) {
+      await Promise.all(affectedProductIds.map((id) => loadStock(id)));
+    }
+    for (const item of input.items) {
+      if (item.type === "ENTRADA" && item.unitCostInCents) {
+        setCost(item.productId, item.unitCostInCents);
+      }
     }
   }
 
@@ -319,6 +344,7 @@ export default function EstoquePage() {
         branches={branches}
         defaultCostOf={costOf}
         onSave={handleMovimentacao}
+        onSaveBatch={handleMovimentacaoBatch}
       />
 
       <ConfirmDialog
