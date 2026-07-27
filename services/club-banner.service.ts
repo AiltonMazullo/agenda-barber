@@ -17,9 +17,13 @@ export const clubBannerService = {
     barbershopId: string,
     payload: CreateClubBannerPayload,
   ): Promise<ClubBanner> {
+    const form = new FormData();
+    form.append("fileName", payload.fileName);
+    form.append("image", payload.file);
     const { data } = await api.post<ClubBanner>(
       `/barbershops/${barbershopId}/club-banners`,
-      payload,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },
@@ -29,9 +33,13 @@ export const clubBannerService = {
     id: string,
     payload: UpdateClubBannerPayload,
   ): Promise<ClubBanner> {
+    const form = new FormData();
+    if (payload.fileName !== undefined) form.append("fileName", payload.fileName);
+    if (payload.file) form.append("image", payload.file);
     const { data } = await api.put<ClubBanner>(
       `/barbershops/${barbershopId}/club-banners/${id}`,
-      payload,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },

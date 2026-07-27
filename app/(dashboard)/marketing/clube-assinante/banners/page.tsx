@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useClubBanners } from "@/hooks/useClubBanners";
 import { formatDate } from "@/utils/format";
+import { apiAssetUrl } from "@/lib/api";
 import type { ClubBanner } from "@/types/club-banner.types";
 
 function FormLabel({
@@ -36,13 +37,10 @@ interface ClubBannerDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   banner: ClubBanner | null;
-  onCreate: (payload: {
-    fileName: string;
-    imageUrl: string;
-  }) => Promise<unknown>;
+  onCreate: (payload: { fileName: string; file: File }) => Promise<unknown>;
   onUpdate: (
     id: string,
-    payload: { fileName?: string; imageUrl?: string },
+    payload: { fileName?: string; file?: File },
   ) => Promise<unknown>;
 }
 
@@ -54,22 +52,37 @@ function ClubBannerDialog({
   onUpdate,
 }: ClubBannerDialogProps) {
   const [fileName, setFileName] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setFileName(banner?.fileName ?? "");
-    setImageUrl(banner?.imageUrl ?? "");
+    setFile(null);
+    setPreviewUrl(banner ? apiAssetUrl(banner.imageUrl) : null);
   }, [open, banner]);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0] ?? null;
+    setFile(selected);
+    if (selected && !fileName.trim()) setFileName(selected.name);
+    setPreviewUrl(
+      selected
+        ? URL.createObjectURL(selected)
+        : banner
+          ? apiAssetUrl(banner.imageUrl)
+          : null,
+    );
+  }
 
   async function handleSave() {
     if (!fileName.trim()) {
       toast.error("Informe o nome do arquivo.");
       return;
     }
-    if (!imageUrl.trim()) {
-      toast.error("Informe a URL da imagem.");
+    if (!file && !banner) {
+      toast.error("Selecione o arquivo de imagem.");
       return;
     }
     setSaving(true);
@@ -77,12 +90,9 @@ function ClubBannerDialog({
       const result = banner
         ? await onUpdate(banner.id, {
             fileName: fileName.trim(),
-            imageUrl: imageUrl.trim(),
+            ...(file && { file }),
           })
-        : await onCreate({
-            fileName: fileName.trim(),
-            imageUrl: imageUrl.trim(),
-          });
+        : await onCreate({ fileName: fileName.trim(), file: file as File });
       if (result) onOpenChange(false);
     } finally {
       setSaving(false);
@@ -119,17 +129,17 @@ function ClubBannerDialog({
           </div>
 
           <div className="space-y-1.5">
-            <FormLabel required>URL da imagem</FormLabel>
+            <FormLabel required={!banner}>Imagem</FormLabel>
             <Input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="bg-surface-base border-border text-foreground file:text-foreground focus-visible:ring-brand/30 h-10"
             />
-            {imageUrl.trim() && (
+            {previewUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={imageUrl}
+                src={previewUrl}
                 alt="Prévia do banner"
                 className="mt-2 h-24 w-full object-cover rounded-md border border-border-subtle"
               />
@@ -211,7 +221,7 @@ export default function ClubeBannersPage() {
             render: (r) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={r.imageUrl}
+                src={apiAssetUrl(r.imageUrl) ?? ""}
                 alt={r.fileName}
                 className="size-10 object-cover rounded-md border border-border-subtle"
               />

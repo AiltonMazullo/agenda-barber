@@ -17,9 +17,13 @@ export const marketingBannerService = {
     barbershopId: string,
     payload: CreateMarketingBannerPayload,
   ): Promise<MarketingBanner> {
+    const form = new FormData();
+    form.append("name", payload.name);
+    form.append("image", payload.file);
     const { data } = await api.post<MarketingBanner>(
       `/barbershops/${barbershopId}/marketing-banners`,
-      payload,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },
@@ -29,9 +33,13 @@ export const marketingBannerService = {
     id: string,
     payload: UpdateMarketingBannerPayload,
   ): Promise<MarketingBanner> {
+    const form = new FormData();
+    if (payload.name !== undefined) form.append("name", payload.name);
+    if (payload.file) form.append("image", payload.file);
     const { data } = await api.put<MarketingBanner>(
       `/barbershops/${barbershopId}/marketing-banners/${id}`,
-      payload,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },

@@ -10,10 +10,10 @@ export interface MarketingBanner {
 
 export interface CreateMarketingBannerPayload {
   name: string;
-  imageUrl: string;
+  file: File;
 }
 
 export interface UpdateMarketingBannerPayload {
   name?: string;
-  imageUrl?: string;
+  file?: File;
 }

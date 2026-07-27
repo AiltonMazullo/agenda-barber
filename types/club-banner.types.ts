@@ -10,10 +10,10 @@ export interface ClubBanner {
 
 export interface CreateClubBannerPayload {
   fileName: string;
-  imageUrl: string;
+  file: File;
 }
 
 export interface UpdateClubBannerPayload {
   fileName?: string;
-  imageUrl?: string;
+  file?: File;
 }

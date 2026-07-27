@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useMarketingBanners } from "@/hooks/useMarketingBanners";
 import { formatDate } from "@/utils/format";
+import { apiAssetUrl } from "@/lib/api";
 import type { MarketingBanner } from "@/types/marketing-banner.types";
 
 function FormLabel({
@@ -36,10 +37,10 @@ interface BannerDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   banner: MarketingBanner | null;
-  onCreate: (payload: { name: string; imageUrl: string }) => Promise<unknown>;
+  onCreate: (payload: { name: string; file: File }) => Promise<unknown>;
   onUpdate: (
     id: string,
-    payload: { name?: string; imageUrl?: string },
+    payload: { name?: string; file?: File },
   ) => Promise<unknown>;
 }
 
@@ -51,22 +52,36 @@ function BannerDialog({
   onUpdate,
 }: BannerDialogProps) {
   const [name, setName] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(banner?.name ?? "");
-    setImageUrl(banner?.imageUrl ?? "");
+    setFile(null);
+    setPreviewUrl(banner ? apiAssetUrl(banner.imageUrl) : null);
   }, [open, banner]);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0] ?? null;
+    setFile(selected);
+    setPreviewUrl(
+      selected
+        ? URL.createObjectURL(selected)
+        : banner
+          ? apiAssetUrl(banner.imageUrl)
+          : null,
+    );
+  }
 
   async function handleSave() {
     if (!name.trim()) {
       toast.error("Informe o nome do banner.");
       return;
     }
-    if (!imageUrl.trim()) {
-      toast.error("Informe a URL da imagem.");
+    if (!file && !banner) {
+      toast.error("Selecione o arquivo de imagem.");
       return;
     }
     setSaving(true);
@@ -74,9 +89,9 @@ function BannerDialog({
       const result = banner
         ? await onUpdate(banner.id, {
             name: name.trim(),
-            imageUrl: imageUrl.trim(),
+            ...(file && { file }),
           })
-        : await onCreate({ name: name.trim(), imageUrl: imageUrl.trim() });
+        : await onCreate({ name: name.trim(), file: file as File });
       if (result) onOpenChange(false);
     } finally {
       setSaving(false);
@@ -112,17 +127,17 @@ function BannerDialog({
           </div>
 
           <div className="space-y-1.5">
-            <FormLabel required>URL da imagem</FormLabel>
+            <FormLabel required={!banner}>Imagem</FormLabel>
             <Input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="bg-surface-base border-border text-foreground file:text-foreground focus-visible:ring-brand/30 h-10"
             />
-            {imageUrl.trim() && (
+            {previewUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={imageUrl}
+                src={previewUrl}
                 alt="Prévia do banner"
                 className="mt-2 h-24 w-full object-cover rounded-md border border-border-subtle"
               />
