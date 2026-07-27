@@ -14,11 +14,16 @@ export const appointmentsService = {
     return data;
   },
 
+  /**
+   * Cria um agendamento por serviço combo — o backend retorna um
+   * `Appointment` por serviço selecionado (todos compartilhando `groupId`
+   * quando há mais de um), renderizados como um único card na agenda.
+   */
   async create(
     barbershopId: string,
     payload: CreateAppointmentPayload,
-  ): Promise<Appointment> {
-    const { data } = await api.post<Appointment>(
+  ): Promise<Appointment[]> {
+    const { data } = await api.post<Appointment[]>(
       `/barbershops/${barbershopId}/appointments`,
       payload,
     );

@@ -69,15 +69,17 @@ export function AgendamentoCard({
               <Monitor className="size-2.5 text-text-faint shrink-0" />
             )}
           </div>
-          {/* Serviço(s) abaixo */}
+          {/* Serviço(s) abaixo — combo mostra todos os nomes juntos */}
           {heightPx >= 36 && (
-            <div className="flex items-center gap-1 mt-0.5">
+            <div className="flex items-start gap-1 mt-0.5">
               <span
-                className="size-1.5 rounded-full shrink-0"
+                className="size-1.5 rounded-full shrink-0 mt-[3px]"
                 style={{ backgroundColor: servico.cor }}
               />
-              <span className="text-[9px] text-muted-foreground truncate">
-                {servico.nome}
+              <span className="text-[9px] text-muted-foreground line-clamp-2">
+                {agendamento.servicos.length > 0
+                  ? agendamento.servicos.map((s) => s.nome).join(", ")
+                  : servico.nome}
               </span>
             </div>
           )}

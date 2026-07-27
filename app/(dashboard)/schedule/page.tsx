@@ -46,6 +46,7 @@ import { useBranches } from "@/hooks/useBranches";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useHolidays } from "@/hooks/useHolidays";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
+import { useEmployeeAvailability } from "@/hooks/useEmployeeAvailability";
 import { useComandas } from "@/hooks/useComandas";
 import { DialogFecharComanda } from "@/components/orders";
 import type { Comanda } from "@/types/orders.types";
@@ -70,6 +71,7 @@ import {
   minToTime,
   snapToSlot,
   buildMonthDates,
+  buildIndisponibilidades,
   localDateIso,
   toDateInputValue,
   SLOT_OPTIONS,
@@ -80,6 +82,7 @@ import type {
   AgendamentoVM,
   BloqueioHorario,
   ConflitoDados,
+  Indisponibilidade,
   NovoAgendamentoInput,
   NovoBloqueioInput,
   SlotSize,
@@ -130,6 +133,15 @@ export default function SchedulePage() {
     create: createScheduleBlock,
     remove: removeScheduleBlock,
   } = useScheduleBlocks(barbershop?.id);
+
+  // Horários/intervalos/folgas de cada profissional — pra derivar as
+  // indisponibilidades exibidas na agenda (ver `buildIndisponibilidades`).
+  const profissionalIds = useMemo(
+    () => profissionais.map((p) => p.id),
+    [profissionais],
+  );
+  const { schedulesByEmployee, breaksByEmployee, timeOffByEmployee } =
+    useEmployeeAvailability(barbershop?.id, profissionalIds);
 
   const selectedDateIsoForBlocks = toDateInputValue(selectedDate);
   const bloqueios = useMemo<BloqueioHorario[]>(
@@ -516,6 +528,30 @@ export default function SchedulePage() {
   );
   const dataCapitalizada =
     dataFormatada.charAt(0).toUpperCase() + dataFormatada.slice(1);
+
+  // Fora do expediente/intervalo/feriado/folga de cada profissional visível,
+  // pro dia selecionado — somente leitura (ver `IndisponibilidadeCard`).
+  const indisponibilidades = useMemo<Indisponibilidade[]>(
+    () =>
+      profissionais.flatMap((p) =>
+        buildIndisponibilidades({
+          profissionalId: p.id,
+          selectedDate,
+          schedules: schedulesByEmployee.get(p.id) ?? [],
+          breaks: breaksByEmployee.get(p.id) ?? [],
+          timeOff: timeOffByEmployee.get(p.id) ?? [],
+          holidayHoje,
+        }),
+      ),
+    [
+      profissionais,
+      selectedDate,
+      schedulesByEmployee,
+      breaksByEmployee,
+      timeOffByEmployee,
+      holidayHoje,
+    ],
+  );
 
   const shiftDate = (days: number) =>
     setSelectedDate((d) => {
@@ -1023,6 +1059,7 @@ export default function SchedulePage() {
                         onCriarBloqueio={handleCriarBloqueio}
                         modoBloquear={modoBloquear}
                         onSlotClick={handleSlotClick}
+                        indisponibilidades={indisponibilidades}
                       />
                     </div>
                   ))}

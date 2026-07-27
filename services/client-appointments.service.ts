@@ -27,13 +27,14 @@ export const clientAppointmentsService = {
    * Cria um agendamento pelo fluxo do cliente via
    * `POST /barbershops/:id/appointments/book` (rota dedicada com
    * `clientAuthMiddleware`). O backend usa `req.user.sub` como cliente.
-   * Body: `{ serviceId, scheduledAt, employeeId? }`.
+   * Body: `{ serviceIds, scheduledAt, employeeId? }` — um único agendamento
+   * (card) é criado com a duração somada de todos os serviços.
    */
   async create(
     barbershopId: string,
     payload: CreateAppointmentPayload,
-  ): Promise<Appointment> {
-    const { data } = await clientApi.post<Appointment>(
+  ): Promise<Appointment[]> {
+    const { data } = await clientApi.post<Appointment[]>(
       `/barbershops/${barbershopId}/appointments/book`,
       payload,
     );

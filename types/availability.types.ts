@@ -9,7 +9,8 @@
 export interface AvailabilityQuery {
   /** Profissional escolhido. Ausente = sem preferência (agregado da barbearia). */
   employeeId?: string;
-  serviceId: string;
+  /** Um ou mais serviços selecionados — a duração combinada é usada para calcular os slots livres. */
+  serviceIds: string[];
   /** "YYYY-MM-DD" */
   date: string;
 }

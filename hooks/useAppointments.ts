@@ -59,9 +59,9 @@ export function useAppointments(barbershopId: string | undefined) {
       if (!barbershopId) return null;
       try {
         const created = await appointmentsService.create(barbershopId, payload);
-        setAppointments((prev) => [...prev, created as unknown as Appointment]);
+        setAppointments((prev) => [...prev, ...(created as unknown as Appointment[])]);
         toast.success("Agendamento criado.");
-        return created;
+        return created[0] ?? null;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Falha ao criar agendamento.",
@@ -81,11 +81,17 @@ export function useAppointments(barbershopId: string | undefined) {
           id,
           { status },
         );
-        setAppointments((prev) =>
-          prev.map((a) =>
-            a.id === id ? { ...a, status: updated.status } : a,
-          ),
-        );
+        // O backend cascateia a mudança de status para todo o grupo (card
+        // combo) — refletimos isso localmente pros irmãos não ficarem com
+        // status desatualizado até o próximo refetch.
+        setAppointments((prev) => {
+          const groupId = prev.find((a) => a.id === id)?.groupId;
+          return prev.map((a) =>
+            a.id === id || (groupId && a.groupId === groupId)
+              ? { ...a, status: updated.status }
+              : a,
+          );
+        });
         toast.success(
           status === "CONFIRMED"
             ? "Agendamento confirmado."
@@ -111,7 +117,14 @@ export function useAppointments(barbershopId: string | undefined) {
       if (!barbershopId) return false;
       try {
         await appointmentsService.cancel(barbershopId, id);
-        setAppointments((prev) => prev.filter((a) => a.id !== id));
+        // O backend cascateia o cancelamento para todo o grupo (card combo)
+        // — removemos todos os irmãos localmente também.
+        setAppointments((prev) => {
+          const groupId = prev.find((a) => a.id === id)?.groupId;
+          return prev.filter(
+            (a) => a.id !== id && !(groupId && a.groupId === groupId),
+          );
+        });
         toast.success("Agendamento removido.");
         return true;
       } catch (err) {
@@ -155,6 +168,11 @@ export function useAppointments(barbershopId: string | undefined) {
         setAppointments((prev) =>
           prev.map((a) => (a.id === id ? { ...a, ...updated } : a)),
         );
+        // Card combo (`groupId`): o backend também desloca os irmãos, mas
+        // não sabemos o novo horário de cada um localmente — refetch pra não
+        // deixá-los com `scheduledAt` desatualizado (o que trocaria qual
+        // membro vira o "primário" do card na próxima renderização).
+        if (updated.groupId) void refetch();
         return updated;
       } catch (err) {
         toast.error(
@@ -165,7 +183,7 @@ export function useAppointments(barbershopId: string | undefined) {
         return null;
       }
     },
-    [barbershopId],
+    [barbershopId, refetch],
   );
 
   return {

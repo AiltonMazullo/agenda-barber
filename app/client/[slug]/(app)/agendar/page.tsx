@@ -249,7 +249,7 @@ export default function AgendarPage({ params }: PageProps) {
           empId: emp.id,
           slots: await availabilityService.getAvailableSlots(barbershop.id, {
             employeeId: emp.id,
-            serviceId: firstService.id,
+            serviceIds: selectedServices.map((s) => s.id),
             date: dateToISODate(date),
           }),
         })),
@@ -275,7 +275,7 @@ export default function AgendarPage({ params }: PageProps) {
       availabilityService
         .getAvailableSlots(barbershop.id, {
           employeeId: selectedEmployee?.id,
-          serviceId: firstService.id,
+          serviceIds: selectedServices.map((s) => s.id),
           date: dateToISODate(date),
         })
         .then((s) => {
@@ -358,18 +358,16 @@ export default function AgendarPage({ params }: PageProps) {
 
     setSubmitting(true);
     try {
-      // O backend cria um agendamento por serviço; encadeamos os serviços em
-      // sequência a partir do horário escolhido (cada um após o anterior).
-      let cursor = new Date(baseStart);
-      for (const svc of selectedServices) {
-        const appt = await clientAppointmentsService.create(barbershop.id, {
-          serviceId: svc.id,
-          employeeId: effectiveEmployee.id,
-          scheduledAt: cursor.toISOString(),
-        });
-        setLocalEmployee(appt.id, effectiveEmployee.id);
-        cursor = new Date(cursor.getTime() + svc.durationMin * 60000);
-      }
+      // Um único agendamento (card) é criado no backend com a duração
+      // somada de todos os serviços selecionados — o backend encadeia os
+      // serviços em sequência a partir do horário escolhido internamente e
+      // retorna um Appointment por serviço (todos compartilhando groupId).
+      const appts = await clientAppointmentsService.create(barbershop.id, {
+        serviceIds: selectedServices.map((svc) => svc.id),
+        employeeId: effectiveEmployee.id,
+        scheduledAt: baseStart.toISOString(),
+      });
+      for (const appt of appts) setLocalEmployee(appt.id, effectiveEmployee.id);
       toast.success(
         selectedServices.length > 1
           ? "Agendamentos confirmados!"

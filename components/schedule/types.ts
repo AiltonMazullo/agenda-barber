@@ -38,14 +38,21 @@ export interface AgendamentoVM {
   id: string;
   /** Id do cliente — usado para buscar plano ativo e histórico de agendamentos. */
   clientId: string;
+  /** Serviço primário (o primeiro do grupo) — mantido para compatibilidade com quem só exibe um serviço. */
   servicoId: string;
+  /** Todos os serviços do agendamento combo, na ordem em que foram agendados (1 item = serviço único). */
+  servicos: { id: string; nome: string }[];
+  /** Ids de todos os Appointments que compõem este card (para ações que precisam atingir o grupo inteiro). */
+  memberIds: string[];
+  /** Agrupa agendamentos criados na mesma reserva combo — null quando é um serviço único. */
+  groupId: string | null;
   profissionalId: string;
   /** Nome do profissional resolvido (mesmo se fora da filial filtrada). */
   profissionalNome: string;
   cliente: string;
   telefone: string;
   inicioMin: number; // minutos desde meia-noite
-  duracao: number; // minutos
+  duracao: number; // minutos — soma da duração de todos os serviços do grupo
   /** Dia do agendamento no fuso local, "yyyy-MM-dd" — usado pela visão de mês. */
   dataIso: string;
   status: AppointmentStatus;
@@ -113,7 +120,7 @@ export interface QuickClientInput {
   howMet: string;
 }
 
-/** Bloqueio de horário — apenas local (sem persistência no backend). */
+/** Bloqueio de horário — persistido no backend (ver `useScheduleBlocks`). */
 export interface BloqueioHorario {
   id: string;
   profissionalId: string; // "todos" para todos
@@ -123,4 +130,25 @@ export interface BloqueioHorario {
   tipo: "bloqueio";
   /** Dia do bloqueio no fuso local, "yyyy-MM-dd" — só se aplica nesse dia. */
   dataIso: string;
+}
+
+/**
+ * Segmento de indisponibilidade somente leitura, derivado da configuração do
+ * profissional (horários/intervalos), folgas e feriados da barbearia — ao
+ * contrário de `BloqueioHorario`, não é criado/editado/removido pela agenda
+ * (só muda quando a configuração de origem muda). Ver `buildIndisponibilidades`.
+ */
+export type IndisponibilidadeTipo =
+  | "fora-expediente"
+  | "intervalo"
+  | "feriado"
+  | "folga";
+
+export interface Indisponibilidade {
+  id: string;
+  profissionalId: string;
+  inicioMin: number;
+  fimMin: number;
+  tipo: IndisponibilidadeTipo;
+  label: string;
 }

@@ -78,7 +78,7 @@ export const availabilityService = {
       {
         params: {
           employeeId: query.employeeId || undefined,
-          serviceId: query.serviceId,
+          serviceIds: query.serviceIds.join(","),
           date: query.date,
         },
       },

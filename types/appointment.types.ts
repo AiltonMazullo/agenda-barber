@@ -39,6 +39,8 @@ export interface AppointmentRaw {
   serviceId: string;
   employeeId: string | null;
   barbershopId: string;
+  /** Agrupa agendamentos criados na mesma reserva combo (múltiplos serviços). Null = serviço único. */
+  groupId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,7 +75,8 @@ export interface CreateAppointmentPayload {
    * No fluxo público do cliente é omitido — o backend usa `req.user.sub`.
    */
   clientId?: string;
-  serviceId: string;
+  /** Um ou mais serviços — a barbearia recebe um único agendamento (card) com a duração somada. */
+  serviceIds: string[];
   /** Profissional que vai atender. */
   employeeId?: string;
   /** ISO datetime string (UTC). */

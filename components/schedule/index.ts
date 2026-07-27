@@ -1,6 +1,7 @@
 export { AgendamentoCard } from "./AgendamentoCard";
 export { DraggableAgendamento } from "./DraggableAgendamento";
 export { BloqueioCard } from "./BloqueioCard";
+export { IndisponibilidadeCard } from "./IndisponibilidadeCard";
 export { ProfissionalColuna } from "./ProfissionalColuna";
 export { TimeLine } from "./TimeLine";
 export { ModoLista } from "./ModoLista";

@@ -202,35 +202,63 @@ export function useSchedule(
 
   // ─── Agendamentos VM (todos, com overlay) ───────────────────────────────────
   // Serve tanto o kanban do dia (filtrado abaixo) quanto a visão de mês, que
-  // precisa do conjunto inteiro pra agrupar por `dataIso`.
+  // precisa do conjunto inteiro pra agrupar por `dataIso`. Agendamentos combo
+  // (mesmo `groupId`, criados por `createAgendamento` a partir de múltiplos
+  // serviços) são mesclados aqui num único card: o mais antigo do grupo vira
+  // o "primário" (id/overlay/ações), a duração é a soma dos serviços e
+  // `servicos` traz a lista completa pra exibição no card.
   const agendamentosTodos = useMemo<AgendamentoVM[]>(() => {
-    return appointments.map((a) => {
-      const ov = overlay[a.id] ?? {};
-      const servico = servicoById.get(a.serviceId);
-      const baseDur = servico?.tempoPadrao ?? 30;
+    const groups = new Map<string, Appointment[]>();
+    for (const a of appointments) {
+      const key = a.groupId ?? a.id;
+      const list = groups.get(key) ?? [];
+      list.push(a);
+      groups.set(key, list);
+    }
+
+    return Array.from(groups.values()).map((members) => {
+      const sorted = [...members].sort(
+        (x, y) => new Date(x.scheduledAt).getTime() - new Date(y.scheduledAt).getTime(),
+      );
+      const primary = sorted[0];
+      const ov = overlay[primary.id] ?? {};
+
+      const totalDur = sorted.reduce((sum, m) => {
+        const servico = servicoById.get(m.serviceId);
+        return sum + (servico?.tempoPadrao ?? 30);
+      }, 0);
+      const servicos = sorted.map((m) => ({
+        id: m.serviceId,
+        nome: servicoById.get(m.serviceId)?.nome ?? "Serviço",
+      }));
+
       const profId =
-        ov.profissionalId ?? a.employeeId ?? a.employee?.id ?? "sem-prof";
+        ov.profissionalId ?? primary.employeeId ?? primary.employee?.id ?? "sem-prof";
       const profNome =
         employeeNameById.get(profId) ??
-        a.employee?.appName ??
-        a.employee?.name ??
+        primary.employee?.appName ??
+        primary.employee?.name ??
         "Sem profissional";
-      const cli = clientById.get(a.clientId);
+      const cli = clientById.get(primary.clientId);
       return {
-        id: a.id,
-        clientId: a.clientId,
-        servicoId: a.serviceId,
+        id: primary.id,
+        clientId: primary.clientId,
+        servicoId: primary.serviceId,
+        servicos,
+        memberIds: sorted.map((m) => m.id),
+        groupId: primary.groupId,
         profissionalId: profId,
         profissionalNome: profNome,
-        cliente: a.client?.name ?? "Cliente",
-        telefone: a.client?.phone ?? "",
-        inicioMin: ov.inicioMin ?? isoToMin(a.scheduledAt),
-        duracao: ov.customDuracao ?? baseDur,
-        dataIso: localDateIso(a.scheduledAt),
-        status: a.status,
-        origem: a.origin === "CLIENT" ? "online" : "recepcao",
-        primeiroAgendamento: firstAppointmentIdByClient.get(a.clientId) === a.id,
-        assinante: subscriberStatusByClient.get(a.clientId) ?? null,
+        cliente: primary.client?.name ?? "Cliente",
+        telefone: primary.client?.phone ?? "",
+        inicioMin: ov.inicioMin ?? isoToMin(primary.scheduledAt),
+        duracao: ov.customDuracao ?? totalDur,
+        dataIso: localDateIso(primary.scheduledAt),
+        status: primary.status,
+        origem: primary.origin === "CLIENT" ? "online" : "recepcao",
+        primeiroAgendamento:
+          firstAppointmentIdByClient.get(primary.clientId) === primary.id,
+        assinante: subscriberStatusByClient.get(primary.clientId) ?? null,
         aniversarianteSemana: isBirthdayThisWeek(cli?.birthDate),
         temNota: !!cli?.notes?.trim(),
       } satisfies AgendamentoVM;
@@ -253,9 +281,11 @@ export function useSchedule(
 
   // ─── Ações ──────────────────────────────────────────────────────────────────
   /**
-   * Cria um agendamento por serviço (executados em sequência a partir do
-   * horário). Retorna o primeiro agendamento criado. O backend trata cada
-   * serviço como um Appointment próprio.
+   * Cria os agendamentos a partir dos serviços selecionados, agrupando em um
+   * único Appointment (card, com duração somada) cada sequência de serviços
+   * consecutivos atribuídos ao mesmo profissional — uma troca de
+   * profissional no meio da seleção inicia um novo agendamento. Retorna o
+   * primeiro agendamento criado.
    */
   const createAgendamento = useCallback(
     async (input: NovoAgendamentoInput): Promise<Appointment | null> => {
@@ -263,23 +293,34 @@ export function useSchedule(
       let cursorMin = h * 60 + (m || 0);
       let first: Appointment | null = null;
 
-      for (const sv of input.servicos) {
+      let i = 0;
+      while (i < input.servicos.length) {
+        const profissionalId = input.servicos[i].profissionalId;
+        const batch = [];
+        while (
+          i < input.servicos.length &&
+          input.servicos[i].profissionalId === profissionalId
+        ) {
+          batch.push(input.servicos[i]);
+          i++;
+        }
+
         const dt = new Date(input.data);
         dt.setUTCHours(0, 0, 0, 0);
         dt.setUTCMinutes(cursorMin);
         const created = await create({
           clientId: input.clientId,
-          serviceId: sv.servicoId,
-          employeeId: sv.profissionalId || undefined,
+          serviceIds: batch.map((sv) => sv.servicoId),
+          employeeId: profissionalId || undefined,
           scheduledAt: dt.toISOString(),
         });
         if (created) {
           // Enriquece localmente (employeeId/employee/client) pra o card
           // aparecer imediatamente na coluna correta do kanban.
-          const emp = employees.find((e) => e.id === sv.profissionalId);
+          const emp = employees.find((e) => e.id === profissionalId);
           const cli = clients.find((c) => c.id === input.clientId);
           replaceLocal(created.id, {
-            employeeId: sv.profissionalId || null,
+            employeeId: profissionalId || null,
             status: input.status ?? created.status,
             employee: emp
               ? { id: emp.id, name: emp.name, appName: emp.appName }
@@ -294,7 +335,7 @@ export function useSchedule(
           }
           if (!first) first = created;
         }
-        cursorMin += sv.duracao;
+        cursorMin += batch.reduce((sum, sv) => sum + sv.duracao, 0);
       }
       return first;
     },

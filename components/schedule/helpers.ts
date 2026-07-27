@@ -1,4 +1,13 @@
-import type { AgendamentoVM, BloqueioHorario, SlotSize } from "./types";
+import type { EmployeeBreak, EmployeeSchedule, EmployeeTimeOff } from "@/types/employee.types";
+import type { Holiday } from "@/types/holiday.types";
+import {
+  END_HOUR,
+  START_HOUR,
+  type AgendamentoVM,
+  type BloqueioHorario,
+  type Indisponibilidade,
+  type SlotSize,
+} from "./types";
 
 /** "510" → "08:30" */
 export function minToTime(min: number): string {
@@ -129,4 +138,120 @@ export function isBloqueio(
   c: AgendamentoVM | BloqueioHorario,
 ): c is BloqueioHorario {
   return (c as BloqueioHorario).tipo === "bloqueio";
+}
+
+/**
+ * Deriva os segmentos de indisponibilidade (fora do expediente, intervalo,
+ * feriado, folga) de um profissional pro dia selecionado, a partir da
+ * configuração persistida (horários/intervalos/folgas do profissional +
+ * feriado da filial no dia). Espelha a mesma ordem de prioridade usada em
+ * `assertSlotAvailable` (agendle-api `appointments.service.ts`): folga >
+ * feriado fechado > horário especial de feriado (substitui o expediente
+ * normal) > expediente normal + intervalos. Puramente pra exibição — a
+ * validação real continua no backend.
+ */
+export function buildIndisponibilidades(params: {
+  profissionalId: string;
+  selectedDate: Date;
+  schedules: EmployeeSchedule[];
+  breaks: EmployeeBreak[];
+  timeOff: EmployeeTimeOff[];
+  holidayHoje?: Holiday | null;
+}): Indisponibilidade[] {
+  const { profissionalId, selectedDate, schedules, breaks, timeOff, holidayHoje } = params;
+  const gridStart = START_HOUR * 60;
+  const gridEnd = END_HOUR * 60;
+  const dateIso = toDateInputValue(selectedDate);
+  const dayOfWeek = selectedDate.getDay();
+
+  const emFolga = timeOff.some((t) => t.startDate <= dateIso && dateIso <= t.endDate);
+  if (emFolga) {
+    return [
+      {
+        id: `folga-${profissionalId}`,
+        profissionalId,
+        inicioMin: gridStart,
+        fimMin: gridEnd,
+        tipo: "folga",
+        label: "Folga",
+      },
+    ];
+  }
+
+  if (holidayHoje?.status === "CLOSED") {
+    return [
+      {
+        id: `feriado-${profissionalId}`,
+        profissionalId,
+        inicioMin: gridStart,
+        fimMin: gridEnd,
+        tipo: "feriado",
+        label: `Feriado — ${holidayHoje.name}`,
+      },
+    ];
+  }
+
+  let workStart: number;
+  let workEnd: number;
+  if (holidayHoje?.status === "OPEN" && holidayHoje.startTime && holidayHoje.endTime) {
+    workStart = timeToMin(holidayHoje.startTime);
+    workEnd = timeToMin(holidayHoje.endTime);
+  } else {
+    const schedule = schedules.find((s) => s.dayOfWeek === dayOfWeek);
+    if (!schedule) {
+      return [
+        {
+          id: `fora-${profissionalId}`,
+          profissionalId,
+          inicioMin: gridStart,
+          fimMin: gridEnd,
+          tipo: "fora-expediente",
+          label: "Fora do expediente",
+        },
+      ];
+    }
+    workStart = timeToMin(schedule.startTime);
+    workEnd = timeToMin(schedule.endTime);
+  }
+
+  const segments: Indisponibilidade[] = [];
+  if (workStart > gridStart) {
+    segments.push({
+      id: `antes-${profissionalId}`,
+      profissionalId,
+      inicioMin: gridStart,
+      fimMin: Math.min(workStart, gridEnd),
+      tipo: "fora-expediente",
+      label: "Fora do expediente",
+    });
+  }
+  if (workEnd < gridEnd) {
+    segments.push({
+      id: `depois-${profissionalId}`,
+      profissionalId,
+      inicioMin: Math.max(workEnd, gridStart),
+      fimMin: gridEnd,
+      tipo: "fora-expediente",
+      label: "Fora do expediente",
+    });
+  }
+
+  breaks
+    .filter((b) => b.dayOfWeek === dayOfWeek)
+    .forEach((b) => {
+      const s = Math.max(timeToMin(b.startTime), gridStart);
+      const e = Math.min(timeToMin(b.endTime), gridEnd);
+      if (e > s) {
+        segments.push({
+          id: `intervalo-${b.id}`,
+          profissionalId,
+          inicioMin: s,
+          fimMin: e,
+          tipo: "intervalo",
+          label: "Intervalo",
+        });
+      }
+    });
+
+  return segments;
 }

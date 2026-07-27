@@ -5,11 +5,13 @@ import { useDroppable } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { BloqueioCard } from "./BloqueioCard";
+import { IndisponibilidadeCard } from "./IndisponibilidadeCard";
 import { DraggableAgendamento } from "./DraggableAgendamento";
 import { START_HOUR } from "./types";
 import type {
   AgendamentoVM,
   BloqueioHorario,
+  Indisponibilidade,
   ProfissionalVM,
   ServicoVM,
   SlotSize,
@@ -30,6 +32,7 @@ export function ProfissionalColuna({
   onCriarBloqueio,
   modoBloquear,
   onSlotClick,
+  indisponibilidades,
 }: {
   profissional: ProfissionalVM;
   agendamentos: AgendamentoVM[];
@@ -49,6 +52,8 @@ export function ProfissionalColuna({
   ) => void;
   modoBloquear: boolean;
   onSlotClick: (profId: string, inicioMin: number) => void;
+  /** Fora do expediente/intervalo/feriado/folga — somente leitura (ver `buildIndisponibilidades`). */
+  indisponibilidades: Indisponibilidade[];
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${profissional.id}`,
@@ -108,6 +113,9 @@ export function ProfissionalColuna({
 
   const profBloqueios = bloqueios.filter(
     (b) => b.profissionalId === profissional.id || b.profissionalId === "todos",
+  );
+  const profIndisponibilidades = indisponibilidades.filter(
+    (i) => i.profissionalId === profissional.id,
   );
 
   return (
@@ -190,6 +198,15 @@ export function ProfissionalColuna({
             }}
           />
         )}
+
+        {profIndisponibilidades.map((ind) => (
+          <IndisponibilidadeCard
+            key={ind.id}
+            indisponibilidade={ind}
+            slotSize={slotSize}
+            slotHeightPx={slotHeightPx}
+          />
+        ))}
 
         {profBloqueios.map((bl) => (
           <BloqueioCard

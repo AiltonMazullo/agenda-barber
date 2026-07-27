@@ -1,6 +1,7 @@
 "use client";
 
 import { Ban, X } from "lucide-react";
+import { minToTime } from "./helpers";
 import { START_HOUR } from "./types";
 import type { BloqueioHorario, SlotSize } from "./types";
 
@@ -36,12 +37,20 @@ export function BloqueioCard({
         style={{ height: "100%" }}
       >
         <div className="h-0.5 w-full bg-red-500/60" />
-        <div className="flex-1 flex items-center justify-between px-2 py-1 overflow-hidden">
-          <div className="flex items-center gap-1 truncate">
-            <Ban className="size-2.5 text-red-400 shrink-0" />
-            {heightPx >= 36 && (
-              <span className="text-[9px] font-bold text-red-400/80 uppercase tracking-wide truncate">
-                {bloqueio.motivo || "Bloqueado"}
+        <div className="flex-1 flex items-center justify-between px-2 py-1 overflow-hidden gap-1">
+          <div className="flex flex-col min-w-0 gap-0.5">
+            <div className="flex items-center gap-1 truncate">
+              <Ban className="size-2.5 text-red-400 shrink-0" />
+              {heightPx >= 36 && (
+                <span className="text-[9px] font-bold text-red-400/80 uppercase tracking-wide truncate">
+                  {bloqueio.motivo || "Bloqueado"}
+                </span>
+              )}
+            </div>
+            {heightPx >= 50 && (
+              <span className="text-[9px] text-red-400/60 truncate">
+                {minToTime(bloqueio.inicioMin)}–
+                {minToTime(bloqueio.inicioMin + bloqueio.duracaoMin)}
               </span>
             )}
           </div>
