@@ -298,7 +298,7 @@ export function DialogProduto({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-lg p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-2xl p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -388,68 +388,47 @@ export function DialogProduto({
           </div>
 
           <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <FormLabel required>Categoria</FormLabel>
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="w-full">
-                    <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm flex items-center justify-between gap-2 text-left">
-                      <span
-                        className={
-                          selectedCategory
-                            ? "text-foreground"
-                            : "text-text-faint"
-                        }
-                      >
-                        {selectedCategory?.name ?? "Sem categoria"}
-                      </span>
-                      <ChevronDown className="size-4 text-muted-foreground shrink-0" />
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-48 overflow-y-auto w-[var(--radix-dropdown-menu-trigger-width)]">
+            <div className="space-y-1.5">
+              <FormLabel required>Categoria</FormLabel>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full">
+                  <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm flex items-center justify-between gap-2 text-left">
+                    <span
+                      className={
+                        selectedCategory
+                          ? "text-foreground"
+                          : "text-text-faint"
+                      }
+                    >
+                      {selectedCategory?.name ?? "Sem categoria"}
+                    </span>
+                    <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-48 overflow-y-auto w-[var(--radix-dropdown-menu-trigger-width)]">
+                  <DropdownMenuItem
+                    onClick={() => update("categoryId", null)}
+                    className={cn(
+                      "text-xs hover:bg-surface-elevated cursor-pointer",
+                      !form.categoryId && "text-brand",
+                    )}
+                  >
+                    Sem categoria
+                  </DropdownMenuItem>
+                  {categories.map((c) => (
                     <DropdownMenuItem
-                      onClick={() => update("categoryId", null)}
+                      key={c.id}
+                      onClick={() => update("categoryId", c.id)}
                       className={cn(
                         "text-xs hover:bg-surface-elevated cursor-pointer",
-                        !form.categoryId && "text-brand",
+                        form.categoryId === c.id && "text-brand",
                       )}
                     >
-                      Sem categoria
+                      {c.name}
                     </DropdownMenuItem>
-                    {categories.map((c) => (
-                      <DropdownMenuItem
-                        key={c.id}
-                        onClick={() => update("categoryId", c.id)}
-                        className={cn(
-                          "text-xs hover:bg-surface-elevated cursor-pointer",
-                          form.categoryId === c.id && "text-brand",
-                        )}
-                      >
-                        {c.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1">
-                  <FormLabel>Período para recompra (em dias)</FormLabel>
-                  <InfoTooltip text="Usado para ações de marketing e vendas: define quando o cliente deve ser lembrado de comprar este produto de novo." />
-                </div>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.repurchasePeriodDays}
-                  onChange={(e) =>
-                    update(
-                      "repurchasePeriodDays",
-                      e.target.value.replace(/\D/g, ""),
-                    )
-                  }
-                  className={inputCls}
-                />
-              </div>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <button
@@ -460,6 +439,25 @@ export function DialogProduto({
             >
               <Plus className="size-4" />
             </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1">
+              <FormLabel>Período para recompra (em dias)</FormLabel>
+              <InfoTooltip text="Usado para ações de marketing e vendas: define quando o cliente deve ser lembrado de comprar este produto de novo." />
+            </div>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={form.repurchasePeriodDays}
+              onChange={(e) =>
+                update(
+                  "repurchasePeriodDays",
+                  e.target.value.replace(/\D/g, ""),
+                )
+              }
+              className={inputCls}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -541,11 +539,11 @@ export function DialogProduto({
             </div>
           )}
         </div>
-        <div className="px-6 pb-6 flex justify-between gap-3">
+        <div className="px-6 pb-6 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md bg-danger text-danger-foreground text-sm font-bold hover:bg-danger/90 transition-colors flex items-center gap-2"
+            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
             Voltar
           </button>
@@ -553,7 +551,7 @@ export function DialogProduto({
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-success text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-60"
+            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
           >
             {saving ? "Enviando…" : "Enviar"}
           </button>
