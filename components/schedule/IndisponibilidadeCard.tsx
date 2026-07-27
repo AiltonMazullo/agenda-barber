@@ -43,23 +43,28 @@ export function IndisponibilidadeCard({
         height: heightPx - 2,
         zIndex: 2,
       }}
-      className="opacity-70 pointer-events-none"
+      className="pointer-events-none"
     >
       <div
-        className="absolute left-0.5 right-0.5 rounded-md border border-dashed border-border bg-surface-elevated/60 flex flex-col overflow-hidden"
-        style={{ height: "100%" }}
+        className="absolute left-0.5 right-0.5 rounded-md border border-black/40 flex flex-col overflow-hidden"
+        style={{
+          height: "100%",
+          backgroundColor: "rgba(0,0,0,0.55)",
+          backgroundImage:
+            "repeating-linear-gradient(135deg, rgba(0,0,0,0.35) 0px, rgba(0,0,0,0.35) 6px, transparent 6px, transparent 12px)",
+        }}
       >
         <div className="flex-1 flex flex-col justify-center px-2 py-1 overflow-hidden gap-0.5">
           <div className="flex items-center gap-1 truncate">
-            <Icon className="size-2.5 text-muted-foreground shrink-0" />
+            <Icon className="size-2.5 text-slate-300 shrink-0" />
             {heightPx >= 36 && (
-              <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide truncate">
+              <span className="text-[9px] font-semibold text-slate-300 uppercase tracking-wide truncate">
                 {indisponibilidade.label}
               </span>
             )}
           </div>
           {heightPx >= 50 && (
-            <span className="text-[9px] text-text-faint truncate">
+            <span className="text-[9px] text-slate-400 truncate">
               {minToTime(indisponibilidade.inicioMin)}–
               {minToTime(indisponibilidade.fimMin)}
             </span>

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { BloqueioCard } from "./BloqueioCard";
@@ -164,6 +165,16 @@ export function ProfissionalColuna({
             const y = e.clientY - rect.top;
             const slotIdx = Math.floor(y / slotHeightPx);
             const inicioMin = START_HOUR * 60 + slotIdx * slotSize;
+            // Fora do expediente/intervalo/feriado/folga: não deixa criar
+            // agendamento nesse horário (o backend rejeitaria de qualquer
+            // forma — bloqueamos aqui pra não abrir o dialog à toa).
+            const indisponivel = profIndisponibilidades.find(
+              (ind) => inicioMin >= ind.inicioMin && inicioMin < ind.fimMin,
+            );
+            if (indisponivel) {
+              toast.error(`Horário indisponível (${indisponivel.label}).`);
+              return;
+            }
             onSlotClick(profissional.id, inicioMin);
           }
         }}
