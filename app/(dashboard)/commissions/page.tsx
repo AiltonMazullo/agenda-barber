@@ -144,6 +144,18 @@ export default function ComissoesPage() {
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  // Pré-preenche a porcentagem do pote com a configuração padrão da barbearia
+  // (Configurações > Empresa > "Configurações módulo Dpote"), sem travar a
+  // edição manual do usuário — só roda quando a barbearia carrega/troca, não
+  // a cada digitação.
+  useEffect(() => {
+    if (barbershop?.dpoteCommissionPercent != null) {
+      setCommissionPercentInput((prev) =>
+        prev.trim() === "" ? String(barbershop.dpoteCommissionPercent) : prev,
+      );
+    }
+  }, [barbershop?.id, barbershop?.dpoteCommissionPercent]);
+
   function bonusMap(): Record<string, number> {
     return Object.fromEntries(
       Object.entries(bonusInputs)

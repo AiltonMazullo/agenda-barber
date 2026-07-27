@@ -6,6 +6,25 @@ export function formatBRL(value: number): string {
   });
 }
 
+/** Formata um valor em centavos como BRL: 123450 -> "R$ 1.234,50". */
+export function formatBRLFromCents(cents: number): string {
+  return formatBRL(cents / 100);
+}
+
+/**
+ * Formata o preço (em centavos) de um serviço para exibição ao cliente
+ * final: quando `startingFrom` é `true` (serviço cujo preço pode variar,
+ * ex.: corte de cabelo mais longo usa mais produto), antepõe "A partir de "
+ * ao valor formatado em vez de mostrar o preço fixo isolado.
+ */
+export function formatServicePrice(
+  priceInCents: number,
+  startingFrom: boolean,
+): string {
+  const formatted = formatBRLFromCents(priceInCents);
+  return startingFrom ? `A partir de ${formatted}` : formatted;
+}
+
 /** Formata data como dd/mm/aaaa por padrão (pt-BR). */
 export function formatDate(
   date: Date | string,

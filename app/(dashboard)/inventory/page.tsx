@@ -39,7 +39,10 @@ export default function EstoquePage() {
   const { barbershop } = useAuth();
   const { products, isLoading, create, update, remove, upsertStock, loadStock } =
     useProducts(barbershop?.id, { withStock: true });
-  const { categories } = useCategories(barbershop?.id, "PRODUTO");
+  const { categories, create: createCategory } = useCategories(
+    barbershop?.id,
+    "PRODUTO",
+  );
   const { branches } = useBranches(barbershop?.id);
   const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
   const {
@@ -124,13 +127,18 @@ export default function EstoquePage() {
   async function handleProductSave(
     payload: CreateProductPayload,
     costInCents: number,
+    stockRows: { branchId: string; minStock: number; currentStock: number }[],
   ) {
     if (editingProduct) {
       await update(editingProduct.id, payload);
       setCost(editingProduct.id, costInCents);
+      await handleStockSave(editingProduct.id, stockRows);
     } else {
       const created = await create(payload);
-      if (created) setCost(created.id, costInCents);
+      if (created) {
+        setCost(created.id, costInCents);
+        await handleStockSave(created.id, stockRows);
+      }
     }
   }
 
@@ -326,7 +334,9 @@ export default function EstoquePage() {
         product={editingProduct}
         initialCostInCents={editingProduct ? costOf(editingProduct.id) : 0}
         categories={categories}
+        branches={branches}
         onSave={handleProductSave}
+        onCreateCategory={createCategory}
       />
 
       <DialogEstoque

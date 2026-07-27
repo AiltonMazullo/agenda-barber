@@ -107,6 +107,7 @@ import type {
   BranchPaymentConfig,
   CreateBranchPayload,
 } from "@/types/branch.types";
+import type { ValeDeductionSource } from "@/types/barbershop.types";
 import {
   PAYMENT_METHOD_LABELS,
   type PaymentMethod,
@@ -165,6 +166,30 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
 ];
 
 const DEFAULT_HEX = "#f5b82e";
+
+const CANCELLATION_TOLERANCE_OPTIONS: { value: number; label: string }[] = [
+  { value: 30, label: "30 minutos" },
+  { value: 60, label: "1 hora" },
+  { value: 120, label: "2 horas" },
+  { value: 240, label: "4 horas" },
+  { value: 720, label: "12 horas" },
+  { value: 1440, label: "24 horas" },
+];
+
+const PENALTY_DURATION_OPTIONS: { value: number; label: string }[] = [
+  { value: 6, label: "6 horas" },
+  { value: 12, label: "12 horas" },
+  { value: 24, label: "24 horas" },
+  { value: 48, label: "48 horas" },
+  { value: 72, label: "72 horas" },
+];
+
+const VALE_DEDUCTION_OPTIONS: { value: ValeDeductionSource; label: string }[] = [
+  { value: "TODOS", label: "Todos" },
+  { value: "SERVICOS_AVULSOS", label: "Serviços avulsos" },
+  { value: "SERVICOS_ASSINATURA", label: "Serviços assinatura" },
+  { value: "PRODUTOS", label: "Produtos" },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -231,6 +256,24 @@ function TabEmpresa() {
   const [bannerUrls, setBannerUrls] = useState<string[]>(
     barbershop?.carouselImages ?? [],
   );
+  const [cancellationToleranceMinutes, setCancellationToleranceMinutes] =
+    useState<number | null>(barbershop?.cancellationToleranceMinutes ?? null);
+  const [penaltyDurationHours, setPenaltyDurationHours] = useState<
+    number | null
+  >(barbershop?.penaltyDurationHours ?? null);
+  const [clubName, setClubName] = useState(barbershop?.clubName ?? "");
+  const [dpoteCommissionPercent, setDpoteCommissionPercent] = useState(
+    barbershop?.dpoteCommissionPercent != null
+      ? String(barbershop.dpoteCommissionPercent)
+      : "",
+  );
+  const [hideFichaFromBarberReport, setHideFichaFromBarberReport] = useState(
+    barbershop?.hideFichaFromBarberReport ?? false,
+  );
+  const [valeDeductionSource, setValeDeductionSource] =
+    useState<ValeDeductionSource>(
+      barbershop?.valeDeductionSource ?? "TODOS",
+    );
   const [logoCentered, setLogoCentered] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [carouselUploading, setCarouselUploading] = useState(false);
@@ -248,6 +291,18 @@ function TabEmpresa() {
     setSubtitle(barbershop?.subtitle ?? "");
     setDescription(barbershop?.description ?? "");
     setBannerUrls(barbershop?.carouselImages ?? []);
+    setCancellationToleranceMinutes(
+      barbershop?.cancellationToleranceMinutes ?? null,
+    );
+    setPenaltyDurationHours(barbershop?.penaltyDurationHours ?? null);
+    setClubName(barbershop?.clubName ?? "");
+    setDpoteCommissionPercent(
+      barbershop?.dpoteCommissionPercent != null
+        ? String(barbershop.dpoteCommissionPercent)
+        : "",
+    );
+    setHideFichaFromBarberReport(barbershop?.hideFichaFromBarberReport ?? false);
+    setValeDeductionSource(barbershop?.valeDeductionSource ?? "TODOS");
     if (barbershop) {
       setConfig(companyConfigStore.get(barbershop.id));
       setLogoCentered(
@@ -344,6 +399,9 @@ function TabEmpresa() {
     }
     setSaving(true);
     try {
+      const dpotePercent = dpoteCommissionPercent.trim()
+        ? Number(dpoteCommissionPercent.replace(",", "."))
+        : null;
       const updated = await barbershopsService.update(barbershop.id, {
         name: name.trim(),
         phone: phone.trim(),
@@ -351,6 +409,15 @@ function TabEmpresa() {
         title: title.trim(),
         subtitle: subtitle.trim(),
         description: description.trim(),
+        cancellationToleranceMinutes,
+        penaltyDurationHours,
+        clubName: clubName.trim() || null,
+        dpoteCommissionPercent:
+          dpotePercent != null && Number.isFinite(dpotePercent)
+            ? dpotePercent
+            : null,
+        hideFichaFromBarberReport,
+        valeDeductionSource,
       });
       updateBarbershop(updated);
       toast.success("Dados atualizados.");
@@ -703,6 +770,216 @@ function TabEmpresa() {
                 </span>
                 .
               </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ─── Regras de tolerância e penalidade / Clube da Barba / Dpote / Financeiro ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
+                Regras de tolerância e penalidade
+              </h3>
+              <p className="text-[11px] text-text-faint mt-1">
+                Preencha todos os campos obrigatórios
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <FormLabel>Tolerância de cancelamento</FormLabel>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="w-full">
+                    <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                      <span
+                        className={
+                          cancellationToleranceMinutes != null
+                            ? "text-white"
+                            : "text-text-faint"
+                        }
+                      >
+                        {CANCELLATION_TOLERANCE_OPTIONS.find(
+                          (o) => o.value === cancellationToleranceMinutes,
+                        )?.label ?? "Selecione"}
+                      </span>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
+                    {CANCELLATION_TOLERANCE_OPTIONS.map((o) => (
+                      <DropdownMenuItem
+                        key={o.value}
+                        onClick={() => setCancellationToleranceMinutes(o.value)}
+                        className={cn(
+                          "text-xs hover:bg-surface-elevated cursor-pointer",
+                          cancellationToleranceMinutes === o.value && "text-brand",
+                        )}
+                      >
+                        {o.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div className="space-y-1.5">
+                <FormLabel>Duração da penalidade</FormLabel>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="w-full">
+                    <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                      <span
+                        className={
+                          penaltyDurationHours != null
+                            ? "text-white"
+                            : "text-text-faint"
+                        }
+                      >
+                        {PENALTY_DURATION_OPTIONS.find(
+                          (o) => o.value === penaltyDurationHours,
+                        )?.label ?? "Selecione"}
+                      </span>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
+                    {PENALTY_DURATION_OPTIONS.map((o) => (
+                      <DropdownMenuItem
+                        key={o.value}
+                        onClick={() => setPenaltyDurationHours(o.value)}
+                        className={cn(
+                          "text-xs hover:bg-surface-elevated cursor-pointer",
+                          penaltyDurationHours === o.value && "text-brand",
+                        )}
+                      >
+                        {o.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-text-faint">
+              Se o cliente cancelar dentro do prazo de tolerância, nada
+              acontece. Se cancelar depois desse prazo (em cima da hora),
+              fica bloqueado de agendar pela duração da penalidade.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
+                Clube da Barba
+              </h3>
+              <p className="text-[11px] text-text-faint mt-1">
+                Nome exibido para o clube de assinatura no painel
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel>Nome Clube da Barba</FormLabel>
+              <Input
+                value={clubName}
+                onChange={(e) => setClubName(e.target.value)}
+                placeholder="Ex.: Clube do Assinante"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
+                Configurações módulo Dpote
+              </h3>
+              <p className="text-[11px] text-text-faint mt-1">
+                Apenas para assinantes Dpote
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel>Comissão (%)</FormLabel>
+              <div className="relative w-32">
+                <Input
+                  value={dpoteCommissionPercent}
+                  onChange={(e) =>
+                    setDpoteCommissionPercent(
+                      e.target.value.replace(/[^\d.,]/g, ""),
+                    )
+                  }
+                  placeholder="0"
+                  className="h-10 bg-surface-base border-border text-white pr-7"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  %
+                </span>
+              </div>
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <Checkbox
+                checked={hideFichaFromBarberReport}
+                onCheckedChange={(c) =>
+                  setHideFichaFromBarberReport(c === true)
+                }
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Ocultar fichas no relatório do barbeiro
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  O profissional deixa de ver a contagem de fichas no
+                  relatório de comissões de serviços.
+                </p>
+              </div>
+            </label>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-surface-raised border-border">
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
+                Financeiro
+              </h3>
+              <p className="text-[11px] text-text-faint mt-1">
+                Configurações de geração de comissões
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <FormLabel>Descontar vale de</FormLabel>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full">
+                  <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                    <span className="text-white">
+                      {VALE_DEDUCTION_OPTIONS.find(
+                        (o) => o.value === valeDeductionSource,
+                      )?.label ?? "Todos"}
+                    </span>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
+                  {VALE_DEDUCTION_OPTIONS.map((o) => (
+                    <DropdownMenuItem
+                      key={o.value}
+                      onClick={() => setValeDeductionSource(o.value)}
+                      className={cn(
+                        "text-xs hover:bg-surface-elevated cursor-pointer",
+                        valeDeductionSource === o.value && "text-brand",
+                      )}
+                    >
+                      {o.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardContent>
         </Card>

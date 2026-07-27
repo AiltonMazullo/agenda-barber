@@ -25,13 +25,7 @@ import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import type { Service } from "@/types/service.types";
 import type { ClientAppointment } from "@/types/appointment.types";
 import type { Employee } from "@/types/employee.types";
-
-function formatBRLFromCents(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
+import { formatServicePrice } from "@/utils/format";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -283,7 +277,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                             {s.name}
                           </h3>
                           <span className="text-base font-bold text-brand whitespace-nowrap">
-                            {formatBRLFromCents(s.priceInCents)}
+                            {formatServicePrice(s.priceInCents, s.startingFrom)}
                           </span>
                         </div>
                         {s.description && (

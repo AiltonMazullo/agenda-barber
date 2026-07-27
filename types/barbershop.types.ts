@@ -5,6 +5,12 @@ import type { Holiday } from "@/types/holiday.types";
 
 export type PersonType = "FISICA" | "JURIDICA";
 
+export type ValeDeductionSource =
+  | "TODOS"
+  | "SERVICOS_AVULSOS"
+  | "SERVICOS_ASSINATURA"
+  | "PRODUTOS";
+
 export interface Barbershop {
   id: string;
   name: string;
@@ -25,6 +31,13 @@ export interface Barbershop {
    * vitrine pública; backend ainda não expõe — quando expuser, o filtro passa
    * a ser estrito automaticamente. */
   category?: string | null;
+  // ─── Regras de tolerância/penalidade, Clube da Barba, Dpote e Financeiro ──
+  cancellationToleranceMinutes?: number | null;
+  penaltyDurationHours?: number | null;
+  clubName?: string | null;
+  dpoteCommissionPercent?: number | null;
+  hideFichaFromBarberReport?: boolean;
+  valeDeductionSource?: ValeDeductionSource;
   createdAt: string;
   updatedAt: string;
   // ─── Relações aninhadas em `GET /barbershops/:slug` (visão do cliente) ────
@@ -79,4 +92,10 @@ export interface UpdateBarbershopPayload {
   title?: string;
   subtitle?: string;
   description?: string;
+  cancellationToleranceMinutes?: number | null;
+  penaltyDurationHours?: number | null;
+  clubName?: string | null;
+  dpoteCommissionPercent?: number | null;
+  hideFichaFromBarberReport?: boolean;
+  valeDeductionSource?: ValeDeductionSource;
 }

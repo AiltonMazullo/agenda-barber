@@ -113,6 +113,13 @@ export interface CommissionResultRow {
   servicesAvulsoInCents: number;
   servicesProdutoInCents: number;
   servicesClubInCents: number;
+  /** Líquido por categoria (gross menos vale, quando `valeDeductionSource` da
+   * barbearia aponta para essa categoria específica — ver
+   * financial-entries.service.ts `generateCommissions`). Igual ao valor bruto
+   * quando o desconto não sai dessa categoria. */
+  servicesAvulsoLiquidoInCents: number;
+  servicesProdutoLiquidoInCents: number;
+  servicesClubLiquidoInCents: number;
   bonusInCents: number;
   valeInCents: number;
   totalInCents: number;

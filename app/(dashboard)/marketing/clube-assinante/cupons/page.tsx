@@ -45,7 +45,7 @@ export default function CupomUtilizacaoPage() {
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Utilização dos Cupons"
-        subtitle="Cupons já utilizados pelas empresas parceiras do clube do assinante"
+        subtitle={`Cupons já utilizados pelas empresas parceiras do ${barbershop?.clubName || "Clube do Assinante"}`}
       />
 
       <div className="flex flex-wrap items-end gap-3">

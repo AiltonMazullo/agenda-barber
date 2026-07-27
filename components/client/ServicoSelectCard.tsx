@@ -4,6 +4,7 @@ import { Clock, Flame } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Service } from "@/types/service.types";
 import type { ServicePricing } from "@/utils/plan-pricing";
+import { formatBRLFromCents, formatServicePrice } from "@/utils/format";
 
 interface ServicoSelectCardProps {
   service: Service;
@@ -11,13 +12,6 @@ interface ServicoSelectCardProps {
   onSelect: () => void;
   /** Preço sob as regras do plano (assinante). Ausente → preço cheio. */
   pricing?: ServicePricing;
-}
-
-function formatBRLFromCents(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 /**
@@ -80,7 +74,7 @@ export function ServicoSelectCard({
                 </>
               ) : (
                 <span className="text-base font-bold text-brand">
-                  {formatBRLFromCents(service.priceInCents)}
+                  {formatServicePrice(service.priceInCents, service.startingFrom)}
                 </span>
               )}
             </div>

@@ -176,7 +176,7 @@ export default function EmpresasParceirasPage() {
     <div className="p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <RegistrosAtivosTable
         title="Empresas Parceiras"
-        subtitle="Empresas parceiras do clube do assinante"
+        subtitle={`Empresas parceiras do ${barbershop?.clubName || "Clube do Assinante"}`}
         columns={[
           {
             key: "id",

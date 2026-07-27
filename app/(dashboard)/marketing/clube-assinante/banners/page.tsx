@@ -197,8 +197,8 @@ export default function ClubeBannersPage() {
   return (
     <div className="p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <RegistrosAtivosTable
-        title="Clube do Assinante — Banners"
-        subtitle="Banners exibidos na área do clube do assinante"
+        title={`${barbershop?.clubName || "Clube do Assinante"} — Banners`}
+        subtitle={`Banners exibidos na área do ${barbershop?.clubName || "Clube do Assinante"}`}
         columns={[
           {
             key: "id",
