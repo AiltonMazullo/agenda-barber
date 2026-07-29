@@ -154,6 +154,12 @@ export function translateApiError(
     return "Falha de conexão. Verifique sua internet.";
   }
 
+  // Mensagem customizada do backend (AppError) sem tradução cadastrada:
+  // é sempre escrita para ser lida pelo usuário, então exibe como veio.
+  // Erros 500 não entram aqui porque o backend só envia "Internal server
+  // error" nesse caso (já coberto pelo MESSAGE_MAP acima).
+  if (message && status !== 500) return message;
+
   // Fallback por status
   return fallbackByStatus(status);
 }
