@@ -358,7 +358,21 @@ export default function AgendarPage({ params }: PageProps) {
     // lê via getUTCHours() ao calcular conflitos de disponibilidade.
     baseStart.setUTCHours(hh, mm, 0, 0);
 
-    if (baseStart.getTime() < Date.now()) {
+    // Mesmo raciocínio do `busy` acima: baseStart guarda a hora de parede
+    // local disfarçada de UTC, então "agora" precisa ser convertido para o
+    // mesmo referencial antes de comparar — senão o fuso do Brasil (UTC-3)
+    // faz horários futuros parecerem já passados.
+    const now = new Date();
+    const nowNaiveUTC = new Date(Date.UTC(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      now.getHours(),
+      now.getMinutes(),
+      now.getSeconds(),
+    ));
+
+    if (baseStart.getTime() < nowNaiveUTC.getTime()) {
       toast.error("Não é possível agendar em um horário que já passou.");
       return;
     }
