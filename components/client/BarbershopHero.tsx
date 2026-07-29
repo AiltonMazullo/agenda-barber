@@ -6,18 +6,58 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { barbershopAppearanceStore } from "@/lib/barbershop-appearance-store";
 import { apiAssetUrl } from "@/lib/api";
+import { marketingBannerService } from "@/services/marketing-banner.service";
 import type { Barbershop } from "@/types/barbershop.types";
 
 interface BarbershopHeroProps {
   barbershop: Barbershop;
 }
 
+interface HeroBanner {
+  imageUrl: string;
+  linkUrl: string | null;
+}
+
 const AUTOPLAY_MS = 5000;
 
 export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
-  const banners = (barbershop.carouselImages ?? [])
+  const defaultBanners: HeroBanner[] = (barbershop.carouselImages ?? [])
     .filter((u) => u && u.trim())
-    .map((u) => apiAssetUrl(u) ?? u);
+    .map((u) => ({ imageUrl: apiAssetUrl(u) ?? u, linkUrl: null }));
+
+  // Banners cadastrados em Marketing têm prioridade sobre o carrossel padrão
+  // de Configurações; se não houver nenhum, cai no carrossel padrão.
+  const [marketingBanners, setMarketingBanners] = useState<HeroBanner[] | null>(
+    null,
+  );
+  useEffect(() => {
+    let active = true;
+    marketingBannerService
+      .listPublic(barbershop.id)
+      .then((list) => {
+        if (!active) return;
+        const banners = list
+          .map((b) => {
+            const url = b.imageUrl3 ?? b.imageUrl2 ?? b.imageUrl1;
+            return url
+              ? { imageUrl: apiAssetUrl(url) ?? url, linkUrl: b.linkUrl }
+              : null;
+          })
+          .filter((b): b is HeroBanner => !!b);
+        setMarketingBanners(banners);
+      })
+      .catch(() => {
+        if (active) setMarketingBanners([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [barbershop.id]);
+
+  const banners =
+    marketingBanners && marketingBanners.length > 0
+      ? marketingBanners
+      : defaultBanners;
   const [index, setIndex] = useState(0);
   const [logoCentered, setLogoCentered] = useState(false);
 
@@ -47,16 +87,36 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
         <div className="relative h-44 sm:h-60 md:h-72 w-full bg-surface-elevated">
           {hasBanners ? (
             <AnimatePresence mode="wait">
-              <motion.img
-                key={index}
-                src={banners[index]}
-                alt={`${barbershop.name} ${index + 1}`}
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="absolute inset-0 size-full object-cover"
-              />
+              {banners[index].linkUrl ? (
+                <motion.a
+                  key={index}
+                  href={banners[index].linkUrl!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="absolute inset-0 size-full block"
+                >
+                  <img
+                    src={banners[index].imageUrl}
+                    alt={`${barbershop.name} ${index + 1}`}
+                    className="size-full object-cover"
+                  />
+                </motion.a>
+              ) : (
+                <motion.img
+                  key={index}
+                  src={banners[index].imageUrl}
+                  alt={`${barbershop.name} ${index + 1}`}
+                  initial={{ opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="absolute inset-0 size-full object-cover"
+                />
+              )}
             </AnimatePresence>
           ) : (
             <div className="absolute inset-0 bg-linear-to-br from-brand/20 via-surface-elevated to-surface-base" />

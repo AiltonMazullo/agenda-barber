@@ -13,6 +13,14 @@ export const marketingBannerService = {
     return data;
   },
 
+  /** Rota pública (sem auth) — usada na home do cliente. */
+  async listPublic(barbershopId: string): Promise<MarketingBanner[]> {
+    const { data } = await api.get<MarketingBanner[]>(
+      `/barbershops/${barbershopId}/marketing-banners/public`,
+    );
+    return data;
+  },
+
   async create(
     barbershopId: string,
     payload: CreateMarketingBannerPayload,

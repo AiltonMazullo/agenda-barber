@@ -1,8 +1,9 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, ExternalLink, CalendarClock } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CalendarDays, CalendarCheck2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,74 +12,126 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { clientAppointmentsService } from "@/services/client-appointments.service";
-import type { ClientAppointment } from "@/types/appointment.types";
+import { googleCalendarService } from "@/services/google-calendar.service";
+import type { GoogleCalendarStatus } from "@/types/google-calendar.types";
 
-/** Data no formato do Google Calendar (UTC): YYYYMMDDTHHMMSSZ. */
-function gcalDate(d: Date): string {
-  return d.toISOString().replace(/[-:]|\.\d{3}/g, "");
-}
-
-function googleCalendarUrl(appt: ClientAppointment): string {
-  const start = new Date(appt.scheduledAt);
-  const end = new Date(start.getTime() + appt.service.durationMin * 60000);
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: `${appt.service.name} — ${appt.barbershop.name}`,
-    dates: `${gcalDate(start)}/${gcalDate(end)}`,
-    details: `Agendamento em ${appt.barbershop.name}.`,
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+          checked ? "bg-brand" : "bg-surface-base border border-border"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 size-5 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-[22px]" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+    </div>
+  );
 }
 
 export function GoogleCalendarButton() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [open, setOpen] = useState(false);
-  const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [toggling, setToggling] = useState(false);
+
+  function loadStatus() {
+    setLoading(true);
+    googleCalendarService
+      .status()
+      .then(setStatus)
+      .catch(() => setStatus({ connected: false, enabled: false, googleEmail: null }))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    if (!open) return;
-    let active = true;
-    setLoading(true);
-    clientAppointmentsService
-      .listMine()
-      .then((data) => {
-        if (!active) return;
-        const now = new Date();
-        const upcoming = data
-          .filter(
-            (a) =>
-              new Date(a.scheduledAt) >= now &&
-              (a.status === "PENDING" || a.status === "CONFIRMED"),
-          )
-          .sort(
-            (a, b) =>
-              new Date(a.scheduledAt).getTime() -
-              new Date(b.scheduledAt).getTime(),
-          );
-        setAppointments(upcoming);
-      })
-      .catch(() => {
-        if (active) setAppointments([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [open]);
+    loadStatus();
+  }, []);
+
+  // Volta do redirect OAuth (`/perfil?googleCalendar=connected`) — recarrega
+  // o status e limpa o parâmetro da URL.
+  useEffect(() => {
+    if (searchParams.get("googleCalendar") !== "connected") return;
+    toast.success("Google Agenda conectado.");
+    loadStatus();
+    router.replace(window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function handleConnect() {
+    setConnecting(true);
+    try {
+      const url = await googleCalendarService.getAuthUrl();
+      window.location.href = url;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível iniciar a conexão.",
+      );
+      setConnecting(false);
+    }
+  }
+
+  async function handleToggle(enabled: boolean) {
+    setToggling(true);
+    try {
+      const next = await googleCalendarService.setEnabled(enabled);
+      setStatus(next);
+      toast.success(
+        enabled
+          ? "Sincronização automática ativada."
+          : "Sincronização automática desativada.",
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao atualizar.");
+    } finally {
+      setToggling(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    const ok = window.confirm(
+      "Desconectar o Google Agenda? Seus agendamentos deixarão de ser sincronizados automaticamente.",
+    );
+    if (!ok) return;
+    try {
+      await googleCalendarService.disconnect();
+      setStatus({ connected: false, enabled: false, googleEmail: null });
+      toast.success("Google Agenda desconectado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao desconectar.");
+    }
+  }
+
+  const connected = status?.connected ?? false;
 
   return (
     <>
@@ -87,58 +140,73 @@ export function GoogleCalendarButton() {
         variant="outline"
         onClick={() => setOpen(true)}
         className="cursor-pointer"
+        disabled={loading}
       >
-        <CalendarDays className="size-4 mr-1.5" />
-        Integrar com Google Agenda
+        {loading ? (
+          <Loader2 className="size-4 mr-1.5 animate-spin" />
+        ) : connected ? (
+          <CalendarCheck2 className="size-4 mr-1.5 text-success-foreground" />
+        ) : (
+          <CalendarDays className="size-4 mr-1.5" />
+        )}
+        Google Agenda
       </Button>
 
-      <Dialog open={open} onOpenChange={(o) => setOpen(o)}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Integrar com o Google Agenda</DialogTitle>
+            <DialogTitle>Google Agenda</DialogTitle>
             <DialogDescription>
-              Adicione seus agendamentos ao Google Agenda e acompanhe os horários
-              no seu calendário.
+              Conecte sua conta uma vez e mantenha ligado: enquanto estiver
+              ativo, todo agendamento seu é sincronizado automaticamente com o
+              Google Agenda — sem precisar adicionar manualmente.
             </DialogDescription>
           </DialogHeader>
 
-          {loading ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              Carregando agendamentos…
-            </p>
-          ) : appointments.length === 0 ? (
-            <div className="rounded-lg border border-border-subtle bg-surface-raised p-6 text-center space-y-2">
-              <CalendarClock className="size-7 text-text-faint mx-auto" />
+          {!connected ? (
+            <div className="rounded-lg border border-border-subtle bg-surface-raised p-4 space-y-3">
               <p className="text-sm text-muted-foreground">
-                Você não tem agendamentos futuros para adicionar.
+                Sua conta ainda não está conectada.
               </p>
+              <Button
+                type="button"
+                onClick={handleConnect}
+                disabled={connecting}
+                className="bg-brand hover:bg-brand-hover text-brand-foreground font-bold cursor-pointer w-full"
+              >
+                {connecting ? (
+                  <Loader2 className="size-4 mr-1.5 animate-spin" />
+                ) : (
+                  <CalendarDays className="size-4 mr-1.5" />
+                )}
+                Conectar Google Agenda
+              </Button>
             </div>
           ) : (
-            <div className="space-y-2">
-              {appointments.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {a.service.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatWhen(a.scheduledAt)}
-                    </p>
-                  </div>
-                  <a
-                    href={googleCalendarUrl(a)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="h-8 px-3 rounded-md bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0"
-                  >
-                    <ExternalLink className="size-3.5" />
-                    Adicionar
-                  </a>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-4 space-y-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <CalendarCheck2 className="size-4 text-success-foreground shrink-0" />
+                  <span className="text-foreground font-medium truncate">
+                    {status?.googleEmail ?? "Conta conectada"}
+                  </span>
                 </div>
-              ))}
+                <ToggleRow
+                  label="Sincronização automática"
+                  description="Cria, atualiza e remove os eventos na sua agenda a cada agendamento."
+                  checked={status?.enabled ?? false}
+                  disabled={toggling}
+                  onChange={handleToggle}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDisconnect}
+                className="cursor-pointer w-full text-danger-foreground"
+              >
+                Desconectar
+              </Button>
             </div>
           )}
         </DialogContent>

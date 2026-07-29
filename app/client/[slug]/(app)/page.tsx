@@ -22,6 +22,7 @@ import { Loading } from "@/components/shared/Loading";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import { groupAppointments } from "@/utils/groupAppointments";
 import type { Service } from "@/types/service.types";
 import type { ClientAppointment } from "@/types/appointment.types";
 import type { Employee } from "@/types/employee.types";
@@ -112,18 +113,21 @@ export default function BarbershopPublicPage({ params }: PageProps) {
     [appointments, apptEmployeeMap, empById],
   );
 
-  const now = Date.now();
-  const allUpcomingAppointments = resolvedAppointments
-    .filter(
-      (a) =>
-        (a.status === "PENDING" || a.status === "CONFIRMED") &&
-        new Date(a.scheduledAt).getTime() >= now,
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
-    );
-  const upcomingAppointments = allUpcomingAppointments.slice(0, 5);
+  const allUpcomingGroups = useMemo(() => {
+    const now = new Date().getTime();
+    return groupAppointments(resolvedAppointments)
+      .filter(
+        (g) =>
+          (g.primary.status === "PENDING" || g.primary.status === "CONFIRMED") &&
+          new Date(g.primary.scheduledAt).getTime() >= now,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.primary.scheduledAt).getTime() -
+          new Date(b.primary.scheduledAt).getTime(),
+      );
+  }, [resolvedAppointments]);
+  const upcomingGroups = allUpcomingGroups.slice(0, 5);
 
   const agendarHref = isAuthenticated
     ? `/client/${slug}/agendar`
@@ -178,7 +182,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
             </Link>
           </section>
 
-          {upcomingAppointments.length > 0 && (
+          {upcomingGroups.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -187,7 +191,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                     Próximos agendamentos
                   </h2>
                 </div>
-                {allUpcomingAppointments.length > upcomingAppointments.length && (
+                {allUpcomingGroups.length > upcomingGroups.length && (
                   <Link
                     href={`/client/${slug}/agendamentos`}
                     className="text-xs font-medium text-brand hover:underline whitespace-nowrap"
@@ -197,10 +201,10 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                 )}
               </div>
               <div className="space-y-3">
-                {upcomingAppointments.map((appointment) => (
+                {upcomingGroups.map((group) => (
                   <AppointmentItem
-                    key={appointment.id}
-                    appointment={appointment}
+                    key={group.primary.id}
+                    group={group}
                     variant="upcoming"
                   />
                 ))}

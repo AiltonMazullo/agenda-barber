@@ -17,6 +17,7 @@ import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import { usePagination } from "@/hooks/usePagination";
+import { groupAppointments } from "@/utils/groupAppointments";
 import type { ClientAppointment } from "@/types/appointment.types";
 import type { Employee } from "@/types/employee.types";
 
@@ -87,29 +88,35 @@ export default function AgendamentosPage({ params }: PageProps) {
     return a.employeeId ?? apptEmployeeMap[a.id] ?? null;
   }
 
+  // Agendamentos combo (múltiplos serviços numa mesma reserva) compartilham
+  // `groupId` — agrupamos aqui pra renderizar um único card por reserva.
+  const groups = useMemo(() => groupAppointments(appointments), [appointments]);
+
   const { agendados, historico } = useMemo(() => {
     const now = new Date();
-    const agendados: ClientAppointment[] = [];
-    const historico: ClientAppointment[] = [];
-    for (const a of appointments) {
-      const isFuture = new Date(a.scheduledAt) >= now;
-      const isOpen = a.status === "PENDING" || a.status === "CONFIRMED";
+    const agendados: typeof groups = [];
+    const historico: typeof groups = [];
+    for (const g of groups) {
+      const isFuture = new Date(g.primary.scheduledAt) >= now;
+      const isOpen = g.primary.status === "PENDING" || g.primary.status === "CONFIRMED";
       if (isFuture && isOpen) {
-        agendados.push(a);
+        agendados.push(g);
       } else {
-        historico.push(a);
+        historico.push(g);
       }
     }
     agendados.sort(
       (a, b) =>
-        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+        new Date(a.primary.scheduledAt).getTime() -
+        new Date(b.primary.scheduledAt).getTime(),
     );
     historico.sort(
       (a, b) =>
-        new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
+        new Date(b.primary.scheduledAt).getTime() -
+        new Date(a.primary.scheduledAt).getTime(),
     );
     return { agendados, historico };
-  }, [appointments]);
+  }, [groups]);
 
   // Fotos locais (cadastro do dono) por profissional — fallback de exibição.
   const employeeIds = useMemo(
@@ -198,12 +205,12 @@ export default function AgendamentosPage({ params }: PageProps) {
             ) : (
               <>
                 <div className="space-y-3">
-                  {agendadosPg.paged.map((a) => {
-                    const empId = resolveEmployeeId(a);
+                  {agendadosPg.paged.map((g) => {
+                    const empId = resolveEmployeeId(g.primary);
                     return (
                       <AppointmentItem
-                        key={a.id}
-                        appointment={a}
+                        key={g.primary.id}
+                        group={g}
                         variant="upcoming"
                         professionalName={
                           empId ? empNameById.get(empId) ?? null : null
@@ -242,12 +249,12 @@ export default function AgendamentosPage({ params }: PageProps) {
             ) : (
               <>
                 <div className="space-y-3">
-                  {historicoPg.paged.map((a) => {
-                    const empId = resolveEmployeeId(a);
+                  {historicoPg.paged.map((g) => {
+                    const empId = resolveEmployeeId(g.primary);
                     return (
                       <AppointmentItem
-                        key={a.id}
-                        appointment={a}
+                        key={g.primary.id}
+                        group={g}
                         variant="past"
                         professionalName={
                           empId ? empNameById.get(empId) ?? null : null

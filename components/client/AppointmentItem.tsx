@@ -2,9 +2,10 @@
 
 import { Calendar, Clock, X, CalendarClock, RotateCcw, Shuffle } from "lucide-react";
 import type { ClientAppointment } from "@/types/appointment.types";
+import type { AppointmentGroup } from "@/utils/groupAppointments";
 
 interface AppointmentItemProps {
-  appointment: ClientAppointment;
+  group: AppointmentGroup;
   variant: "upcoming" | "past";
   /**
    * Nome do profissional resolvido externamente (vínculo local + lista de
@@ -54,7 +55,7 @@ function initialsOf(name: string): string {
 }
 
 export function AppointmentItem({
-  appointment,
+  group,
   variant,
   professionalName,
   photoUrl,
@@ -62,17 +63,21 @@ export function AppointmentItem({
   onReschedule,
   onRebook,
 }: AppointmentItemProps) {
-  const date = new Date(appointment.scheduledAt);
+  const { primary, services, totalDurationMin } = group;
+  const date = new Date(primary.scheduledAt);
   const dateStr = `${String(date.getDate()).padStart(2, "0")} ${MESES[date.getMonth()]} ${date.getFullYear()}`;
   const timeStr = date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
   });
 
+  const serviceNames = services.map((s) => s.name).join(" + ");
+  const totalPriceInCents = services.reduce((sum, s) => sum + s.priceInCents, 0);
+
   const resolvedName =
     professionalName ||
-    appointment.employee?.appName ||
-    appointment.employee?.name ||
+    primary.employee?.appName ||
+    primary.employee?.name ||
     null;
   const noEmployee = !resolvedName;
   const profName = resolvedName ?? "Sem preferência";
@@ -95,21 +100,21 @@ export function AppointmentItem({
         )}
       </div>
 
-      {/* Serviço + meta + preço */}
+      {/* Serviço(s) + meta + preço */}
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex items-center gap-2">
           <span
             className="size-2 rounded-full shrink-0"
-            style={{ backgroundColor: appointment.service.hex ?? "#f5b82e" }}
+            style={{ backgroundColor: services[0]?.hex ?? "#f5b82e" }}
           />
           <h3 className="text-sm font-bold text-foreground truncate">
-            {appointment.service.name}
+            {serviceNames}
           </h3>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="size-3" />
-            {appointment.service.durationMin} min
+            {totalDurationMin} min
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="size-3" />
@@ -121,7 +126,7 @@ export function AppointmentItem({
           </span>
         </div>
         <p className="text-sm font-bold text-brand">
-          {formatBRLFromCents(appointment.service.priceInCents)}
+          {formatBRLFromCents(totalPriceInCents)}
         </p>
       </div>
 
@@ -135,10 +140,10 @@ export function AppointmentItem({
       <div className="flex flex-row items-center justify-between gap-4 sm:flex-col sm:items-end shrink-0">
         <span
           className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-            STATUS_TONE[appointment.status] ?? ""
+            STATUS_TONE[primary.status] ?? ""
           }`}
         >
-          {STATUS_LABEL[appointment.status] ?? appointment.status}
+          {STATUS_LABEL[primary.status] ?? primary.status}
         </span>
 
         {variant === "upcoming" ? (
@@ -146,7 +151,7 @@ export function AppointmentItem({
             {onReschedule && (
               <button
                 type="button"
-                onClick={() => onReschedule(appointment)}
+                onClick={() => onReschedule(primary)}
                 className="text-xs font-medium text-brand hover:underline cursor-pointer flex items-center gap-1"
               >
                 <CalendarClock className="size-3.5" />
@@ -156,7 +161,7 @@ export function AppointmentItem({
             {onCancel && (
               <button
                 type="button"
-                onClick={() => onCancel(appointment.id)}
+                onClick={() => onCancel(primary.id)}
                 className="text-xs font-medium text-danger-foreground hover:underline cursor-pointer flex items-center gap-1"
               >
                 <X className="size-3.5" />
@@ -168,7 +173,7 @@ export function AppointmentItem({
           onRebook && (
             <button
               type="button"
-              onClick={() => onRebook(appointment)}
+              onClick={() => onRebook(primary)}
               className="text-xs font-medium text-brand hover:underline cursor-pointer flex items-center gap-1"
             >
               <RotateCcw className="size-3.5" />

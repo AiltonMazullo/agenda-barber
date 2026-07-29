@@ -300,12 +300,14 @@ export default function AgendarPage({ params }: PageProps) {
   }, [step, barbershop, selectedServices, selectedEmployee, anyEmployee, date, branchEmployees]);
 
   // Salvaguarda: se a data é hoje, desabilita horários que já passaram.
-  // Slots são UTC ("09:00" = 09:00Z), então comparamos com UTC agora.
+  // Slots representam a hora de parede local ("09:00" = 09:00 no fuso do
+  // usuário), então comparamos com a hora local do navegador — não UTC real,
+  // que ficaria adiantada (ex.: 3h no Brasil) e bloquearia horários futuros.
   const busy = useMemo(() => {
     const s = new Set<string>();
     if (date && isSameDay(date, new Date())) {
       const now = new Date();
-      const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
       for (const slot of availableSlots) {
         if (slotToMinutes(slot) <= nowMin) s.add(slot);
       }
