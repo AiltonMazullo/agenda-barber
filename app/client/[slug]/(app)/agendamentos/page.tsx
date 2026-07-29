@@ -18,6 +18,7 @@ import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
 import { usePagination } from "@/hooks/usePagination";
 import { groupAppointments } from "@/utils/groupAppointments";
+import { toWallClockDate } from "@/utils/format";
 import type { ClientAppointment } from "@/types/appointment.types";
 import type { Employee } from "@/types/employee.types";
 
@@ -97,7 +98,7 @@ export default function AgendamentosPage({ params }: PageProps) {
     const agendados: typeof groups = [];
     const historico: typeof groups = [];
     for (const g of groups) {
-      const isFuture = new Date(g.primary.scheduledAt) >= now;
+      const isFuture = toWallClockDate(g.primary.scheduledAt) >= now;
       const isOpen = g.primary.status === "PENDING" || g.primary.status === "CONFIRMED";
       if (isFuture && isOpen) {
         agendados.push(g);

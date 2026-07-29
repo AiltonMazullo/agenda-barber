@@ -65,11 +65,12 @@ export function AppointmentItem({
 }: AppointmentItemProps) {
   const { primary, services, totalDurationMin } = group;
   const date = new Date(primary.scheduledAt);
-  const dateStr = `${String(date.getDate()).padStart(2, "0")} ${MESES[date.getMonth()]} ${date.getFullYear()}`;
-  const timeStr = date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // scheduledAt guarda a hora de parede local "disfarçada" de UTC (ver
+  // convenção em agendar/page.tsx), então usamos os getters UTC — não os
+  // locais nem toLocaleTimeString, que reconverteriam pelo fuso real do
+  // navegador e desalinhariam o horário exibido (ex.: -3h no Brasil).
+  const dateStr = `${String(date.getUTCDate()).padStart(2, "0")} ${MESES[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+  const timeStr = `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
 
   const serviceNames = services.map((s) => s.name).join(" + ");
   const totalPriceInCents = services.reduce((sum, s) => sum + s.priceInCents, 0);

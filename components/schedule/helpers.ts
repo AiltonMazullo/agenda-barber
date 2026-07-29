@@ -39,9 +39,19 @@ export function toDateInputValue(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Dia (fuso local) de um `scheduledAt` ISO, como "yyyy-MM-dd". */
+/**
+ * Dia de um `scheduledAt` ISO, como "yyyy-MM-dd". `scheduledAt` guarda a
+ * hora de parede local disfarçada de UTC (ver isoToMin acima), então lemos
+ * os componentes via getUTC*() — new Date(iso) + toDateInputValue (que usa
+ * getters locais) reconverteria pelo fuso real do browser e poderia
+ * devolver o dia errado perto da meia-noite.
+ */
 export function localDateIso(iso: string): string {
-  return toDateInputValue(new Date(iso));
+  const d = new Date(iso);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 /**

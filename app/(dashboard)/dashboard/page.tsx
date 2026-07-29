@@ -23,6 +23,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useBranches } from "@/hooks/useBranches";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { isBirthdayInCurrentWeek } from "@/utils/birthday";
+import { toWallClockDate } from "@/utils/format";
 import {
   SectionCard,
   MiniStat,
@@ -83,10 +84,10 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const todayAppts = appointments.filter((a) =>
-      isSameDay(new Date(a.scheduledAt), today),
+      isSameDay(toWallClockDate(a.scheduledAt), today),
     );
     const future = appointments.filter(
-      (a) => new Date(a.scheduledAt) >= today && a.status !== "CANCELLED",
+      (a) => toWallClockDate(a.scheduledAt) >= today && a.status !== "CANCELLED",
     );
     // O backend não expõe a origem do agendamento (online x recepção); todo o
     // app trata como recepção, então o total via online fica em 0 até existir
@@ -274,7 +275,7 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-2">
               {stats.todayList.map((a) => {
-                const time = new Date(a.scheduledAt).toLocaleTimeString(
+                const time = toWallClockDate(a.scheduledAt).toLocaleTimeString(
                   "pt-BR",
                   { hour: "2-digit", minute: "2-digit" },
                 );

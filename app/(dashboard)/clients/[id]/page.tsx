@@ -35,7 +35,7 @@ import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useDeactivatedClients } from "@/hooks/useDeactivatedClients";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
-import { formatBRL, formatDate, formatTime } from "@/utils/format";
+import { formatBRL, formatDate, formatTime, toWallClockDate } from "@/utils/format";
 import { comandasService } from "@/services/comandas.service";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import { CANCEL_REASON_OPTIONS, type CancelReasonCode } from "@/types/pre-cancelled-client.types";
@@ -378,7 +378,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
             ) : (
               <div className="space-y-2">
                 {clientAppts.map((a) => {
-                  const start = new Date(a.scheduledAt);
+                  const start = toWallClockDate(a.scheduledAt);
                   const end = new Date(
                     start.getTime() + (a.service?.durationMin ?? 0) * 60000,
                   );
@@ -395,7 +395,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
                           {a.service?.name ?? "Serviço"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(a.scheduledAt)} {formatTime(start)} –{" "}
+                          {formatDate(start)} {formatTime(start)} –{" "}
                           {formatTime(end)}
                           {prof ? ` • ${prof}` : ""}
                         </p>

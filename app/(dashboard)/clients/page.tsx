@@ -56,7 +56,7 @@ import { useClients } from "@/hooks/useClients";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useDeactivatedClients } from "@/hooks/useDeactivatedClients";
 import { usePagination } from "@/hooks/usePagination";
-import { formatBRL, formatDate, maskPhone } from "@/utils/format";
+import { formatBRL, formatDate, maskPhone, toWallClockDate } from "@/utils/format";
 import { isBirthdayInCurrentWeek } from "@/utils/birthday";
 import type {
   Client,
@@ -311,14 +311,14 @@ function ClientesContent() {
         prev.completedAppointments += 1;
         prev.totalSpent += a.service.priceInCents / 100;
       }
-      const dt = new Date(a.scheduledAt);
+      const dt = toWallClockDate(a.scheduledAt);
       const now = new Date();
       if (dt < now) {
-        if (!prev.lastVisit || dt > new Date(prev.lastVisit)) {
+        if (!prev.lastVisit || dt > toWallClockDate(prev.lastVisit)) {
           prev.lastVisit = a.scheduledAt;
         }
       } else if (a.status !== "CANCELLED") {
-        if (!prev.upcomingVisit || dt < new Date(prev.upcomingVisit)) {
+        if (!prev.upcomingVisit || dt < toWallClockDate(prev.upcomingVisit)) {
           prev.upcomingVisit = a.scheduledAt;
         }
       }
@@ -396,9 +396,9 @@ function ClientesContent() {
         atendimentosConcluidos: c.stats.completedAppointments,
         totalAtendimentos: c.stats.totalAppointments,
         totalGasto: c.stats.totalSpent.toFixed(2),
-        ultimaVisita: c.stats.lastVisit ? formatDate(c.stats.lastVisit) : "",
+        ultimaVisita: c.stats.lastVisit ? formatDate(toWallClockDate(c.stats.lastVisit)) : "",
         proximaVisita: c.stats.upcomingVisit
-          ? formatDate(c.stats.upcomingVisit)
+          ? formatDate(toWallClockDate(c.stats.upcomingVisit))
           : "",
         criadoEm: formatDate(c.createdAt),
         atualizadoEm: formatDate(c.updatedAt),
@@ -620,13 +620,13 @@ function ClientesContent() {
                         {formatBRL(c.stats.totalSpent)}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                        {c.stats.lastVisit ? formatDate(c.stats.lastVisit) : "—"}
+                        {c.stats.lastVisit ? formatDate(toWallClockDate(c.stats.lastVisit)) : "—"}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-sm">
                         {c.stats.upcomingVisit ? (
                           <span className="flex items-center gap-1.5 text-info-foreground">
                             <Clock className="size-3" />
-                            {formatDate(c.stats.upcomingVisit)}
+                            {formatDate(toWallClockDate(c.stats.upcomingVisit))}
                           </span>
                         ) : (
                           <span className="text-text-faint">—</span>

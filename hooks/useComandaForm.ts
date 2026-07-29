@@ -10,7 +10,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useServices } from "@/hooks/useServices";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import { comandaTotalInCents } from "@/utils/comanda";
-import { formatDate, formatTime } from "@/utils/format";
+import { formatDate, formatTime, toWallClockDate } from "@/utils/format";
 import type { Appointment } from "@/types/appointment.types";
 import type {
   Comanda,
@@ -122,9 +122,9 @@ export function useComandaForm(
         .map((a) => ({
           value: a.id,
           label: `${a.client?.name ?? "Cliente"} · ${a.service?.name ?? "Serviço"} · ${formatDate(
-            a.scheduledAt,
+            toWallClockDate(a.scheduledAt),
             { day: "2-digit", month: "2-digit" },
-          )} ${formatTime(a.scheduledAt)}`,
+          )} ${formatTime(toWallClockDate(a.scheduledAt))}`,
         })),
     [appointments],
   );

@@ -26,7 +26,7 @@ import { groupAppointments } from "@/utils/groupAppointments";
 import type { Service } from "@/types/service.types";
 import type { ClientAppointment } from "@/types/appointment.types";
 import type { Employee } from "@/types/employee.types";
-import { formatServicePrice } from "@/utils/format";
+import { formatServicePrice, toWallClockDate } from "@/utils/format";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -119,7 +119,7 @@ export default function BarbershopPublicPage({ params }: PageProps) {
       .filter(
         (g) =>
           (g.primary.status === "PENDING" || g.primary.status === "CONFIRMED") &&
-          new Date(g.primary.scheduledAt).getTime() >= now,
+          toWallClockDate(g.primary.scheduledAt).getTime() >= now,
       )
       .sort(
         (a, b) =>

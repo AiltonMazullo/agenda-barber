@@ -25,6 +25,28 @@ export function formatServicePrice(
   return startingFrom ? `A partir de ${formatted}` : formatted;
 }
 
+/**
+ * `scheduledAt` de agendamentos guarda a hora de parede local "disfarçada"
+ * de UTC (ex.: 15:30 local vira "...T15:30:00.000Z" no banco — ver
+ * convenção em agendar/page.tsx). Passar esse valor direto para
+ * toLocaleTimeString/getHours/getDay faz o browser reconverter pelo fuso
+ * real do usuário e desalinha o horário exibido (ex.: -3h no Brasil).
+ * Esta função devolve um Date "de verdade" no fuso do browser com os
+ * mesmos componentes de ano/mês/dia/hora/minuto/segundo, para poder usar
+ * normalmente com toLocaleTimeString, getHours(), getDay(), etc.
+ */
+export function toWallClockDate(value: Date | string): Date {
+  const d = typeof value === "string" ? new Date(value) : value;
+  return new Date(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    d.getUTCHours(),
+    d.getUTCMinutes(),
+    d.getUTCSeconds(),
+  );
+}
+
 /** Formata data como dd/mm/aaaa por padrão (pt-BR). */
 export function formatDate(
   date: Date | string,

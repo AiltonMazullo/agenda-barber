@@ -10,8 +10,11 @@ function toHHmm(value: string): string | null {
   if (/^\d{2}:\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
   const d = new Date(value);
   if (!Number.isNaN(d.getTime())) {
-    return `${String(d.getHours()).padStart(2, "0")}:${String(
-      d.getMinutes(),
+    // Slots ISO vêm com a hora de parede "disfarçada" de UTC (mesma
+    // convenção do scheduledAt de agendamentos) — usar getters UTC, não
+    // locais, para não desalinhar pelo fuso real do browser.
+    return `${String(d.getUTCHours()).padStart(2, "0")}:${String(
+      d.getUTCMinutes(),
     ).padStart(2, "0")}`;
   }
   return null;

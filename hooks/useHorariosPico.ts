@@ -7,6 +7,7 @@ import { appointmentsService } from "@/services/appointments.service";
 import { employeesService } from "@/services/employees.service";
 import type { Appointment } from "@/types/appointment.types";
 import type { Employee } from "@/types/employee.types";
+import { toWallClockDate } from "@/utils/format";
 
 /** Período fixo analisado (dias corridos para trás a partir de hoje). */
 const PERIOD_DAYS = 30;
@@ -89,7 +90,7 @@ export function useHorariosPico(barbershopId: string | undefined) {
 
     const filtered = appointments.filter((a) => {
       if (a.status === "CANCELLED") return false;
-      if (new Date(a.scheduledAt) < since) return false;
+      if (toWallClockDate(a.scheduledAt) < since) return false;
       if (employeeId !== "todos" && a.employeeId !== employeeId) return false;
       if (branchId !== "todas") {
         const empBranch = a.employeeId
@@ -105,7 +106,7 @@ export function useHorariosPico(barbershopId: string | undefined) {
     const counts = new Map<string, number>();
 
     for (const a of filtered) {
-      const date = new Date(a.scheduledAt);
+      const date = toWallClockDate(a.scheduledAt);
       const hour = date.getHours();
       minHour = Math.min(minHour, hour);
       maxHour = Math.max(maxHour, hour);
