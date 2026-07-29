@@ -51,13 +51,20 @@ export function useCategories(
   }, [barbershopId, type, status]);
 
   const create = useCallback(
-    async (name: string, createStatus?: CategoryStatus) => {
+    async (
+      name: string,
+      createStatus?: CategoryStatus,
+      discountPercent?: number | null,
+      commissionPercent?: number | null,
+    ) => {
       if (!barbershopId) return null;
       try {
         const created = await categoriesService.create(barbershopId, {
           name,
           type,
           status: createStatus,
+          discountPercent,
+          commissionPercent,
         });
         setCategories((prev) => [...prev, created]);
         toast.success("Categoria criada.");
@@ -73,12 +80,20 @@ export function useCategories(
   );
 
   const update = useCallback(
-    async (id: string, name: string, updateStatus?: CategoryStatus) => {
+    async (
+      id: string,
+      name: string,
+      updateStatus?: CategoryStatus,
+      discountPercent?: number | null,
+      commissionPercent?: number | null,
+    ) => {
       if (!barbershopId) return null;
       try {
         const updated = await categoriesService.update(barbershopId, id, {
           name,
           status: updateStatus,
+          discountPercent,
+          commissionPercent,
         });
         setCategories((prev) => {
           // Se a listagem atual está filtrada por status (ex.: só ativas) e o

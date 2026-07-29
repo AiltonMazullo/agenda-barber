@@ -38,6 +38,7 @@ export interface ComandaMovimento {
   numero: number;
   cliente: string | null;
   profissional: string | null;
+  profissionalAvatarUrl: string | null;
   /** ISO datetime — horário do agendamento (AGENDAMENTO) ou de fechamento (AVULSA). */
   horario: string | null;
   totalInCents: number;

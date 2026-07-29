@@ -64,6 +64,7 @@ function fallbackClient(
     notes: null,
     remindInSchedule: false,
     photoUrl: null,
+    isBlocked: false,
     cpf: null,
     cep: null,
     street: null,

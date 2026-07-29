@@ -20,6 +20,7 @@ import {
   Ban,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -263,22 +264,32 @@ export default function ClienteDetalhePage({ params }: PageProps) {
         {/* ── Ficha (esquerda) ── */}
         <div className="rounded-xl border border-border bg-surface-raised p-5 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="size-14 rounded-full bg-brand/15 text-brand grid place-items-center text-lg font-bold shrink-0">
-              {initials(client.name)}
-            </div>
+            <Avatar size="lg" className="shrink-0">
+              <AvatarImage src={client.photoUrl ?? undefined} alt={client.name} />
+              <AvatarFallback className="bg-brand/15 text-brand text-lg font-bold">
+                {initials(client.name)}
+              </AvatarFallback>
+            </Avatar>
             <div className="min-w-0">
               <p className="text-base font-bold text-foreground truncate">
                 {client.name}
               </p>
-              <span
-                className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                  ativo
-                    ? "bg-success/15 text-success-foreground"
-                    : "bg-surface-elevated text-muted-foreground"
-                }`}
-              >
-                {ativo ? "Ativo" : "Inativo"}
-              </span>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span
+                  className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    ativo
+                      ? "bg-success/15 text-success-foreground"
+                      : "bg-surface-elevated text-muted-foreground"
+                  }`}
+                >
+                  {ativo ? "Ativo" : "Inativo"}
+                </span>
+                {client.isBlocked && (
+                  <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-danger/15 text-danger-foreground">
+                    Bloqueado
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

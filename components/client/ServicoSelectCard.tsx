@@ -28,6 +28,7 @@ export function ServicoSelectCard({
   pricing,
 }: ServicoSelectCardProps) {
   const hasPlanPrice = pricing && pricing.status !== "full";
+  const hasPromotion = !hasPlanPrice && (service.promotionDiscountInCents ?? 0) > 0;
 
   return (
     <div
@@ -72,6 +73,18 @@ export function ServicoSelectCard({
                     </p>
                   )}
                 </>
+              ) : hasPromotion ? (
+                <>
+                  <p className="text-xs text-muted-foreground line-through">
+                    {formatBRLFromCents(service.priceInCents)}
+                  </p>
+                  <p className="text-base font-bold text-brand">
+                    {formatServicePrice(
+                      service.effectivePriceInCents ?? service.priceInCents,
+                      service.startingFrom,
+                    )}
+                  </p>
+                </>
               ) : (
                 <span className="text-base font-bold text-brand">
                   {formatServicePrice(service.priceInCents, service.startingFrom)}
@@ -93,6 +106,11 @@ export function ServicoSelectCard({
           {pricing?.status === "discount" && (
             <span className="mt-2 inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-400">
               Fora do plano · Desconto aplicado
+            </span>
+          )}
+          {hasPromotion && (
+            <span className="mt-2 inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
+              Promoção
             </span>
           )}
         </div>

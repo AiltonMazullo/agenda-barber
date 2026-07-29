@@ -277,7 +277,10 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                             {s.name}
                           </h3>
                           <span className="text-base font-bold text-brand whitespace-nowrap">
-                            {formatServicePrice(s.priceInCents, s.startingFrom)}
+                            {formatServicePrice(
+                              s.effectivePriceInCents ?? s.priceInCents,
+                              s.startingFrom,
+                            )}
                           </span>
                         </div>
                         {s.description && (

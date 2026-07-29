@@ -19,7 +19,10 @@ export const marketingBannerService = {
   ): Promise<MarketingBanner> {
     const form = new FormData();
     form.append("name", payload.name);
-    form.append("image", payload.file);
+    if (payload.linkUrl) form.append("linkUrl", payload.linkUrl);
+    if (payload.image1) form.append("image1", payload.image1);
+    if (payload.image2) form.append("image2", payload.image2);
+    if (payload.image3) form.append("image3", payload.image3);
     const { data } = await api.post<MarketingBanner>(
       `/barbershops/${barbershopId}/marketing-banners`,
       form,
@@ -35,7 +38,13 @@ export const marketingBannerService = {
   ): Promise<MarketingBanner> {
     const form = new FormData();
     if (payload.name !== undefined) form.append("name", payload.name);
-    if (payload.file) form.append("image", payload.file);
+    if (payload.linkUrl !== undefined) form.append("linkUrl", payload.linkUrl);
+    if (payload.image1) form.append("image1", payload.image1);
+    if (payload.image2) form.append("image2", payload.image2);
+    if (payload.image3) form.append("image3", payload.image3);
+    if (payload.removeImage1) form.append("removeImage1", "true");
+    if (payload.removeImage2) form.append("removeImage2", "true");
+    if (payload.removeImage3) form.append("removeImage3", "true");
     const { data } = await api.put<MarketingBanner>(
       `/barbershops/${barbershopId}/marketing-banners/${id}`,
       form,

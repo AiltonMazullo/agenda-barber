@@ -33,6 +33,14 @@ export interface Service {
   hidden: boolean;
   /** Serviço de encaixe (pode ser encaixado na agenda). */
   fitIn: boolean;
+  /**
+   * Desconto (em centavos) de uma promoção ativa no momento da consulta —
+   * só presente no catálogo público do fluxo de agendamento do cliente
+   * (`GET /barbershops/:slug`), não nas rotas administrativas de serviços.
+   */
+  promotionDiscountInCents?: number;
+  /** `priceInCents` já com a promoção ativa aplicada — mesma ressalva acima. */
+  effectivePriceInCents?: number;
   createdAt: string;
   updatedAt: string;
 }

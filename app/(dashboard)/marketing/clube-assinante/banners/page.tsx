@@ -33,14 +33,79 @@ function FormLabel({
   );
 }
 
+/** Um slot de imagem por posição (1/2/3) — cada um com sua resolução recomendada (ver ajustes/Gestão.md §Banners). */
+const IMAGE_SLOTS = [
+  { key: "image1", label: "Recomendado 350 x 220 pixels" },
+  { key: "image2", label: "Recomendado 640 x 250 pixels" },
+  { key: "image3", label: "Recomendado 700 x 300 pixels" },
+] as const;
+
+function ClubBannerImageSlot({
+  label,
+  previewUrl,
+  onFileChange,
+  onRemove,
+}: {
+  label: string;
+  previewUrl: string | null;
+  onFileChange: (file: File | null) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {previewUrl ? (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Prévia do banner"
+            className="h-28 w-full object-cover rounded-md border border-border-subtle"
+          />
+          <button
+            type="button"
+            onClick={onRemove}
+            className="absolute inset-x-0 bottom-0 h-8 flex items-center justify-center gap-1.5 rounded-b-md bg-danger/90 text-xs font-bold text-white hover:bg-danger transition-colors"
+          >
+            <X className="size-3" />
+            Remover
+          </button>
+        </div>
+      ) : (
+        <Input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+          className="bg-surface-base border-border text-foreground file:text-foreground focus-visible:ring-brand/30 h-10"
+        />
+      )}
+      <p className="text-[11px] text-muted-foreground text-center">{label}</p>
+    </div>
+  );
+}
+
 interface ClubBannerDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   banner: ClubBanner | null;
-  onCreate: (payload: { fileName: string; file: File }) => Promise<unknown>;
+  onCreate: (payload: {
+    fileName: string;
+    linkUrl?: string;
+    image1?: File;
+    image2?: File;
+    image3?: File;
+  }) => Promise<unknown>;
   onUpdate: (
     id: string,
-    payload: { fileName?: string; file?: File },
+    payload: {
+      fileName?: string;
+      linkUrl?: string;
+      image1?: File;
+      image2?: File;
+      image3?: File;
+      removeImage1?: boolean;
+      removeImage2?: boolean;
+      removeImage3?: boolean;
+    },
   ) => Promise<unknown>;
 }
 
@@ -52,28 +117,39 @@ function ClubBannerDialog({
   onUpdate,
 }: ClubBannerDialogProps) {
   const [fileName, setFileName] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [removedSlots, setRemovedSlots] = useState<Record<string, boolean>>({});
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string | null>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setFileName(banner?.fileName ?? "");
-    setFile(null);
-    setPreviewUrl(banner ? apiAssetUrl(banner.imageUrl) : null);
+    setLinkUrl(banner?.linkUrl ?? "");
+    setFiles({});
+    setRemovedSlots({});
+    setPreviewUrls({
+      image1: banner?.imageUrl1 ? apiAssetUrl(banner.imageUrl1) : null,
+      image2: banner?.imageUrl2 ? apiAssetUrl(banner.imageUrl2) : null,
+      image3: banner?.imageUrl3 ? apiAssetUrl(banner.imageUrl3) : null,
+    });
   }, [open, banner]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0] ?? null;
-    setFile(selected);
-    if (selected && !fileName.trim()) setFileName(selected.name);
-    setPreviewUrl(
-      selected
-        ? URL.createObjectURL(selected)
-        : banner
-          ? apiAssetUrl(banner.imageUrl)
-          : null,
-    );
+  function handleFileChange(key: string, file: File | null) {
+    setFiles((prev) => ({ ...prev, [key]: file }));
+    setRemovedSlots((prev) => ({ ...prev, [key]: false }));
+    setPreviewUrls((prev) => ({
+      ...prev,
+      [key]: file ? URL.createObjectURL(file) : null,
+    }));
+    if (file && !fileName.trim()) setFileName(file.name);
+  }
+
+  function handleRemoveSlot(key: string) {
+    setFiles((prev) => ({ ...prev, [key]: null }));
+    setRemovedSlots((prev) => ({ ...prev, [key]: true }));
+    setPreviewUrls((prev) => ({ ...prev, [key]: null }));
   }
 
   async function handleSave() {
@@ -81,18 +157,26 @@ function ClubBannerDialog({
       toast.error("Informe o nome do arquivo.");
       return;
     }
-    if (!file && !banner) {
-      toast.error("Selecione o arquivo de imagem.");
-      return;
-    }
     setSaving(true);
     try {
       const result = banner
         ? await onUpdate(banner.id, {
             fileName: fileName.trim(),
-            ...(file && { file }),
+            linkUrl: linkUrl.trim(),
+            image1: files.image1 ?? undefined,
+            image2: files.image2 ?? undefined,
+            image3: files.image3 ?? undefined,
+            removeImage1: removedSlots.image1,
+            removeImage2: removedSlots.image2,
+            removeImage3: removedSlots.image3,
           })
-        : await onCreate({ fileName: fileName.trim(), file: file as File });
+        : await onCreate({
+            fileName: fileName.trim(),
+            linkUrl: linkUrl.trim(),
+            image1: files.image1 ?? undefined,
+            image2: files.image2 ?? undefined,
+            image3: files.image3 ?? undefined,
+          });
       if (result) onOpenChange(false);
     } finally {
       setSaving(false);
@@ -101,7 +185,7 @@ function ClubBannerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-lg p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold">
@@ -128,22 +212,26 @@ function ClubBannerDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <FormLabel required={!banner}>Imagem</FormLabel>
-            <Input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              className="bg-surface-base border-border text-foreground file:text-foreground focus-visible:ring-brand/30 h-10"
-            />
-            {previewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt="Prévia do banner"
-                className="mt-2 h-24 w-full object-cover rounded-md border border-border-subtle"
+          <div className="grid grid-cols-3 gap-3">
+            {IMAGE_SLOTS.map((slot) => (
+              <ClubBannerImageSlot
+                key={slot.key}
+                label={slot.label}
+                previewUrl={previewUrls[slot.key] ?? null}
+                onFileChange={(file) => handleFileChange(slot.key, file)}
+                onRemove={() => handleRemoveSlot(slot.key)}
               />
-            )}
+            ))}
+          </div>
+
+          <div className="space-y-1.5">
+            <FormLabel>Link</FormLabel>
+            <Input
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://wa.me/5511999999999?text=..."
+              className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
+            />
           </div>
         </div>
 
@@ -216,16 +304,21 @@ export default function ClubeBannersPage() {
             render: (r) => formatDate(r.createdAt),
           },
           {
-            key: "imageUrl",
+            key: "imageUrl1",
             label: "Imagem",
-            render: (r) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={apiAssetUrl(r.imageUrl) ?? ""}
-                alt={r.fileName}
-                className="size-10 object-cover rounded-md border border-border-subtle"
-              />
-            ),
+            render: (r) => {
+              const firstImage = r.imageUrl1 ?? r.imageUrl2 ?? r.imageUrl3;
+              return firstImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={apiAssetUrl(firstImage) ?? ""}
+                  alt={r.fileName}
+                  className="size-10 object-cover rounded-md border border-border-subtle"
+                />
+              ) : (
+                <span className="text-xs text-text-faint">—</span>
+              );
+            },
           },
         ]}
         rows={banners}
@@ -238,7 +331,6 @@ export default function ClubeBannersPage() {
           { key: "id", label: "ID" },
           { key: "fileName", label: "Arquivo" },
           { key: "createdAt", label: "Criado em" },
-          { key: "imageUrl", label: "URL da imagem" },
         ]}
         onCreate={openCreate}
         createLabel="Novo"

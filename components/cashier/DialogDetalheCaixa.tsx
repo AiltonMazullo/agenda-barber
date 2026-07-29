@@ -18,9 +18,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loading } from "@/components/shared";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FormMovimentacao } from "./FormMovimentacao";
 import { DialogFechamentoCaixa } from "./DialogFechamentoCaixa";
 import { formatBRL, formatDate, formatTime } from "@/utils/format";
+import { initials } from "@/components/schedule/helpers";
 import { COMANDA_FORMA_PAGAMENTO_LABELS } from "@/utils/comanda";
 import {
   OPENING_TRANSACTION_NAME,
@@ -36,6 +38,7 @@ interface MovimentoRow {
   comanda: string;
   cliente: string;
   profissional: string;
+  profissionalAvatarUrl: string | null;
   horario: string | null;
   totalInCents: number;
   pagamento: string;
@@ -101,6 +104,7 @@ export function DialogDetalheCaixa({
       comanda: `#${c.numero}`,
       cliente: c.cliente ?? "—",
       profissional: c.profissional ?? "—",
+      profissionalAvatarUrl: c.profissionalAvatarUrl,
       horario: c.horario,
       totalInCents: c.totalInCents,
       pagamento: c.formaPagamento
@@ -116,6 +120,7 @@ export function DialogDetalheCaixa({
         comanda: "—",
         cliente: "—",
         profissional: "—",
+        profissionalAvatarUrl: null,
         horario: t.createdAt,
         totalInCents: t.type === "ENTRY" ? t.valueInCents : -t.valueInCents,
         pagamento: t.type === "ENTRY" ? "Entrada manual" : "Saída manual",
@@ -230,7 +235,24 @@ export function DialogDetalheCaixa({
                                 {m.comanda}
                               </TableCell>
                               <TableCell>{m.cliente}</TableCell>
-                              <TableCell>{m.profissional}</TableCell>
+                              <TableCell>
+                                {m.profissional === "—" ? (
+                                  "—"
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <Avatar size="sm">
+                                      <AvatarImage
+                                        src={m.profissionalAvatarUrl ?? undefined}
+                                        alt={m.profissional}
+                                      />
+                                      <AvatarFallback>
+                                        {initials(m.profissional)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span>{m.profissional}</span>
+                                  </div>
+                                )}
+                              </TableCell>
                               <TableCell className="whitespace-nowrap text-muted-foreground">
                                 {m.horario
                                   ? `${formatDate(m.horario)} ${formatTime(m.horario)}`

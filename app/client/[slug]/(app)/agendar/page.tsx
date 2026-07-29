@@ -70,6 +70,11 @@ function formatBRLFromCents(cents: number): string {
   });
 }
 
+function formatServicePrice(cents: number, startingFrom: boolean): string {
+  const formatted = formatBRLFromCents(cents);
+  return startingFrom ? `A partir de ${formatted}` : formatted;
+}
+
 function startOfToday(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -650,7 +655,7 @@ export default function AgendarPage({ params }: PageProps) {
                       isSubscriber ? "text-green-500" : "text-brand"
                     }`}
                   >
-                    {formatBRLFromCents(
+                    {formatServicePrice(
                       selectedServices.reduce(
                         (a, s) =>
                           a +
@@ -661,6 +666,7 @@ export default function AgendarPage({ params }: PageProps) {
                           ).effectiveCents,
                         0,
                       ),
+                      selectedServices.some((s) => s.startingFrom),
                     )}
                   </span>
                 </div>

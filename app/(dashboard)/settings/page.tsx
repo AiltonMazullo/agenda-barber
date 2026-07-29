@@ -3242,14 +3242,22 @@ function DialogCategoria({
   type: CategoryType;
   /** Fornecido apenas no modo de criação — permite escolher o tipo (imutável depois de criada). */
   onTypeChange?: (t: CategoryType) => void;
-  onSave: (name: string) => Promise<void>;
+  onSave: (
+    name: string,
+    discountPercent: number | null,
+    commissionPercent: number | null,
+  ) => Promise<void>;
 }) {
   const [name, setName] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [commissionPercent, setCommissionPercent] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(category?.name ?? "");
+    setDiscountPercent(category?.discountPercent?.toString() ?? "");
+    setCommissionPercent(category?.commissionPercent?.toString() ?? "");
   }, [open, category]);
 
   async function handleSave() {
@@ -3257,7 +3265,11 @@ function DialogCategoria({
       return toast.error("Informe o nome da categoria.");
     setSaving(true);
     try {
-      await onSave(name.trim());
+      await onSave(
+        name.trim(),
+        discountPercent.trim() === "" ? null : Number(discountPercent),
+        commissionPercent.trim() === "" ? null : Number(commissionPercent),
+      );
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -3321,6 +3333,38 @@ function DialogCategoria({
               não pode ser alterado depois de criada.
             </p>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FormLabel>Porcentagem desconto</FormLabel>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                placeholder="0"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <FormLabel>Porcentagem comissão</FormLabel>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={commissionPercent}
+                onChange={(e) => setCommissionPercent(e.target.value)}
+                placeholder="0"
+                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground -mt-2">
+            A comissão da categoria vale como padrão para os profissionais que
+            não têm uma comissão específica configurada.
+          </p>
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
           <button
@@ -3380,11 +3424,21 @@ function TabCategorias() {
     return type === "PRODUTO" ? produtoCategories : servicoCategories;
   }
 
-  async function handleSave(name: string) {
+  async function handleSave(
+    name: string,
+    discountPercent: number | null,
+    commissionPercent: number | null,
+  ) {
     if (editing) {
-      await hookFor(editing.type).update(editing.id, name);
+      await hookFor(editing.type).update(
+        editing.id,
+        name,
+        undefined,
+        discountPercent,
+        commissionPercent,
+      );
     } else {
-      await hookFor(createType).create(name);
+      await hookFor(createType).create(name, undefined, discountPercent, commissionPercent);
     }
   }
 

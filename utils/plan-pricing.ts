@@ -35,7 +35,11 @@ export function priceServiceUnderSubscription(
   );
 
   if (!planService) {
-    return { originalCents, effectiveCents: originalCents, status: "full", discountPct: 0 };
+    // Fora do plano (ou sem assinatura ativa) — ainda assim respeita uma
+    // promoção ativa do serviço (ver ajustes/Gestão.md §Promoções), já que
+    // ela não depende de assinatura.
+    const effectiveCents = service.effectivePriceInCents ?? originalCents;
+    return { originalCents, effectiveCents, status: "full", discountPct: 0 };
   }
 
   const serviceUsage = usage.find((u) => u.serviceId === service.id);

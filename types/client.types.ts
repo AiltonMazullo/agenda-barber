@@ -25,6 +25,8 @@ export interface Client {
   /** "Lembrar na agenda" — destaca o cliente na tela de Agenda. */
   remindInSchedule: boolean;
   photoUrl: string | null;
+  /** Se o cliente tem um bloqueio ativo (`ClientBlock.blockedUntil` no futuro) — ver /clients/bloqueados. */
+  isBlocked: boolean;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;

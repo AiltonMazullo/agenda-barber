@@ -24,6 +24,8 @@ import {
 import { exportToCsv } from "@/utils/csv-export";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { initials } from "@/components/schedule/helpers";
 import {
   Table,
   TableBody,
@@ -580,9 +582,18 @@ function ClientesContent() {
                       <TableCell className="px-4 py-4 font-semibold text-sm">
                         <Link
                           href={`/clients/${c.id}`}
-                          className="text-foreground hover:text-brand transition-colors"
+                          className="flex items-center gap-2 text-foreground hover:text-brand transition-colors"
                         >
-                          {c.name}
+                          <Avatar size="sm">
+                            <AvatarImage src={c.photoUrl ?? undefined} alt={c.name} />
+                            <AvatarFallback>{initials(c.name)}</AvatarFallback>
+                          </Avatar>
+                          <span>{c.name}</span>
+                          {c.isBlocked && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-danger/10 text-danger-foreground shrink-0">
+                              Bloqueado
+                            </span>
+                          )}
                         </Link>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-xs text-muted-foreground">
