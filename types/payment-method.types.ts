@@ -7,6 +7,7 @@ export interface PaymentMethodBranchConfig {
   branchId: string;
   bankAccountId: string | null;
   feePercent: number;
+  receiptDeadlineDays: number;
   autoMarkAsReceived: boolean;
   branch: { id: string; name: string };
   bankAccount: { id: string; name: string } | null;
@@ -38,5 +39,6 @@ export interface BranchConfigInput {
   branchId: string;
   bankAccountId?: string | null;
   feePercent: number;
+  receiptDeadlineDays: number;
   autoMarkAsReceived: boolean;
 }

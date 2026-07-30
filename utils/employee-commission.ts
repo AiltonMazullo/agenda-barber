@@ -15,31 +15,25 @@ import type {
 } from "@/types/professional-config.types";
 
 export function productCommissionRuleFromBackend(
-  rule: EmployeeProductCommissionRule | null,
+  rules: EmployeeProductCommissionRule[] | null,
 ): ProductCommissionRule {
-  if (!rule) return { category: "", minSaleValue: 0, tiers: [] };
-  return {
-    category: rule.categoryId ?? "",
-    minSaleValue: rule.minSaleValueInCents / 100,
-    tiers: rule.tiers.map((t) => ({
-      id: t.id,
-      from: t.fromInCents / 100,
-      to: t.toInCents === null ? null : t.toInCents / 100,
-      percent: t.percent,
-    })),
-  };
+  if (!rules) return [];
+  return rules.map((r) => ({
+    id: r.id,
+    category: r.categoryId ?? "",
+    minSaleValue: r.minSaleValueInCents / 100,
+    percent: r.percent,
+  }));
 }
 
 export function productCommissionRuleToPayload(
-  rule: ProductCommissionRule,
+  rules: ProductCommissionRule,
 ): UpdateProductCommissionRulePayload {
   return {
-    categoryId: rule.category || null,
-    minSaleValueInCents: Math.round(rule.minSaleValue * 100),
-    tiers: rule.tiers.map((t) => ({
-      fromInCents: Math.round(t.from * 100),
-      toInCents: t.to === null ? null : Math.round(t.to * 100),
-      percent: t.percent,
+    rules: rules.map((r) => ({
+      categoryId: r.category || null,
+      minSaleValueInCents: Math.round(r.minSaleValue * 100),
+      percent: r.percent,
     })),
   };
 }

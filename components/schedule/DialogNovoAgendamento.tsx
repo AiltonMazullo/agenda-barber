@@ -274,13 +274,10 @@ export function DialogNovoAgendamento({
       toast.error("Selecione a data.");
       return false;
     }
-    const [h, m] = hora.split(":").map(Number);
-    const quando = new Date(data);
-    quando.setHours(h, m || 0, 0, 0);
-    if (quando.getTime() < Date.now()) {
-      toast.error("Não é possível agendar em uma data/horário no passado.");
-      return false;
-    }
+    // Diferente do agendamento online (cliente), a recepção pode registrar
+    // um agendamento em horário retroativo (ex.: atendimento walk-in já
+    // realizado) — ver spec-revisao-cliente-1.md §5.2. Por isso não há
+    // validação de "data/horário no passado" aqui.
     if (ativarPlano && planoCpf.replace(/\D/g, "").length !== 11) {
       toast.error("Informe o CPF do cliente para ativar o plano.");
       return false;

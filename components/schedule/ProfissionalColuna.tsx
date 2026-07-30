@@ -30,10 +30,13 @@ export function ProfissionalColuna({
   onResizeEnd,
   bloqueios,
   onDeleteBloqueio,
+  onMoveBloqueio,
+  onResizeBloqueio,
   onCriarBloqueio,
   modoBloquear,
   onSlotClick,
   indisponibilidades,
+  startHour = START_HOUR,
 }: {
   profissional: ProfissionalVM;
   agendamentos: AgendamentoVM[];
@@ -46,6 +49,8 @@ export function ProfissionalColuna({
   onResizeEnd: (id: string, novaDuracao: number) => void;
   bloqueios: BloqueioHorario[];
   onDeleteBloqueio: (id: string) => void;
+  onMoveBloqueio: (id: string, novoInicioMin: number) => void;
+  onResizeBloqueio: (id: string, novaDuracaoMin: number) => void;
   onCriarBloqueio: (
     profId: string,
     inicioMin: number,
@@ -55,6 +60,8 @@ export function ProfissionalColuna({
   onSlotClick: (profId: string, inicioMin: number) => void;
   /** Fora do expediente/intervalo/feriado/folga — somente leitura (ver `buildIndisponibilidades`). */
   indisponibilidades: Indisponibilidade[];
+  /** Início da grade, em horas — ver §5.1 (range dinâmico por profissionais do dia). */
+  startHour?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${profissional.id}`,
@@ -73,12 +80,12 @@ export function ProfissionalColuna({
       const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
       const y = e.clientY - rect.top;
       const slotIdx = Math.floor(y / slotHeightPx);
-      const minInicio = START_HOUR * 60 + slotIdx * slotSize;
+      const minInicio = startHour * 60 + slotIdx * slotSize;
       bloqueioStart.current = minInicio;
       setBloqueioPreview({ inicio: minInicio, fim: minInicio + slotSize });
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [modoBloquear, slotHeightPx, slotSize],
+    [modoBloquear, slotHeightPx, slotSize, startHour],
   );
 
   const handleGridPointerMove = useCallback(
@@ -89,11 +96,11 @@ export function ProfissionalColuna({
       const slotIdx = Math.floor(y / slotHeightPx);
       const minFim = Math.max(
         bloqueioStart.current + slotSize,
-        START_HOUR * 60 + (slotIdx + 1) * slotSize,
+        startHour * 60 + (slotIdx + 1) * slotSize,
       );
       setBloqueioPreview({ inicio: bloqueioStart.current, fim: minFim });
     },
-    [modoBloquear, slotHeightPx, slotSize],
+    [modoBloquear, slotHeightPx, slotSize, startHour],
   );
 
   const handleGridPointerUp = useCallback(() => {
@@ -164,7 +171,7 @@ export function ProfissionalColuna({
             const rect = e.currentTarget.getBoundingClientRect();
             const y = e.clientY - rect.top;
             const slotIdx = Math.floor(y / slotHeightPx);
-            const inicioMin = START_HOUR * 60 + slotIdx * slotSize;
+            const inicioMin = startHour * 60 + slotIdx * slotSize;
             // Fora do expediente/intervalo/feriado/folga: não deixa criar
             // agendamento nesse horário (o backend rejeitaria de qualquer
             // forma — bloqueamos aqui pra não abrir o dialog à toa).
@@ -180,7 +187,7 @@ export function ProfissionalColuna({
         }}
       >
         {Array.from({ length: totalSlots }).map((_, i) => {
-          const min = START_HOUR * 60 + i * slotSize;
+          const min = startHour * 60 + i * slotSize;
           return (
             <div
               key={i}
@@ -201,7 +208,7 @@ export function ProfissionalColuna({
             className="absolute left-0.5 right-0.5 bg-red-500/20 border border-red-500/50 rounded pointer-events-none z-20"
             style={{
               top:
-                ((bloqueioPreview.inicio - START_HOUR * 60) / slotSize) *
+                ((bloqueioPreview.inicio - startHour * 60) / slotSize) *
                 slotHeightPx,
               height:
                 ((bloqueioPreview.fim - bloqueioPreview.inicio) / slotSize) *
@@ -216,6 +223,7 @@ export function ProfissionalColuna({
             indisponibilidade={ind}
             slotSize={slotSize}
             slotHeightPx={slotHeightPx}
+            startHour={startHour}
           />
         ))}
 
@@ -226,6 +234,9 @@ export function ProfissionalColuna({
             slotSize={slotSize}
             slotHeightPx={slotHeightPx}
             onDelete={onDeleteBloqueio}
+            onMove={onMoveBloqueio}
+            onResize={onResizeBloqueio}
+            startHour={startHour}
           />
         ))}
 
@@ -242,6 +253,7 @@ export function ProfissionalColuna({
               activeId={activeId}
               onCardClick={onCardClick}
               onResizeEnd={onResizeEnd}
+              startHour={startHour}
             />
           );
         })}

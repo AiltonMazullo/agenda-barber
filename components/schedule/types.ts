@@ -16,6 +16,8 @@ export interface ServicoVM {
   cor: string; // hex
   tempoPadrao: number; // minutos
   preco: number; // reais
+  /** Serviço de encaixe — quando agrupado com outro serviço no mesmo agendamento, não soma tempo próprio ao card (§3.2). */
+  fitIn?: boolean;
 }
 
 /** View-model de profissional (avatar = iniciais; fotoUrl quando há upload). */
@@ -49,6 +51,10 @@ export interface AgendamentoVM {
   profissionalId: string;
   /** Nome do profissional resolvido (mesmo se fora da filial filtrada). */
   profissionalNome: string;
+  /** True quando o agendamento foi salvo sem profissional definido ("sem preferência") — `employeeId: null` no backend. */
+  semPreferencia: boolean;
+  /** Filial do agendamento (`Appointment.branchId`). Null em registros legados criados antes do campo existir. */
+  branchId: string | null;
   cliente: string;
   telefone: string;
   inicioMin: number; // minutos desde meia-noite

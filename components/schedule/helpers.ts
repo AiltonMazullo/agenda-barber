@@ -167,10 +167,22 @@ export function buildIndisponibilidades(params: {
   breaks: EmployeeBreak[];
   timeOff: EmployeeTimeOff[];
   holidayHoje?: Holiday | null;
+  /** Início/fim da grade da agenda, em horas — default: START_HOUR/END_HOUR fixos (ver §5.1). */
+  startHour?: number;
+  endHour?: number;
 }): Indisponibilidade[] {
-  const { profissionalId, selectedDate, schedules, breaks, timeOff, holidayHoje } = params;
-  const gridStart = START_HOUR * 60;
-  const gridEnd = END_HOUR * 60;
+  const {
+    profissionalId,
+    selectedDate,
+    schedules,
+    breaks,
+    timeOff,
+    holidayHoje,
+    startHour = START_HOUR,
+    endHour = END_HOUR,
+  } = params;
+  const gridStart = startHour * 60;
+  const gridEnd = endHour * 60;
   const dateIso = toDateInputValue(selectedDate);
   const dayOfWeek = selectedDate.getDay();
 

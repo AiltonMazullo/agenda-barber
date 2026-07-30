@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { clientsService } from "@/services/clients.service";
-import type { Appointment } from "@/types/appointment.types";
+import type { AppointmentWithProducts } from "@/types/appointment.types";
 
 /**
  * Últimos agendamentos de um cliente numa barbearia — usado no modal "Editar
@@ -17,7 +17,7 @@ export function useClientRecentAppointments(
   enabled: boolean,
   limit = 3,
 ) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentWithProducts[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {

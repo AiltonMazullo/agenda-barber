@@ -36,6 +36,7 @@ import {
 import {
   ConfirmDialog,
   DataTablePagination,
+  DatePickerField,
   EmptyState,
   Loading,
   PageHeader,
@@ -74,10 +75,21 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "CANCELADA", label: "Canceladas" },
 ];
 
+function toISODate(d: Date | undefined): string | undefined {
+  if (!d) return undefined;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function ComandasPage() {
   const { barbershop } = useAuth();
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const { comandas, isLoading, setStatus, remove } = useComandas(
     barbershop?.id,
+    { dateFrom: toISODate(dateFrom), dateTo: toISODate(dateTo) },
   );
 
   const [search, setSearch] = useState("");
@@ -213,6 +225,22 @@ export default function ComandasPage() {
             onChange={setStatusFilter}
             options={STATUS_FILTER_OPTIONS}
             className="sm:max-w-45 flex-none"
+          />
+          <DatePickerField
+            id="filtro-data-de"
+            label=""
+            date={dateFrom}
+            onChange={setDateFrom}
+            placeholder="De"
+            className="sm:max-w-40 flex-none"
+          />
+          <DatePickerField
+            id="filtro-data-ate"
+            label=""
+            date={dateTo}
+            onChange={setDateTo}
+            placeholder="Até"
+            className="sm:max-w-40 flex-none"
           />
         </div>
 

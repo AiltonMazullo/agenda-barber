@@ -22,15 +22,17 @@ export function IndisponibilidadeCard({
   indisponibilidade,
   slotSize,
   slotHeightPx,
+  startHour = START_HOUR,
 }: {
   indisponibilidade: Indisponibilidade;
   slotSize: SlotSize;
   slotHeightPx: number;
+  startHour?: number;
 }) {
   const duracaoMin = indisponibilidade.fimMin - indisponibilidade.inicioMin;
   const heightPx = (duracaoMin / slotSize) * slotHeightPx;
   const topPx =
-    ((indisponibilidade.inicioMin - START_HOUR * 60) / slotSize) * slotHeightPx;
+    ((indisponibilidade.inicioMin - startHour * 60) / slotSize) * slotHeightPx;
   const Icon = ICON_BY_TIPO[indisponibilidade.tipo];
 
   return (

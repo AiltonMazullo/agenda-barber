@@ -135,11 +135,31 @@ export function useComandaForm(
     [agendamentoOptions, linkedAppointmentIds],
   );
 
-  /** Agendamentos ainda não vinculados, disponíveis para adicionar. */
-  const availableToLinkOptions = useMemo<SelectOption<string>[]>(
-    () => agendamentoOptions.filter((o) => !linkedAppointmentIds.includes(o.value)),
-    [agendamentoOptions, linkedAppointmentIds],
-  );
+  /**
+   * Agendamentos ainda não vinculados, disponíveis para adicionar — ver
+   * spec-revisao-cliente-1.md §6.2. Restrito ao mesmo dia e ao mesmo cliente
+   * do primeiro agendamento já vinculado (o que originou a comanda),
+   * priorizando o caso de uso "pai + filho, dois profissionais" — sem
+   * agendamento algum vinculado ainda, não há o que restringir.
+   */
+  const availableToLinkOptions = useMemo<SelectOption<string>[]>(() => {
+    const notLinked = agendamentoOptions.filter(
+      (o) => !linkedAppointmentIds.includes(o.value),
+    );
+    const seed = appointments.find((a) => a.id === linkedAppointmentIds[0]);
+    if (!seed) return notLinked;
+    const seedDay = toWallClockDate(seed.scheduledAt).toDateString();
+    const sameDayClientIds = new Set(
+      appointments
+        .filter(
+          (a) =>
+            a.clientId === seed.clientId &&
+            toWallClockDate(a.scheduledAt).toDateString() === seedDay,
+        )
+        .map((a) => a.id),
+    );
+    return notLinked.filter((o) => sameDayClientIds.has(o.value));
+  }, [agendamentoOptions, linkedAppointmentIds, appointments]);
 
   const addLinkedAppointment = useCallback((appointmentId: string) => {
     setLinkedAppointmentIds((prev) =>

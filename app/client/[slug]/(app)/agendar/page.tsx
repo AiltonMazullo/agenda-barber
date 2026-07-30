@@ -81,6 +81,14 @@ function startOfToday(): Date {
   return d;
 }
 
+/** Último dia agendável, a partir da periodicidade de atendimento do profissional (§7.2). `null` = sem limite. */
+function maxAttendanceDate(attendancePeriodDays: number | null | undefined): Date | null {
+  if (attendancePeriodDays == null) return null;
+  const d = startOfToday();
+  d.setDate(d.getDate() + attendancePeriodDays);
+  return d;
+}
+
 function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -591,7 +599,18 @@ export default function AgendarPage({ params }: PageProps) {
                       setDate(d);
                       setTime(null);
                     }}
-                    disabled={[{ before: startOfToday() }, isDateClosed]}
+                    disabled={[
+                      { before: startOfToday() },
+                      isDateClosed,
+                      ...(!anyEmployee && selectedEmployee
+                        ? (() => {
+                            const max = maxAttendanceDate(
+                              selectedEmployee.attendancePeriodDays,
+                            );
+                            return max ? [{ after: max }] : [];
+                          })()
+                        : []),
+                    ]}
                     defaultMonth={date}
                   />
                 </div>

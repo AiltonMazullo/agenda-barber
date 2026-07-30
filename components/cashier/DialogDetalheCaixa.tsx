@@ -61,7 +61,7 @@ export function DialogDetalheCaixa({
   loading?: boolean;
   busy?: boolean;
   onAddTransaction: (input: NewTransactionInput) => void;
-  onClose: (countedCashInCents?: number) => void;
+  onClose: (countedCashInCents?: number, divergenceReasonNote?: string) => void;
   onRemove: () => void;
   /** Busca o dinheiro esperado + assinaturas manuais do dia (ver §2.2). */
   fetchClosingSummary?: () => Promise<CashRegisterClosingSummary | null>;
@@ -311,9 +311,9 @@ export function DialogDetalheCaixa({
         summary={closingSummary}
         loadingSummary={loadingSummary}
         busy={busy}
-        onConfirm={(countedCashInCents) => {
+        onConfirm={(countedCashInCents, divergenceReasonNote) => {
           setConfirmFechar(false);
-          onClose(countedCashInCents);
+          onClose(countedCashInCents, divergenceReasonNote);
         }}
       />
     </>

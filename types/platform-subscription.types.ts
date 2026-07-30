@@ -4,6 +4,14 @@ export type PlatformSubscriptionStatus =
   | "PAST_DUE"
   | "CANCELED";
 
+export type PlatformPaymentMethod = "CREDIT_CARD" | "PIX";
+
+export interface PixQrCode {
+  payload: string;
+  encodedImage: string | null;
+  expirationDate: string | null;
+}
+
 export interface PlatformSubscriptionCharge {
   id: string;
   status: string;
@@ -36,10 +44,18 @@ export interface PlatformSubscriptionMe {
   price: number;
   nextDueDate: string | null;
   canceledAt: string | null;
+  paymentMethod: PlatformPaymentMethod;
   billingProfile: BillingProfile;
   charges: PlatformSubscriptionCharge[];
 }
 
 export interface CheckoutResponse {
-  checkoutUrl: string;
+  paymentMethod: PlatformPaymentMethod;
+  checkoutUrl: string | null;
+  pixQrCode: PixQrCode | null;
+}
+
+export interface ChangePaymentMethodResponse {
+  paymentMethod: PlatformPaymentMethod;
+  pixQrCode: PixQrCode | null;
 }

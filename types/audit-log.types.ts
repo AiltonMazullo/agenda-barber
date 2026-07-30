@@ -27,4 +27,8 @@ export interface AuditLogFilters {
   startDate?: string;
   /** ISO 8601 datetime. */
   endDate?: string;
+  /** Um único id de entidade — usado pelo "Histórico do agendamento" do modal de detalhe. */
+  entityId?: string;
+  /** Vários ids separados por vírgula — agrega todos os membros de um `groupId` (card combo). */
+  entityIds?: string;
 }

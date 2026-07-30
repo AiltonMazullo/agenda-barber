@@ -15,6 +15,7 @@ export function DraggableAgendamento({
   activeId,
   onCardClick,
   onResizeEnd,
+  startHour = START_HOUR,
 }: {
   agendamento: AgendamentoVM;
   servico: ServicoVM;
@@ -23,6 +24,7 @@ export function DraggableAgendamento({
   activeId: string | null;
   onCardClick: (ag: AgendamentoVM) => void;
   onResizeEnd: (id: string, novaDuracao: number) => void;
+  startHour?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: agendamento.id,
@@ -32,13 +34,14 @@ export function DraggableAgendamento({
   const duracao = agendamento.duracao;
   const heightPx = (duracao / slotSize) * slotHeightPx;
   const topPx =
-    ((agendamento.inicioMin - START_HOUR * 60) / slotSize) * slotHeightPx;
+    ((agendamento.inicioMin - startHour * 60) / slotSize) * slotHeightPx;
   const isThis = activeId === agendamento.id;
 
   const isResizing = useRef(false);
   const resizeStartY = useRef(0);
   const resizeStartDur = useRef(0);
   const [resizeDelta, setResizeDelta] = useState(0);
+  const [isResizeActive, setIsResizeActive] = useState(false);
 
   const handleResizeStart = useCallback(
     (e: React.PointerEvent) => {
@@ -46,6 +49,7 @@ export function DraggableAgendamento({
       resizeStartY.current = e.clientY;
       resizeStartDur.current = duracao;
       setResizeDelta(0);
+      setIsResizeActive(true);
       e.currentTarget.setPointerCapture(e.pointerId);
 
       const handleMove = (ev: PointerEvent) => {
@@ -65,6 +69,7 @@ export function DraggableAgendamento({
           resizeStartDur.current + deltaSlots * slotSize,
         );
         setResizeDelta(0);
+        setIsResizeActive(false);
         onResizeEnd(agendamento.id, novaDuracao);
         window.removeEventListener("pointermove", handleMove);
         window.removeEventListener("pointerup", handleUp);
@@ -89,8 +94,8 @@ export function DraggableAgendamento({
         top: topPx,
         left: 0,
         right: 0,
-        height: resizeDelta !== 0 ? displayH : heightPx,
-        zIndex: isThis ? 0 : 10,
+        height: isResizeActive ? displayH : heightPx,
+        zIndex: isThis || isResizeActive ? 0 : 10,
         transform: transform ? CSS.Translate.toString(transform) : undefined,
         touchAction: "none",
       }}
@@ -107,8 +112,15 @@ export function DraggableAgendamento({
         slotSize={slotSize}
         slotHeightPx={slotHeightPx}
         isDragging={isThis}
+        isResizing={isResizeActive}
         onResizeStart={handleResizeStart}
       />
+      {isResizeActive && (
+        <div
+          className="absolute left-0.5 right-0.5 top-0 rounded-md border-2 border-dashed border-red-500 bg-red-500/10 pointer-events-none z-30"
+          style={{ height: displayH - 2 }}
+        />
+      )}
     </div>
   );
 }

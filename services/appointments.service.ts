@@ -3,6 +3,8 @@ import type {
   Appointment,
   CreateAppointmentPayload,
   RescheduleAppointmentPayload,
+  TransferAppointmentPayload,
+  UpdateAppointmentPayload,
   UpdateAppointmentStatusPayload,
 } from "@/types/appointment.types";
 
@@ -54,6 +56,47 @@ export const appointmentsService = {
   ): Promise<Appointment> {
     const { data } = await api.patch<Appointment>(
       `/barbershops/${barbershopId}/appointments/${id}/reschedule`,
+      payload,
+    );
+    return data;
+  },
+
+  async resize(
+    barbershopId: string,
+    id: string,
+    durationMin: number,
+  ): Promise<Appointment> {
+    const { data } = await api.patch<Appointment>(
+      `/barbershops/${barbershopId}/appointments/${id}/resize`,
+      { durationMin },
+    );
+    return data;
+  },
+
+  /** Troca o cliente do agendamento (cascateia pro grupo no backend). */
+  async transfer(
+    barbershopId: string,
+    id: string,
+    payload: TransferAppointmentPayload,
+  ): Promise<Appointment> {
+    const { data } = await api.patch<Appointment>(
+      `/barbershops/${barbershopId}/appointments/${id}/transfer`,
+      payload,
+    );
+    return data;
+  },
+
+  /**
+   * Endpoint unificado usado pelo modal de detalhe (`DialogDetalhe`):
+   * serviços, data/horário, filial e profissional num único PATCH.
+   */
+  async update(
+    barbershopId: string,
+    id: string,
+    payload: UpdateAppointmentPayload,
+  ): Promise<Appointment> {
+    const { data } = await api.patch<Appointment>(
+      `/barbershops/${barbershopId}/appointments/${id}`,
       payload,
     );
     return data;

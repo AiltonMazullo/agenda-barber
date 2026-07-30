@@ -39,20 +39,15 @@ export interface TimeOff {
   end: string;
 }
 
-/** Faixa de comissão escalável por valor de venda (em reais). */
-export interface CommissionTier {
+/** (a) Comissões sobre produtos: uma regra independente por linha (categoria + valor mínimo + comissão). */
+export interface ProductCommissionRuleItem {
   id: string;
-  from: number;
-  to: number | null; // null = "em diante"
+  category: string; // "" = todas as categorias
+  minSaleValue: number;
   percent: number;
 }
 
-/** (a) Comissões sobre produtos: faixas por categoria e valor mínimo. */
-export interface ProductCommissionRule {
-  category: string;
-  minSaleValue: number;
-  tiers: CommissionTier[];
-}
+export type ProductCommissionRule = ProductCommissionRuleItem[];
 
 /** (b) Adicional de comissão diferenciada (assinantes). */
 export interface DifferentiatedCommission {
@@ -101,7 +96,7 @@ export function defaultProfessionalConfig(): ProfessionalConfig {
     workingHours: defaultWorkingHours(),
     intervals: [],
     timeOff: [],
-    productCommission: { category: "", minSaleValue: 0, tiers: [] },
+    productCommission: [],
     differentiated: { additionalPercent: 0, subscriberPercent: 0 },
   };
 }

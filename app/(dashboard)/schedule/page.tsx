@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -125,6 +125,10 @@ export default function SchedulePage() {
     moveLocal,
     resizeLocal,
     rescheduleAgendamento,
+    resizeAgendamento,
+    updateAgendamento,
+    transferAgendamento,
+    clientActivePlans,
   } = useSchedule(barbershop?.id, selectedDate, filialId || undefined);
 
   // Bloqueios de horário (persistidos — ver ajustes/Módulo Agenda.md)
@@ -132,6 +136,7 @@ export default function SchedulePage() {
     blocks: scheduleBlocks,
     create: createScheduleBlock,
     remove: removeScheduleBlock,
+    update: updateScheduleBlock,
   } = useScheduleBlocks(barbershop?.id);
 
   // Horários/intervalos/folgas de cada profissional — pra derivar as
@@ -198,7 +203,32 @@ export default function SchedulePage() {
   const [prefilledProfId, setPrefilledProfId] = useState<string | undefined>();
 
   const SLOT_HEIGHT_PX = slotSize === 10 ? 28 : slotSize === 20 ? 40 : 56;
-  const totalSlots = ((END_HOUR - START_HOUR) * 60) / slotSize;
+
+  // Início/fim da agenda = do primeiro ao último horário entre os
+  // profissionais visíveis no dia selecionado (ver spec-revisao-cliente-1.md
+  // §5.1) — cai para START_HOUR/END_HOUR fixos quando ninguém tem horário
+  // cadastrado para o dia (ex.: filial recém-criada, sem profissionais).
+  const dayOfWeek = selectedDate.getDay();
+  const { startHour: gridStartHour, endHour: gridEndHour } = useMemo(() => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const p of profissionais) {
+      const schedules = schedulesByEmployee.get(p.id) ?? [];
+      for (const s of schedules) {
+        if (s.dayOfWeek !== dayOfWeek) continue;
+        const [sh, sm] = s.startTime.split(":").map(Number);
+        const [eh, em] = s.endTime.split(":").map(Number);
+        min = Math.min(min, sh + sm / 60);
+        max = Math.max(max, eh + em / 60);
+      }
+    }
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return { startHour: START_HOUR, endHour: END_HOUR };
+    }
+    return { startHour: Math.floor(min), endHour: Math.ceil(max) };
+  }, [profissionais, schedulesByEmployee, dayOfWeek]);
+
+  const totalSlots = ((gridEndHour - gridStartHour) * 60) / slotSize;
 
   const [nowTopPx, setNowTopPx] = useState<number | null>(null);
 
@@ -210,14 +240,30 @@ export default function SchedulePage() {
       }
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
-      if (nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60) {
-        setNowTopPx(((nowMin - START_HOUR * 60) / slotSize) * SLOT_HEIGHT_PX);
+      if (nowMin >= gridStartHour * 60 && nowMin <= gridEndHour * 60) {
+        setNowTopPx(((nowMin - gridStartHour * 60) / slotSize) * SLOT_HEIGHT_PX);
       } else setNowTopPx(null);
     };
     calcNow();
     const iv = setInterval(calcNow, 60_000);
     return () => clearInterval(iv);
-  }, [slotSize, SLOT_HEIGHT_PX, selectedDate]);
+  }, [slotSize, SLOT_HEIGHT_PX, selectedDate, gridStartHour, gridEndHour]);
+
+  // Ao abrir a agenda (ou trocar de dia), rola até a posição da linha do
+  // tempo atual (ver spec-revisao-cliente-1.md §5.4) — uma vez por dia
+  // selecionado, não a cada recálculo de `nowTopPx` (a cada minuto).
+  const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
+  const scrolledToNowForDate = useRef<string | null>(null);
+  useEffect(() => {
+    if (nowTopPx === null || viewMode !== "kanban") return;
+    const dateKey = toDateInputValue(selectedDate);
+    if (scrolledToNowForDate.current === dateKey) return;
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    scrolledToNowForDate.current = dateKey;
+    const headerHeight = 92;
+    el.scrollTop = Math.max(0, headerHeight + nowTopPx - el.clientHeight / 2);
+  }, [nowTopPx, viewMode, selectedDate]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -308,8 +354,8 @@ export default function SchedulePage() {
       const deltaSlotsY = Math.round(delta.y / SLOT_HEIGHT_PX);
       let newInicio = snapToSlot(ag.inicioMin + deltaSlotsY * slotSize, slotSize);
       newInicio = Math.max(
-        START_HOUR * 60,
-        Math.min(END_HOUR * 60 - ag.duracao, newInicio),
+        gridStartHour * 60,
+        Math.min(gridEndHour * 60 - ag.duracao, newInicio),
       );
 
       const conflicts = findConflicts(
@@ -458,9 +504,11 @@ export default function SchedulePage() {
         return;
       }
       resizeLocal(id, novaDuracao);
-      toast.success("Duração ajustada (apenas visual).");
+      void resizeAgendamento(id, novaDuracao).then((ok) => {
+        if (ok) toast.success("Duração ajustada.");
+      });
     },
-    [agendamentos, bloqueios, resizeLocal],
+    [agendamentos, bloqueios, resizeLocal, resizeAgendamento],
   );
 
   const handleSlotClick = useCallback((profId: string, inicioMin: number) => {
@@ -514,6 +562,40 @@ export default function SchedulePage() {
     [removeScheduleBlock],
   );
 
+  /** Arrastar um bloqueio (mudar início, mantendo a duração) — ver §5.5. */
+  const handleMoveBloqueio = useCallback(
+    (id: string, novoInicioMin: number) => {
+      const bloqueio = bloqueios.find((b) => b.id === id);
+      if (!bloqueio) return;
+      const start = new Date(selectedDate);
+      start.setUTCHours(0, 0, 0, 0);
+      start.setUTCMinutes(novoInicioMin);
+      const end = new Date(start.getTime() + bloqueio.duracaoMin * 60_000);
+      void updateScheduleBlock(id, {
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
+      });
+    },
+    [bloqueios, selectedDate, updateScheduleBlock],
+  );
+
+  /** Redimensionar um bloqueio (mudar duração, mantendo o início) — ver §5.5. */
+  const handleResizeBloqueio = useCallback(
+    (id: string, novaDuracaoMin: number) => {
+      const bloqueio = bloqueios.find((b) => b.id === id);
+      if (!bloqueio) return;
+      const start = new Date(selectedDate);
+      start.setUTCHours(0, 0, 0, 0);
+      start.setUTCMinutes(bloqueio.inicioMin);
+      const end = new Date(start.getTime() + novaDuracaoMin * 60_000);
+      void updateScheduleBlock(id, {
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
+      });
+    },
+    [bloqueios, selectedDate, updateScheduleBlock],
+  );
+
   const filialAtual = branches.find((f) => f.id === filialId);
   const dataFormatada = format(selectedDate, "EEEE, dd MMM yyyy", {
     locale: ptBR,
@@ -541,6 +623,8 @@ export default function SchedulePage() {
           breaks: breaksByEmployee.get(p.id) ?? [],
           timeOff: timeOffByEmployee.get(p.id) ?? [],
           holidayHoje,
+          startHour: gridStartHour,
+          endHour: gridEndHour,
         }),
       ),
     [
@@ -550,6 +634,8 @@ export default function SchedulePage() {
       breaksByEmployee,
       timeOffByEmployee,
       holidayHoje,
+      gridStartHour,
+      gridEndHour,
     ],
   );
 
@@ -1015,7 +1101,10 @@ export default function SchedulePage() {
             />
           </div>
         ) : viewMode === "kanban" ? (
-          <div className="overflow-x-auto schedule-scroll md:flex-1 md:overflow-y-auto md:overflow-x-hidden">
+          <div
+            ref={kanbanScrollRef}
+            className="overflow-x-auto schedule-scroll md:flex-1 md:overflow-y-auto md:overflow-x-hidden"
+          >
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -1027,6 +1116,7 @@ export default function SchedulePage() {
                   slotSize={slotSize}
                   slotHeightPx={SLOT_HEIGHT_PX}
                   totalSlots={totalSlots}
+                  startHour={gridStartHour}
                 />
                 <div className="w-px bg-surface-elevated shrink-0" />
                 <div className="flex flex-1 divide-x divide-border-subtle">
@@ -1056,10 +1146,13 @@ export default function SchedulePage() {
                         onResizeEnd={handleResizeEnd}
                         bloqueios={bloqueios}
                         onDeleteBloqueio={handleDeleteBloqueio}
+                        onMoveBloqueio={handleMoveBloqueio}
+                        onResizeBloqueio={handleResizeBloqueio}
                         onCriarBloqueio={handleCriarBloqueio}
                         modoBloquear={modoBloquear}
                         onSlotClick={handleSlotClick}
                         indisponibilidades={indisponibilidades}
+                        startHour={gridStartHour}
                       />
                     </div>
                   ))}
@@ -1121,8 +1214,16 @@ export default function SchedulePage() {
           agendamento={agSelecionado}
           servico={agSelecionadoServico}
           profissional={agSelecionadoProf}
+          servicos={servicos}
+          profissionaisTodos={profissionaisTodos}
+          branches={branches}
+          clients={clients}
+          clientActivePlans={clientActivePlans}
           onDelete={handleDelete}
           onUpdateStatus={handleUpdateStatus}
+          onSave={updateAgendamento}
+          onTransferClient={transferAgendamento}
+          onCreateClient={createClient}
           onAbrirComanda={handleAbrirComanda}
           comandaAberta={comandaAbertaDoAgendamento}
         />

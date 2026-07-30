@@ -8,7 +8,9 @@ import type {
   Appointment,
   CreateAppointmentPayload,
   RescheduleAppointmentPayload,
+  TransferAppointmentPayload,
   UpdatableAppointmentStatus,
+  UpdateAppointmentPayload,
 } from "@/types/appointment.types";
 
 export function useAppointments(barbershopId: string | undefined) {
@@ -186,6 +188,72 @@ export function useAppointments(barbershopId: string | undefined) {
     [barbershopId, refetch],
   );
 
+  /** Persiste o redimensionamento (arrastar a borda do card): `PATCH /appointments/:id/resize`. */
+  const resize = useCallback(
+    async (id: string, durationMin: number) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await appointmentsService.resize(barbershopId, id, durationMin);
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, ...updated } : a)),
+        );
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Falha ao redimensionar. A duração foi restaurada.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  /**
+   * Atualização unificada usada pelo modal de detalhe (`DialogDetalhe`):
+   * serviços, data/horário, filial e profissional num único PATCH (ver
+   * `AppointmentsService.update` no backend). Como a composição de serviços
+   * pode criar/remover membros do grupo, sempre reconsulta a lista completa
+   * em vez de tentar reconciliar o estado local (mesmo cuidado de
+   * `reschedule` para cards combo).
+   */
+  const update = useCallback(
+    async (id: string, payload: UpdateAppointmentPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await appointmentsService.update(barbershopId, id, payload);
+        await refetch();
+        toast.success("Agendamento atualizado.");
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao atualizar agendamento.",
+        );
+        return null;
+      }
+    },
+    [barbershopId, refetch],
+  );
+
+  /** Troca o cliente do agendamento — usado pelo modal de detalhe quando o cliente selecionado muda. */
+  const transfer = useCallback(
+    async (id: string, payload: TransferAppointmentPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await appointmentsService.transfer(barbershopId, id, payload);
+        await refetch();
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao trocar o cliente do agendamento.",
+        );
+        return null;
+      }
+    },
+    [barbershopId, refetch],
+  );
+
   return {
     appointments,
     isLoading,
@@ -194,6 +262,9 @@ export function useAppointments(barbershopId: string | undefined) {
     cancel,
     replaceLocal,
     reschedule,
+    resize,
+    update,
+    transfer,
     refetch,
   };
 }

@@ -4,7 +4,7 @@ import type {
   CreateClientPayload,
   UpdateClientPayload,
 } from "@/types/client.types";
-import type { Appointment } from "@/types/appointment.types";
+import type { AppointmentWithProducts } from "@/types/appointment.types";
 
 export const clientsService = {
   async list(barbershopId: string): Promise<Client[]> {
@@ -65,8 +65,8 @@ export const clientsService = {
     barbershopId: string,
     id: string,
     limit = 3,
-  ): Promise<Appointment[]> {
-    const { data } = await api.get<Appointment[]>(
+  ): Promise<AppointmentWithProducts[]> {
+    const { data } = await api.get<AppointmentWithProducts[]>(
       `/barbershops/${barbershopId}/clients/${id}/appointments`,
       { params: { limit } },
     );

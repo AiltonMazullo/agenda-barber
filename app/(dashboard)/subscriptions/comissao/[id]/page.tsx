@@ -100,7 +100,12 @@ export default function ComissaoClubeRelatorioPage() {
                   className="flex items-center justify-between py-2 text-sm"
                 >
                   <span className="text-foreground">{employeeName(share.employeeId)}</span>
-                  <span className="text-muted-foreground">{share.fichas} fichas</span>
+                  <span className="text-muted-foreground">
+                    {share.fichas}{" "}
+                    {barbershop?.commissionUnitType === "MINUTO"
+                      ? "minutos"
+                      : "fichas"}
+                  </span>
                   <span className="font-bold text-foreground">
                     {formatBRL(share.shareInCents / 100)}
                   </span>

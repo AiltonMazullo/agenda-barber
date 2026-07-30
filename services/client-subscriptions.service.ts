@@ -1,8 +1,8 @@
 import { clientApi } from "@/lib/client-api";
 import type {
   MySubscription,
-  SubscribeCheckoutResult,
   SubscribePayload,
+  SubscribeResult,
 } from "@/types/subscription.types";
 
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/subscriptions`;
@@ -17,11 +17,9 @@ export const clientSubscriptionsService = {
     return data;
   },
 
-  async subscribe(
-    barbershopId: string,
-    payload: SubscribePayload,
-  ): Promise<SubscribeCheckoutResult> {
-    const { data } = await clientApi.post<SubscribeCheckoutResult>(base(barbershopId), payload);
+  /** `payload.paymentMethod` decide o formato da resposta — ver `SubscribeResult`. */
+  async subscribe(barbershopId: string, payload: SubscribePayload): Promise<SubscribeResult> {
+    const { data } = await clientApi.post<SubscribeResult>(base(barbershopId), payload);
     return data;
   },
 

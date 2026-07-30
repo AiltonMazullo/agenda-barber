@@ -38,9 +38,13 @@ export interface AppointmentRaw {
   clientId: string;
   serviceId: string;
   employeeId: string | null;
+  /** Filial do agendamento. Null em registros legados criados antes do campo existir. */
+  branchId: string | null;
   barbershopId: string;
   /** Agrupa agendamentos criados na mesma reserva combo (múltiplos serviços). Null = serviço único. */
   groupId: string | null;
+  /** Sobrescreve a duração padrão do serviço (resize na agenda, ver §5.3). Null = usa `service.durationMin`. */
+  durationOverrideMin: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +54,19 @@ export interface Appointment extends AppointmentRaw {
   client: AppointmentClient;
   service: Service;
   employee?: AppointmentEmployee | null;
+}
+
+/** Produto vendido na comanda vinculada a um agendamento (ver `GET /clients/:id/appointments`). */
+export interface AppointmentProduct {
+  id: string;
+  nome: string;
+  quantidade: number;
+  valorUnitarioInCents: number;
+}
+
+/** Agendamento como vem de `GET /clients/:id/appointments` (histórico do modal de detalhe) — traz os produtos vendidos na comanda vinculada. */
+export interface AppointmentWithProducts extends Appointment {
+  products: AppointmentProduct[];
 }
 
 /** Barbearia como vem aninhada em `GET /clients/me/appointments`. */
@@ -94,4 +111,27 @@ export interface RescheduleAppointmentPayload {
   /** ISO datetime string (UTC). */
   scheduledAt: string;
   employeeId?: string;
+}
+
+/** Body de `PATCH /appointments/:id/transfer` — troca o cliente do agendamento (cascateia pro grupo, ver backend). */
+export interface TransferAppointmentPayload {
+  clientId: string;
+  /** ISO datetime string (UTC) — opcional, reagenda junto com a troca de cliente. */
+  scheduledAt?: string;
+}
+
+/**
+ * Body do endpoint unificado `PATCH /appointments/:id` (modal de detalhe,
+ * `DialogDetalhe`) — todos os campos são opcionais, envie só o que mudou.
+ * `employeeId: null` explícito limpa o profissional ("sem preferência");
+ * omitir a chave mantém o profissional atual.
+ */
+export interface UpdateAppointmentPayload {
+  serviceIds?: string[];
+  /** ISO datetime string (UTC). */
+  startAt?: string;
+  /** ISO datetime string (UTC) — equivalente a um resize. */
+  endAt?: string;
+  branchId?: string | null;
+  employeeId?: string | null;
 }

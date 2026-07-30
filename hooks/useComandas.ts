@@ -17,15 +17,20 @@ const STATUS_TOAST: Record<ComandaStatus, string> = {
 };
 
 /** CRUD de comandas da barbearia, integrado com a API real. */
-export function useComandas(barbershopId: string | undefined) {
+export function useComandas(
+  barbershopId: string | undefined,
+  dateFilter?: { dateFrom?: string; dateTo?: string },
+) {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const dateFrom = dateFilter?.dateFrom;
+  const dateTo = dateFilter?.dateTo;
 
   const fetchComandas = useCallback(async () => {
     if (!barbershopId) return;
     setIsLoading(true);
     try {
-      const data = await comandasService.list(barbershopId);
+      const data = await comandasService.list(barbershopId, { dateFrom, dateTo });
       setComandas(data);
     } catch (err) {
       toast.error(
@@ -34,7 +39,7 @@ export function useComandas(barbershopId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [barbershopId]);
+  }, [barbershopId, dateFrom, dateTo]);
 
   useEffect(() => {
     if (!barbershopId) {

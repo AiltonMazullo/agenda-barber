@@ -1,26 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   X,
-  User,
-  Phone,
-  Scissors,
-  Clock,
-  Wifi,
-  UserCheck,
-  FileText,
-  Trash2,
+  Search,
   Check,
-  CheckCheck,
-  Ban,
-  UserX,
-  History,
-  Receipt,
-  MessageCircle,
+  UserPlus,
   BadgeCheck,
-  AlertTriangle,
+  History,
+  Settings2,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -28,20 +19,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { InfoRow } from "./Primitives";
-import { isoToMin, localDateIso, minToTime } from "./helpers";
-import { PlanoAtivacao } from "./PlanoAtivacao";
+import { SelectField, DatePickerField } from "@/components/shared";
+import { QuickClientForm } from "./QuickClientForm";
+import { ServicoSelector } from "./ServicoSelector";
+import { HoraSelect } from "./HoraSelect";
+import { minToTime, timeToMin } from "./helpers";
 import { useAuth } from "@/hooks/useAuth";
 import { useWhatsappSettings } from "@/hooks/useWhatsappSettings";
 import { useClientRecentAppointments } from "@/hooks/useClientRecentAppointments";
+import { useClientDueRepurchases } from "@/hooks/useClientDueRepurchases";
+import { auditLogService } from "@/services/audit-log.service";
 import { buildWhatsappLink, renderWhatsappMessage } from "@/utils/whatsapp-template";
-import type { AgendamentoVM, ProfissionalVM, ServicoVM } from "./types";
+import type {
+  AgendamentoVM,
+  ProfissionalVM,
+  QuickClientInput,
+  ServicoSelecionado,
+  ServicoVM,
+} from "./types";
 import type {
   AppointmentStatus,
   UpdatableAppointmentStatus,
+  UpdateAppointmentPayload,
 } from "@/types/appointment.types";
+import type { AuditLog } from "@/types/audit-log.types";
+import type { Client } from "@/types/client.types";
+import type { Branch } from "@/types/branch.types";
 import type { Comanda } from "@/types/orders.types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
@@ -52,12 +70,6 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
   NO_SHOW: "Faltou",
 };
 
-/** "yyyy-MM-dd" → "dd/MM", sem depender do fuso do navegador. */
-function diaMes(dataIso: string): string {
-  const [, m, d] = dataIso.split("-");
-  return `${d}/${m}`;
-}
-
 const STATUS_TONE: Record<AppointmentStatus, string> = {
   PENDING: "bg-amber-500/15 text-amber-400",
   CONFIRMED: "bg-brand/15 text-brand",
@@ -66,14 +78,49 @@ const STATUS_TONE: Record<AppointmentStatus, string> = {
   NO_SHOW: "bg-pink-500/15 text-pink-400",
 };
 
+/** "yyyy-MM-dd" → "dd/MM", sem depender do fuso do navegador. */
+function diaMes(dataIso: string): string {
+  const [, m, d] = dataIso.split("-");
+  return `${d}/${m}`;
+}
+
+/** "yyyy-MM-dd" (fuso local, ver `dataIso`) + minutos do dia → ISO UTC (mesma convenção de `scheduledAt`). */
+function dateAndMinToIso(dataIso: string, min: number): string {
+  const d = new Date(`${dataIso}T00:00:00.000Z`);
+  d.setUTCMinutes(min);
+  return d.toISOString();
+}
+
+/** "yyyy-MM-dd" local → `Date` à meia-noite local (pro `DatePickerField`). */
+function localIsoToDate(dataIso: string): Date {
+  const [y, m, d] = dataIso.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+/** `Date` (fuso local) → "yyyy-MM-dd", pra recompor o ISO ao salvar. */
+function dateToLocalIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function DialogDetalhe({
   open,
   onOpenChange,
   agendamento,
   servico,
   profissional,
+  servicos,
+  profissionaisTodos,
+  branches,
+  clients,
+  clientActivePlans,
   onDelete,
   onUpdateStatus,
+  onSave,
+  onTransferClient,
+  onCreateClient,
   onAbrirComanda,
   comandaAberta,
 }: {
@@ -82,8 +129,23 @@ export function DialogDetalhe({
   agendamento: AgendamentoVM | null;
   servico: ServicoVM | null;
   profissional: ProfissionalVM | null;
+  /** Todos os serviços da barbearia — seletor de serviços (item 7). */
+  servicos: ServicoVM[];
+  /** Profissionais de todas as filiais — filtrados aqui pela filial escolhida no modal. */
+  profissionaisTodos: ProfissionalVM[];
+  /** Filiais disponíveis para o seletor de filial (item 3). */
+  branches: Branch[];
+  clients: Client[];
+  /** Nomes dos planos ativos por cliente — indicador "Cliente possui plano X + Y ativo" (item 2). */
+  clientActivePlans: Map<string, string[]>;
   onDelete: (id: string) => void;
   onUpdateStatus: (id: string, status: UpdatableAppointmentStatus) => void;
+  /** Salva as mudanças do formulário — `PATCH /appointments/:id` unificado. */
+  onSave: (id: string, payload: UpdateAppointmentPayload) => Promise<boolean>;
+  /** Troca o cliente do agendamento (endpoint dedicado `transfer`, cascateia pro grupo). */
+  onTransferClient: (id: string, clientId: string) => Promise<boolean>;
+  /** Criação rápida de cliente — mesmo formulário do modal de novo agendamento. */
+  onCreateClient: (data: QuickClientInput) => Promise<Client | null>;
   /** Cria uma comanda do tipo AGENDAMENTO pré-preenchida com este agendamento. */
   onAbrirComanda?: (agendamento: AgendamentoVM) => void | Promise<void>;
   /** Comanda ainda aberta já vinculada a este agendamento, se houver. */
@@ -93,20 +155,100 @@ export function DialogDetalhe({
   const { barbershop } = useAuth();
   const { data: whatsappSettings } = useWhatsappSettings(barbershop?.id);
   const [abrindoComanda, setAbrindoComanda] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Plano de ativação (mesmo componente usado no modal de criação) — só
-  // relevante quando o cliente ainda não é assinante; quando já é, mostramos
-  // um indicador compacto em vez do formulário de ativação.
-  const [ativarPlano, setAtivarPlano] = useState(false);
-  const [planoDataInicio, setPlanoDataInicio] = useState<Date | undefined>(
-    new Date(),
-  );
-  const [planoForma, setPlanoForma] = useState("DINHEIRO");
-  const [planoVencimento, setPlanoVencimento] = useState("");
-  const [planoCpf, setPlanoCpf] = useState("");
+  // ── Cliente ──
+  const [clientId, setClientId] = useState("");
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [showQuickClient, setShowQuickClient] = useState(false);
+  const [creatingClient, setCreatingClient] = useState(false);
 
-  const { appointments: ultimosAgendamentos, isLoading: loadingHistorico } =
+  // ── Data/horário/filial/profissional ──
+  const [data, setData] = useState<Date | undefined>(undefined);
+  const [horaInicio, setHoraInicio] = useState("09:00");
+  const [horaFim, setHoraFim] = useState("09:30");
+  const [branchId, setBranchId] = useState("");
+  const [profissionalId, setProfissionalId] = useState("");
+  const [semPreferencia, setSemPreferencia] = useState(false);
+
+  // ── Serviços ──
+  const [rows, setRows] = useState<ServicoSelecionado[]>([]);
+
+  // ── Histórico (auditoria) ──
+  const [historico, setHistorico] = useState<AuditLog[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
+
+  const { appointments: ultimosAgendamentos, isLoading: loadingUltimos } =
     useClientRecentAppointments(barbershop?.id, agendamento?.clientId, open, 3);
+  const { repurchases: itensRecompra, isLoading: loadingRecompra } =
+    useClientDueRepurchases(barbershop?.id, agendamento?.clientId, open);
+
+  const servicoMap = useMemo(() => {
+    const m = new Map<string, ServicoVM>();
+    servicos.forEach((s) => m.set(s.id, s));
+    return m;
+  }, [servicos]);
+
+  const profissionaisFiltrados = useMemo(
+    () =>
+      profissionaisTodos.filter(
+        (p) => !branchId || !p.branchId || p.branchId === branchId,
+      ),
+    [profissionaisTodos, branchId],
+  );
+
+  const cliente = useMemo(
+    () => clients.find((c) => c.id === clientId),
+    [clients, clientId],
+  );
+
+  const clientesFiltrados = useMemo(() => {
+    const q = buscaCliente.trim().toLowerCase();
+    const digits = buscaCliente.replace(/\D/g, "");
+    const base = q
+      ? clients.filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.email.toLowerCase().includes(q) ||
+            (digits.length >= 3 && (c.phone ?? "").includes(digits)) ||
+            (digits.length >= 3 && (c.cpf ?? "").includes(digits)),
+        )
+      : clients;
+    return base.slice(0, 50);
+  }, [clients, buscaCliente]);
+
+  const planosAtivos = clientId ? (clientActivePlans.get(clientId) ?? []) : [];
+
+  // ── Reset ao abrir ──
+  useEffect(() => {
+    if (!open || !agendamento) return;
+    setClientId(agendamento.clientId);
+    setBuscaCliente("");
+    setShowQuickClient(false);
+    setData(localIsoToDate(agendamento.dataIso));
+    setHoraInicio(minToTime(agendamento.inicioMin));
+    setHoraFim(minToTime(agendamento.inicioMin + agendamento.duracao));
+    setBranchId(agendamento.branchId ?? "");
+    setSemPreferencia(agendamento.semPreferencia);
+    setProfissionalId(agendamento.semPreferencia ? "" : agendamento.profissionalId);
+    setRows(
+      agendamento.servicos.length > 0
+        ? agendamento.servicos.map((s) => {
+            const vm = servicoMap.get(s.id);
+            return {
+              servicoId: s.id,
+              profissionalId: undefined,
+              duracao:
+                vm?.tempoPadrao ??
+                Math.round(agendamento.duracao / agendamento.servicos.length),
+              valor: vm?.preco ?? 0,
+            };
+          })
+        : [],
+    );
+    setHistorico([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, agendamento?.id]);
 
   const mensagemConfirmacao = useMemo(() => {
     if (!agendamento || !servico) return "";
@@ -126,8 +268,21 @@ export function DialogDetalhe({
   }, [agendamento, servico, profissional, whatsappSettings, barbershop]);
 
   if (!agendamento || !servico) return null;
-  const duracao = agendamento.duracao;
   const status = agendamento.status;
+
+  async function handleCreateClient(input: QuickClientInput) {
+    setCreatingClient(true);
+    try {
+      const created = await onCreateClient(input);
+      if (created) {
+        setClientId(created.id);
+        setBuscaCliente("");
+        setShowQuickClient(false);
+      }
+    } finally {
+      setCreatingClient(false);
+    }
+  }
 
   function handleEnviarWhatsapp() {
     if (!agendamento) return;
@@ -153,9 +308,104 @@ export function DialogDetalhe({
     }
   }
 
+  async function handleAbrirHistorico() {
+    if (!barbershop?.id || !agendamento) return;
+    setLoadingHistorico(true);
+    try {
+      const entityIds = agendamento.memberIds.join(",");
+      const logs = await auditLogService.list(barbershop.id, {
+        entityType: "AGENDAMENTO",
+        entityIds,
+      });
+      setHistorico(logs);
+    } catch {
+      setHistorico([]);
+    } finally {
+      setLoadingHistorico(false);
+    }
+  }
+
+  async function handleSalvar() {
+    if (!agendamento || !barbershop?.id) return;
+    if (!clientId) {
+      toast.error("Selecione o cliente.");
+      return;
+    }
+    if (rows.length === 0 || rows.some((r) => !r.servicoId)) {
+      toast.error("Selecione ao menos um serviço.");
+      return;
+    }
+    if (!data) {
+      toast.error("Selecione a data.");
+      return;
+    }
+    if (!semPreferencia && !profissionalId) {
+      toast.error('Selecione o profissional ou marque "sem preferência".');
+      return;
+    }
+    if (timeToMin(horaFim) <= timeToMin(horaInicio)) {
+      toast.error("Horário de fim deve ser após o início.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Cliente muda pelo endpoint dedicado de transferência (cascateia
+      // regras próprias já implementadas no backend) — feito antes do PATCH
+      // unificado pra não misturar as duas responsabilidades.
+      if (clientId !== agendamento.clientId) {
+        const ok = await onTransferClient(agendamento.id, clientId);
+        if (!ok) return;
+      }
+
+      const payload: UpdateAppointmentPayload = {};
+      const dataIso = dateToLocalIso(data);
+
+      const newServiceIds = rows.map((r) => r.servicoId).filter(Boolean);
+      const originalServiceIds = agendamento.servicos.map((s) => s.id);
+      const servicesChanged =
+        newServiceIds.length !== originalServiceIds.length ||
+        newServiceIds.some((id, i) => id !== originalServiceIds[i]);
+      if (servicesChanged) payload.serviceIds = newServiceIds;
+
+      const newStartIso = dateAndMinToIso(dataIso, timeToMin(horaInicio));
+      const originalStartIso = dateAndMinToIso(agendamento.dataIso, agendamento.inicioMin);
+      if (newStartIso !== originalStartIso) payload.startAt = newStartIso;
+
+      // Horário de fim (resize) — só faz sentido comparar contra o original
+      // quando a composição de serviços NÃO mudou (senão a duração já vem
+      // recomputada pelos novos serviços no backend).
+      if (!servicesChanged) {
+        const originalEndMin = agendamento.inicioMin + agendamento.duracao;
+        if (timeToMin(horaFim) !== originalEndMin) {
+          payload.endAt = dateAndMinToIso(dataIso, timeToMin(horaFim));
+        }
+      }
+
+      if (branchId !== (agendamento.branchId ?? "")) {
+        payload.branchId = branchId || null;
+      }
+
+      if (semPreferencia) {
+        if (!agendamento.semPreferencia) payload.employeeId = null;
+      } else if (profissionalId && profissionalId !== agendamento.profissionalId) {
+        payload.employeeId = profissionalId;
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const ok = await onSave(agendamento.id, payload);
+        if (!ok) return;
+      }
+
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-sm p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
         <div
           className="h-1 w-full rounded-t-lg"
           style={{ backgroundColor: servico.cor }}
@@ -168,143 +418,288 @@ export function DialogDetalhe({
                 style={{ backgroundColor: servico.cor }}
               />
               <DialogTitle className="text-base font-bold">
-                {servico.nome}
+                Detalhe do agendamento
               </DialogTitle>
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                  STATUS_TONE[status],
+                )}
+              >
+                {STATUS_LABEL[status]}
+              </span>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
         </DialogHeader>
-        <div className="px-6 py-5 space-y-3 max-h-[70vh] overflow-y-auto schedule-scroll">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Status</span>
-            <span
-              className={cn(
-                "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
-                STATUS_TONE[status],
-              )}
-            >
-              {STATUS_LABEL[status]}
-            </span>
-          </div>
-          <InfoRow
-            icon={<User className="size-3.5" />}
-            label="Cliente"
-            value={agendamento.cliente}
-          />
-          <InfoRow
-            icon={<Phone className="size-3.5" />}
-            label="Telefone"
-            value={agendamento.telefone || "—"}
-          />
-          <InfoRow
-            icon={<Scissors className="size-3.5" />}
-            label="Profissional"
-            value={profissional?.nome ?? "—"}
-          />
-          <InfoRow
-            icon={<Clock className="size-3.5" />}
-            label="Horário"
-            value={`${minToTime(agendamento.inicioMin)} – ${minToTime(agendamento.inicioMin + duracao)} (${duracao}min)`}
-          />
-          <InfoRow
-            icon={
-              agendamento.origem === "online" ? (
-                <Wifi className="size-3.5" />
-              ) : (
-                <UserCheck className="size-3.5" />
-              )
-            }
-            label="Origem"
-            value={agendamento.origem === "online" ? "Online" : "Recepção"}
-          />
-          {agendamento.observacao && (
-            <InfoRow
-              icon={<FileText className="size-3.5" />}
-              label="Obs."
-              value={agendamento.observacao}
-            />
-          )}
-          <div className="pt-1 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Valor do serviço</span>
-            <span className="text-sm font-bold text-emerald-400">
-              R$ {servico.preco.toFixed(2).replace(".", ",")}
-            </span>
-          </div>
 
-          {/* ── Plano do cliente ── */}
-          <div className="pt-1">
-            {agendamento.assinante === "ativo" ? (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <BadgeCheck className="size-3.5 text-emerald-400 shrink-0" />
-                <p className="text-[11px] text-muted-foreground">
-                  Cliente assinante <span className="text-emerald-400 font-semibold">ativo</span>.
-                </p>
+        <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto schedule-scroll">
+          {/* ── 1. Cliente ── */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Cliente
+              </label>
+              {!showQuickClient && (
+                <button
+                  type="button"
+                  onClick={() => setShowQuickClient(true)}
+                  className="text-[11px] font-bold text-brand hover:text-brand-hover transition-colors flex items-center gap-1"
+                >
+                  <UserPlus className="size-3" />
+                  Novo cliente
+                </button>
+              )}
+            </div>
+
+            {showQuickClient && (
+              <div className="pb-2">
+                <QuickClientForm
+                  onSubmit={(d) => void handleCreateClient(d)}
+                  onCancel={() => setShowQuickClient(false)}
+                  submitting={creatingClient}
+                />
               </div>
-            ) : agendamento.assinante === "inadimplente" ? (
-              <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                <AlertTriangle className="size-3.5 text-amber-400 shrink-0" />
-                <p className="text-[11px] text-muted-foreground">
-                  Assinante com fatura <span className="text-amber-400 font-semibold">em atraso</span>.
-                </p>
-              </div>
-            ) : (
-              <PlanoAtivacao
-                ativar={ativarPlano}
-                onAtivarChange={setAtivarPlano}
-                dataInicio={planoDataInicio}
-                onDataInicioChange={setPlanoDataInicio}
-                formaPagamento={planoForma}
-                onFormaPagamentoChange={setPlanoForma}
-                vencimento={planoVencimento}
-                onVencimentoChange={setPlanoVencimento}
-                cpf={planoCpf}
-                onCpfChange={setPlanoCpf}
-              />
+            )}
+
+            {!showQuickClient && (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-text-faint" />
+                  <Input
+                    value={buscaCliente}
+                    onChange={(e) => setBuscaCliente(e.target.value)}
+                    placeholder={
+                      cliente ? cliente.name : "Buscar por nome, telefone ou CPF"
+                    }
+                    className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 pl-9"
+                  />
+                </div>
+                {buscaCliente.trim().length > 0 && (
+                  <div className="max-h-40 overflow-y-auto schedule-scroll rounded-md border border-border-subtle divide-y divide-border-subtle">
+                    {clientesFiltrados.length === 0 ? (
+                      <p className="text-xs text-text-faint text-center py-4">
+                        Nenhum cliente encontrado.
+                      </p>
+                    ) : (
+                      clientesFiltrados.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setClientId(c.id);
+                            setBuscaCliente("");
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors",
+                            clientId === c.id ? "bg-brand/10" : "hover:bg-surface-elevated",
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm text-foreground truncate">{c.name}</p>
+                            <p className="text-[11px] text-text-faint truncate">
+                              {c.phone || c.email}
+                            </p>
+                          </div>
+                          {clientId === c.id && <Check className="size-3.5 text-brand shrink-0" />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* ── Últimos agendamentos do cliente ── */}
-          <div className="pt-1 space-y-1.5">
+          {/* ── 2. Indicador de plano ativo ── */}
+          {clientId && planosAtivos.length > 0 && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <BadgeCheck className="size-3.5 text-emerald-400 shrink-0" />
+              <p className="text-[11px] text-muted-foreground">
+                ✓ Cliente possui plano{" "}
+                <span className="text-emerald-400 font-semibold">
+                  {planosAtivos.join(" + ")}
+                </span>{" "}
+                ativo.
+              </p>
+            </div>
+          )}
+
+          {/* ── 3. Data / Horário início / Horário fim / Filial ── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Data *
+              </label>
+              <DatePickerField id="det-data" date={data} onChange={setData} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Filial *
+              </label>
+              <SelectField
+                id="det-filial"
+                value={branchId}
+                options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                onChange={(v) => {
+                  setBranchId(v);
+                  setProfissionalId("");
+                }}
+                placeholder="Selecione"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Horário de início *
+              </label>
+              <HoraSelect value={horaInicio} onChange={setHoraInicio} date={data} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                Horário de fim *
+              </label>
+              <HoraSelect value={horaFim} onChange={setHoraFim} date={data} />
+            </div>
+          </div>
+
+          {/* ── 4. Profissional + Sem preferência ── */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+              Profissional *
+            </label>
+            <SelectField
+              id="det-profissional"
+              value={profissionalId}
+              options={profissionaisFiltrados.map((p) => ({ value: p.id, label: p.nome }))}
+              onChange={setProfissionalId}
+              placeholder="Selecione"
+              className={cn(semPreferencia && "opacity-50 pointer-events-none")}
+            />
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-0.5">
+              <Checkbox
+                checked={semPreferencia}
+                onCheckedChange={(c) => {
+                  const checked = c === true;
+                  setSemPreferencia(checked);
+                  if (checked) setProfissionalId("");
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Sem preferência por profissional
+              </span>
+            </label>
+          </div>
+
+          {/* ── 5. Últimos 3 agendamentos ── */}
+          <div className="space-y-1.5">
             <div className="flex items-center gap-1.5">
               <History className="size-3.5 text-muted-foreground" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Últimos agendamentos
               </span>
             </div>
-            {loadingHistorico ? (
+            {loadingUltimos ? (
               <p className="text-xs text-text-faint">Carregando…</p>
-            ) : ultimosAgendamentos.length === 0 ? (
+            ) : ultimosAgendamentos.filter((a) => a.id !== agendamento.id).length === 0 ? (
               <p className="text-xs text-text-faint">
                 Nenhum outro agendamento encontrado.
               </p>
             ) : (
-              <div className="rounded-md border border-border-subtle divide-y divide-border-subtle">
-                {ultimosAgendamentos
-                  .filter((a) => a.id !== agendamento.id)
-                  .slice(0, 3)
-                  .map((a) => (
-                    <div
-                      key={a.id}
-                      className="px-3 py-1.5 flex items-center justify-between gap-2"
-                    >
-                      <span className="text-xs text-foreground truncate">
-                        {a.service?.name ?? "Serviço"}
-                      </span>
-                      <span className="text-[11px] text-text-faint whitespace-nowrap">
-                        {diaMes(localDateIso(a.scheduledAt))}{" "}
-                        {minToTime(isoToMin(a.scheduledAt))}
-                      </span>
-                    </div>
-                  ))}
+              <div className="rounded-md border border-border-subtle divide-y divide-border-subtle overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-text-faint">
+                      <th className="text-left font-medium px-2 py-1">Data</th>
+                      <th className="text-left font-medium px-2 py-1">Serviço</th>
+                      <th className="text-left font-medium px-2 py-1">Produtos</th>
+                      <th className="text-left font-medium px-2 py-1">Profissional</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {ultimosAgendamentos
+                      .filter((a) => a.id !== agendamento.id)
+                      .slice(0, 3)
+                      .map((a) => (
+                        <tr key={a.id}>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-foreground">
+                            {diaMes(a.scheduledAt.slice(0, 10))}
+                          </td>
+                          <td className="px-2 py-1.5 text-foreground truncate max-w-[100px]">
+                            {a.service?.name ?? "Serviço"}
+                          </td>
+                          <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[100px]">
+                            {a.products.length > 0
+                              ? a.products.map((p) => p.nome).join(", ")
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[90px]">
+                            {a.employee?.appName ?? a.employee?.name ?? "—"}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
+
+          {/* ── 6. Itens para recompra ── */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Itens para recompra
+            </span>
+            {loadingRecompra ? (
+              <p className="text-xs text-text-faint">Carregando…</p>
+            ) : itensRecompra.length === 0 ? (
+              <p className="text-xs text-text-faint">Nenhum item vencendo ou vencido.</p>
+            ) : (
+              <div className="rounded-md border border-border-subtle divide-y divide-border-subtle overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-text-faint">
+                      <th className="text-left font-medium px-2 py-1">Data</th>
+                      <th className="text-left font-medium px-2 py-1">Item</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {itensRecompra.map((r) => (
+                      <tr key={r.id}>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-foreground">
+                          {diaMes(r.repurchaseAt.slice(0, 10))}
+                        </td>
+                        <td
+                          className={cn(
+                            "px-2 py-1.5",
+                            new Date(r.repurchaseAt) < new Date()
+                              ? "text-red-400"
+                              : "text-amber-400",
+                          )}
+                        >
+                          {r.service?.name ?? r.product?.name ?? "Item"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── 7. Serviços ── */}
+          <ServicoSelector
+            value={rows}
+            onChange={setRows}
+            servicos={servicos}
+            profissionais={profissionaisFiltrados}
+          />
 
           {/* ── Ações rápidas ── */}
           <div className="flex flex-wrap gap-2 pt-1">
@@ -313,7 +708,6 @@ export function DialogDetalhe({
               onClick={handleEnviarWhatsapp}
               className="h-8 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5"
             >
-              <MessageCircle className="size-3.5" />
               Enviar confirmação
             </button>
             {(onAbrirComanda || comandaAberta) && (
@@ -323,75 +717,115 @@ export function DialogDetalhe({
                 disabled={abrindoComanda}
                 className="h-8 px-3 rounded-md border border-border bg-surface-elevated text-xs text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5 disabled:opacity-60"
               >
-                <Receipt className="size-3.5" />
-                {abrindoComanda
-                  ? "Abrindo…"
-                  : comandaAberta
-                    ? "Ver comanda"
-                    : "Abrir comanda"}
+                {abrindoComanda ? "Abrindo…" : comandaAberta ? "Ver comanda" : "Abrir comanda"}
               </button>
             )}
           </div>
-
-          {/* Ações de status */}
-          {(status === "PENDING" || status === "CONFIRMED") && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {status === "PENDING" && (
-                <button
-                  type="button"
-                  onClick={() => onUpdateStatus(agendamento.id, "CONFIRMED")}
-                  className="h-8 px-3 rounded-md border border-brand/40 bg-brand/10 text-xs text-brand hover:bg-brand/20 transition-colors flex items-center gap-1.5"
-                >
-                  <Check className="size-3.5" />
-                  Confirmar
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(agendamento.id, "COMPLETED")}
-                className="h-8 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5"
-              >
-                <CheckCheck className="size-3.5" />
-                Concluir
-              </button>
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(agendamento.id, "NO_SHOW")}
-                className="h-8 px-3 rounded-md border border-pink-500/30 bg-pink-500/10 text-xs text-pink-400 hover:bg-pink-500/20 transition-colors flex items-center gap-1.5"
-              >
-                <UserX className="size-3.5" />
-                Marcar falta
-              </button>
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(agendamento.id, "CANCELLED")}
-                className="h-8 px-3 rounded-md border border-red-500/30 bg-red-500/10 text-xs text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
-              >
-                <Ban className="size-3.5" />
-                Cancelar
-              </button>
-            </div>
-          )}
         </div>
-        <div className="px-6 pb-6 pt-4 flex justify-between gap-3 border-t border-border-subtle">
-          <button
-            type="button"
-            onClick={() => {
-              onDelete(agendamento.id);
-              onOpenChange(false);
-            }}
-            className="h-9 px-4 rounded-md border border-red-500/30 bg-red-500/10 text-sm text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
-          >
-            <Trash2 className="size-3.5" />
-            Remover
-          </button>
+
+        {/* ── 8. Rodapé ── */}
+        <div className="px-6 pb-6 pt-4 flex items-center justify-between gap-2 border-t border-border-subtle">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
+            className="h-9 px-4 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
           >
-            Fechar
+            Cancelar
           </button>
+
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger
+                onClick={() => void handleAbrirHistorico()}
+                className="h-9 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <History className="size-3.5" />
+                Histórico
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-80 bg-surface-raised border-border text-foreground p-0"
+              >
+                <div className="max-h-72 overflow-y-auto schedule-scroll p-3 space-y-2">
+                  {loadingHistorico ? (
+                    <p className="text-xs text-text-faint text-center py-4">Carregando…</p>
+                  ) : historico.length === 0 ? (
+                    <p className="text-xs text-text-faint text-center py-4">
+                      Nenhum evento registrado.
+                    </p>
+                  ) : (
+                    historico.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-md border border-border-subtle p-2 text-[11px] space-y-0.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-foreground">{log.action}</span>
+                          <span className="text-text-faint">
+                            {new Date(log.createdAt).toLocaleString("pt-BR")}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground">
+                          {log.field}: {log.oldValue ?? "—"} → {log.newValue ?? "—"}
+                        </p>
+                        <p className="text-text-faint">{log.actorName}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger className="h-9 px-3 rounded-md border border-border bg-surface-elevated text-xs text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5">
+                <Settings2 className="size-3.5" />
+                Opções
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-surface-raised border-border text-foreground">
+                {status === "PENDING" && (
+                  <DropdownMenuItem onClick={() => onUpdateStatus(agendamento.id, "CONFIRMED")}>
+                    Confirmar
+                  </DropdownMenuItem>
+                )}
+                {(status === "PENDING" || status === "CONFIRMED") && (
+                  <>
+                    <DropdownMenuItem onClick={() => onUpdateStatus(agendamento.id, "COMPLETED")}>
+                      Concluir atendimento
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onUpdateStatus(agendamento.id, "NO_SHOW")}>
+                      Marcar falta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onUpdateStatus(agendamento.id, "CANCELLED")}
+                      className="text-red-400"
+                    >
+                      Cancelar agendamento
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuItem
+                  onClick={() => {
+                    onDelete(agendamento.id);
+                    onOpenChange(false);
+                  }}
+                  className="text-red-400"
+                >
+                  <Trash2 className="size-3.5 mr-1.5" />
+                  Remover
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <button
+              type="button"
+              onClick={() => void handleSalvar()}
+              disabled={saving}
+              className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {saving && <Loader2 className="size-3.5 animate-spin" />}
+              {saving ? "Salvando…" : "Salvar agendamento"}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

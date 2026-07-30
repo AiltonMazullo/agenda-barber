@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { clientSubscriptionsService } from "@/services/client-subscriptions.service";
-import type { MySubscription } from "@/types/subscription.types";
+import {
+  isPixAuthorizationResult,
+  type MySubscription,
+  type SubscribePixAuthorizationResult,
+  type SubscriptionPaymentMethod,
+} from "@/types/subscription.types";
 
 /** Traduz mensagens de erro conhecidas da API para um texto amigável em pt-BR. */
 function translateCancelError(message: string): string {
@@ -42,17 +47,38 @@ export function useClientSubscription(barbershopId: string | undefined) {
     fetchMine();
   }, [barbershopId, fetchMine]);
 
+  /**
+   * `paymentMethod: "CREDIT_CARD"` (padrão) redireciona pro checkout hospedado
+   * pelo gateway e retorna `true` — a assinatura só é criada de fato quando o
+   * pagamento for confirmado (webhook). `paymentMethod: "PIX_AUTOMATICO"` NÃO
+   * redireciona: retorna o `SubscribePixAuthorizationResult` (com o QR/link de
+   * autorização) para a página exibir e fazer polling do status — ver
+   * `PlanoClientePage`.
+   */
   const subscribe = useCallback(
-    async (planId: string) => {
+    async (
+      planId: string,
+      paymentMethod: SubscriptionPaymentMethod = "CREDIT_CARD",
+    ): Promise<boolean | SubscribePixAuthorizationResult> => {
       if (!barbershopId) return false;
       try {
-        const result = await clientSubscriptionsService.subscribe(barbershopId, { planId });
+        const result = await clientSubscriptionsService.subscribe(barbershopId, {
+          planId,
+          paymentMethod,
+        });
+
+        if (isPixAuthorizationResult(result)) {
+          if (!result.paymentAuthorization.authorizationUrl) {
+            toast.error("Não foi possível gerar a autorização Pix Automático.");
+            return false;
+          }
+          return result;
+        }
+
         if (!result.checkoutUrl) {
           toast.error(result.errorMessage ?? "Não foi possível gerar o checkout.");
           return false;
         }
-        // Redireciona pro checkout hospedado pelo gateway — a assinatura só é
-        // criada de fato quando o pagamento for confirmado (webhook).
         window.location.href = result.checkoutUrl;
         return true;
       } catch (err) {

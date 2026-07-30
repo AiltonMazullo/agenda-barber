@@ -1,25 +1,19 @@
 /**
- * Persistência **local** (localStorage) dos campos de configuração da filial
- * que o backend ainda não armazena (CNPJ, flags, taxas, prazo, conta bancária).
+ * Persistência **local** (localStorage) do CNPJ da filial — único campo de
+ * `DialogFilial` que o backend ainda não armazena (`model Branch` não tem
+ * coluna própria para isso). `isReceivingBranch`/`isHidden` já são persistidos
+ * de verdade pelo backend e não passam mais por aqui.
  *
- * Mescla esses extras nas filiais carregadas/criadas/atualizadas, para que a UI
- * exiba e mantenha os dados entre reloads. Quando o backend passar a persistir
- * esses campos, basta remover esta camada.
+ * Mescla o CNPJ nas filiais carregadas/criadas/atualizadas, para que a UI
+ * exiba e mantenha o dado entre reloads. Quando o backend passar a persistir
+ * esse campo, basta remover esta camada.
  */
 
 import type { Branch } from "@/types/branch.types";
 
 const KEY = "sm_branch_config";
 
-export type BranchConfigExtras = Pick<
-  Branch,
-  | "cnpj"
-  | "isReceivingBranch"
-  | "isHidden"
-  | "receiptDeadlineDays"
-  | "bankAccount"
-  | "paymentConfigs"
->;
+export type BranchConfigExtras = Pick<Branch, "cnpj">;
 
 function readAll(): Record<string, BranchConfigExtras> {
   if (typeof window === "undefined") return {};

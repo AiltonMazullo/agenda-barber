@@ -29,25 +29,17 @@ export interface EmployeeTimeOff {
   endDate: string;   // "YYYY-MM-DD"
 }
 
-export interface EmployeeProductCommissionTier {
-  id: string;
-  fromInCents: number;
-  toInCents: number | null; // null = "em diante"
-  percent: number;
-}
-
+/** Cada linha é uma regra independente (categoria + valor mínimo + comissão), sem faixa De/Até. */
 export interface EmployeeProductCommissionRule {
   id: string;
   employeeId: string;
   categoryId: string | null; // null = todas as categorias
   minSaleValueInCents: number;
-  tiers: EmployeeProductCommissionTier[];
+  percent: number;
 }
 
 export interface UpdateProductCommissionRulePayload {
-  categoryId: string | null;
-  minSaleValueInCents: number;
-  tiers: { fromInCents: number; toInCents: number | null; percent: number }[];
+  rules: { categoryId: string | null; minSaleValueInCents: number; percent: number }[];
 }
 
 export interface EmployeeDifferentiatedCommission {
@@ -93,6 +85,8 @@ export interface Employee {
   updatedAt: string;
   /** Serviços que este profissional realiza (incluso no catálogo público). */
   employeeServices?: { serviceId: string }[];
+  /** Dias à frente que o cliente pode ver/agendar online com este profissional. `null` = sem limite. */
+  attendancePeriodDays?: number | null;
 }
 
 export interface CreateEmployeePayload {
@@ -115,6 +109,7 @@ export interface CreateEmployeePayload {
   uf: string;
   number: string;
   complement?: string;
+  attendancePeriodDays?: number | null;
 }
 
 export interface UpdateEmployeePayload {
@@ -137,4 +132,5 @@ export interface UpdateEmployeePayload {
   uf?: string;
   number?: string;
   complement?: string;
+  attendancePeriodDays?: number | null;
 }

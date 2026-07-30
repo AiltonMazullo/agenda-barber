@@ -1,5 +1,9 @@
 /** Notificação exibida no sino do header. */
-export type NotificationType = "NEW_APPOINTMENT" | "LOW_STOCK" | "TODAY_APPOINTMENTS";
+export type NotificationType =
+  | "NEW_APPOINTMENT"
+  | "LOW_STOCK"
+  | "CASH_DIVERGENCE"
+  | "TODAY_APPOINTMENTS";
 
 export interface AppNotification {
   id: string;

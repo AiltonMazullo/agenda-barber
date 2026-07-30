@@ -14,6 +14,7 @@ export function AgendamentoCard({
   slotSize,
   slotHeightPx,
   isDragging = false,
+  isResizing = false,
   onClick,
   onResizeStart,
 }: {
@@ -22,6 +23,8 @@ export function AgendamentoCard({
   slotSize: SlotSize;
   slotHeightPx: number;
   isDragging?: boolean;
+  /** Card sendo redimensionado (§5.3) — reduz opacidade enquanto mostra a prévia tracejada. */
+  isResizing?: boolean;
   onClick?: () => void;
   onResizeStart?: (e: React.PointerEvent) => void;
 }) {
@@ -39,14 +42,19 @@ export function AgendamentoCard({
       }
       className={cn(
         "absolute left-0.5 right-0.5 rounded-md overflow-hidden select-none transition-all",
-        isDragging ? "opacity-40" : "opacity-100",
+        isDragging ? "opacity-40" : isResizing ? "opacity-50" : "opacity-100",
         onClick && !isDragging
           ? "cursor-pointer hover:brightness-110"
           : "cursor-grab active:cursor-grabbing",
       )}
       style={{
         height: `${heightPx - 2}px`,
-        background: "rgba(28,33,40,0.97)",
+        // "Sem preferência de profissional" (employeeId null, ver DialogDetalhe
+        // item 4): fundo listrado diagonal em vez de sólido, pra diferenciar o
+        // card visualmente de um agendamento com profissional definido.
+        background: agendamento.semPreferencia
+          ? "repeating-linear-gradient(135deg, rgba(28,33,40,0.97) 0px, rgba(28,33,40,0.97) 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)"
+          : "rgba(28,33,40,0.97)",
         // Bordas laterais e inferior conforme a situação do agendamento.
         borderLeft: `3px solid ${statusCor}`,
         borderRight: `1.5px solid ${statusCor}`,

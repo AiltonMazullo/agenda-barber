@@ -9,10 +9,13 @@ export function TimeLine({
   slotSize,
   slotHeightPx,
   totalSlots,
+  startHour = START_HOUR,
 }: {
   slotSize: SlotSize;
   slotHeightPx: number;
   totalSlots: number;
+  /** Início da grade, em horas — ver §5.1 (range dinâmico por profissionais do dia). */
+  startHour?: number;
 }) {
   return (
     <div className="flex flex-col w-16 shrink-0">
@@ -23,7 +26,7 @@ export function TimeLine({
       </div>
       <div className="relative" style={{ height: totalSlots * slotHeightPx }}>
         {Array.from({ length: totalSlots }).map((_, i) => {
-          const min = START_HOUR * 60 + i * slotSize;
+          const min = startHour * 60 + i * slotSize;
           return (
             <div
               key={i}

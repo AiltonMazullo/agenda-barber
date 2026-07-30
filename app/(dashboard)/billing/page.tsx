@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CreditCard,
   ExternalLink,
+  QrCode,
   ReceiptText,
 } from "lucide-react";
 import {
@@ -18,10 +19,13 @@ import {
   StatusBadge,
 } from "@/components/shared";
 import { BillingProfileForm } from "@/components/subscription/BillingProfileForm";
+import { PixQrCodePanel } from "@/components/subscription/PixQrCodePanel";
 import { usePlatformSubscription } from "@/hooks/usePlatformSubscription";
 import { platformSubscriptionService } from "@/services/platform-subscription.service";
 import { formatBRL, formatDate } from "@/utils/format";
 import type {
+  PixQrCode,
+  PlatformPaymentMethod,
   PlatformSubscriptionStatus,
 } from "@/types/platform-subscription.types";
 import type { Tone } from "@/types/common.types";
@@ -46,6 +50,9 @@ function BillingContent() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PlatformPaymentMethod>("CREDIT_CARD");
+  const [pixQrCode, setPixQrCode] = useState<PixQrCode | null>(null);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -62,9 +69,21 @@ function BillingContent() {
 
   async function handleSubscribe() {
     setIsRedirecting(true);
+    setPixQrCode(null);
     try {
-      const { checkoutUrl } = await platformSubscriptionService.checkout();
-      window.location.assign(checkoutUrl);
+      const result = await platformSubscriptionService.checkout(selectedPaymentMethod);
+      if (result.paymentMethod === "PIX") {
+        if (result.pixQrCode) {
+          setPixQrCode(result.pixQrCode);
+        } else {
+          toast.error("Não foi possível gerar o QR Code Pix agora. Tente novamente em instantes.");
+        }
+        setIsRedirecting(false);
+        return;
+      }
+      if (result.checkoutUrl) {
+        window.location.assign(result.checkoutUrl);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível iniciar o checkout.");
       setIsRedirecting(false);
@@ -154,6 +173,35 @@ function BillingContent() {
             </div>
           </div>
 
+          {showSubscribeAction && !pendingCharge && !needsBillingProfile && (
+            <div className="flex items-center gap-1 rounded-md border border-border p-1">
+              <button
+                type="button"
+                onClick={() => setSelectedPaymentMethod("CREDIT_CARD")}
+                className={`h-8 px-3 rounded text-sm font-medium flex items-center gap-1.5 transition-colors ${
+                  selectedPaymentMethod === "CREDIT_CARD"
+                    ? "bg-brand text-brand-foreground"
+                    : "text-muted-foreground hover:bg-surface-elevated"
+                }`}
+              >
+                <CreditCard className="size-4" />
+                Cartão de crédito
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPaymentMethod("PIX")}
+                className={`h-8 px-3 rounded text-sm font-medium flex items-center gap-1.5 transition-colors ${
+                  selectedPaymentMethod === "PIX"
+                    ? "bg-brand text-brand-foreground"
+                    : "text-muted-foreground hover:bg-surface-elevated"
+                }`}
+              >
+                <QrCode className="size-4" />
+                Pix
+              </button>
+            </div>
+          )}
+
           {pendingCharge?.invoiceUrl && (
             <a
               href={pendingCharge.invoiceUrl}
@@ -175,10 +223,14 @@ function BillingContent() {
               className="h-10 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-50"
             >
               {isRedirecting
-                ? "Redirecionando…"
+                ? selectedPaymentMethod === "PIX"
+                  ? "Gerando Pix…"
+                  : "Redirecionando…"
                 : subscription.status === "CANCELED"
                   ? "Reativar assinatura"
-                  : "Assinar agora"}
+                  : selectedPaymentMethod === "PIX"
+                    ? "Gerar Pix"
+                    : "Assinar agora"}
             </button>
           )}
 
@@ -203,6 +255,17 @@ function BillingContent() {
 
         {needsBillingProfile && (
           <BillingProfileForm profile={subscription.billingProfile} onSaved={() => refetch()} />
+        )}
+
+        {pixQrCode && (
+          <div className="space-y-2">
+            <PixQrCodePanel qrCode={pixQrCode} />
+            <p className="text-xs text-muted-foreground">
+              Assim que o pagamento for confirmado pelo Pix, sua assinatura é ativada
+              automaticamente. No plano Pix, uma nova cobrança (com QR Code novo) é gerada a cada
+              mês — diferente do cartão, o Pix aqui não é débito automático.
+            </p>
+          </div>
         )}
       </div>
 

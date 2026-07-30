@@ -63,6 +63,8 @@ export interface CashRegister {
   countedCashInCents?: number | null;
   /** `countedCashInCents - dinheiro esperado`, calculado no fechamento. Pode ser negativo. */
   cashDifferenceInCents?: number | null;
+  /** Motivo da divergência, obrigatório quando `cashDifferenceInCents !== 0`. */
+  divergenceReasonNote?: string | null;
 }
 
 export interface CreateCashRegisterPayload {
@@ -76,6 +78,8 @@ export interface UpdateCashRegisterPayload {
 export interface ClosePayload {
   /** Valor contado fisicamente na gaveta ao fechar (centavos). Opcional para não travar fechamentos rápidos. */
   countedCashInCents?: number;
+  /** Obrigatório quando o fechamento apurar divergência de caixa (o backend rejeita sem isso). */
+  divergenceReasonNote?: string;
 }
 
 export interface CashRegisterClosingSummary {

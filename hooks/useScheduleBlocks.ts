@@ -79,5 +79,23 @@ export function useScheduleBlocks(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { blocks, isLoading, create, remove };
+  /** Arrastar/redimensionar um bloqueio na agenda (ver spec-revisao-cliente-1.md §5.5). */
+  const update = useCallback(
+    async (id: string, payload: { startAt: string; endAt: string }) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await scheduleBlocksService.update(barbershopId, id, payload);
+        setBlocks((prev) => prev.map((b) => (b.id === id ? updated : b)));
+        return updated;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Falha ao mover o bloqueio.",
+        );
+        return null;
+      }
+    },
+    [barbershopId],
+  );
+
+  return { blocks, isLoading, create, remove, update };
 }

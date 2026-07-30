@@ -33,7 +33,7 @@ interface DialogFechamentoCaixaProps {
   summary?: CashRegisterClosingSummary | null;
   loadingSummary?: boolean;
   busy?: boolean;
-  onConfirm: (countedCashInCents?: number) => void;
+  onConfirm: (countedCashInCents?: number, divergenceReasonNote?: string) => void;
 }
 
 export function DialogFechamentoCaixa({
@@ -48,10 +48,12 @@ export function DialogFechamentoCaixa({
   onConfirm,
 }: DialogFechamentoCaixaProps) {
   const [contado, setContado] = useState("");
+  const [motivoDivergencia, setMotivoDivergencia] = useState("");
 
   useEffect(() => {
     if (open) {
       setContado("");
+      setMotivoDivergencia("");
     }
   }, [open]);
 
@@ -101,6 +103,13 @@ export function DialogFechamentoCaixa({
   const paymentRows = Array.from(byPayment.entries()).sort((a, b) =>
     b[1] - a[1],
   );
+
+  /** Saídas em dinheiro lançadas manualmente no caixa (ex.: retirada, troco, despesa avulsa). */
+  const withdrawals = useMemo(
+    () => transactions.filter((t) => t.type !== "ENTRY"),
+    [transactions],
+  );
+  const totalSaidas = withdrawals.reduce((sum, t) => sum + t.valueInCents, 0);
 
   function labelFor(key: string): string {
     if (key === "SEM_CLASSIFICACAO") return "Sem classificação";
@@ -208,6 +217,39 @@ export function DialogFechamentoCaixa({
             )}
           </div>
 
+          {/* Saídas em dinheiro */}
+          {withdrawals.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-danger-foreground">
+                Saídas
+              </p>
+              <div className="space-y-1.5">
+                {withdrawals.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-base px-3 py-2"
+                  >
+                    <span className="text-sm text-foreground">
+                      {t.name}
+                      {t.description ? ` — ${t.description}` : ""}
+                    </span>
+                    <span className="text-sm font-bold text-danger-foreground">
+                      -{formatBRL(t.valueInCents / 100)}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-lg border border-border bg-surface-elevated px-3 py-2">
+                  <span className="text-sm font-bold text-foreground">
+                    Total de saídas
+                  </span>
+                  <span className="text-sm font-bold text-danger-foreground">
+                    -{formatBRL(totalSaidas / 100)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Assinaturas manuais do dia */}
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-brand flex items-center gap-1.5">
@@ -281,6 +323,21 @@ export function DialogFechamentoCaixa({
                 </span>
               </div>
             )}
+
+            {cashDifferenceInCents !== null && cashDifferenceInCents !== 0 && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-danger-foreground">
+                  Motivo da divergência *
+                </label>
+                <textarea
+                  value={motivoDivergencia}
+                  onChange={(e) => setMotivoDivergencia(e.target.value)}
+                  placeholder="Explique a diferença encontrada na contagem…"
+                  rows={2}
+                  className="w-full rounded-md bg-surface-base border border-border text-foreground placeholder:text-text-faint text-sm p-2.5 resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-foreground/30"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
@@ -303,8 +360,13 @@ export function DialogFechamentoCaixa({
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(countedCashInCents)}
-            disabled={busy}
+            onClick={() => onConfirm(countedCashInCents, motivoDivergencia.trim() || undefined)}
+            disabled={
+              busy ||
+              (cashDifferenceInCents !== null &&
+                cashDifferenceInCents !== 0 &&
+                !motivoDivergencia.trim())
+            }
             className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 disabled:opacity-60"
           >
             <Lock className="size-3.5" />

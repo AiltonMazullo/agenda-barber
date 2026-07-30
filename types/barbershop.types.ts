@@ -11,6 +11,8 @@ export type ValeDeductionSource =
   | "SERVICOS_ASSINATURA"
   | "PRODUTOS";
 
+export type CommissionUnitType = "FICHA" | "MINUTO";
+
 export interface Barbershop {
   id: string;
   name: string;
@@ -37,6 +39,7 @@ export interface Barbershop {
   clubName?: string | null;
   dpoteCommissionPercent?: number | null;
   hideFichaFromBarberReport?: boolean;
+  commissionUnitType?: CommissionUnitType;
   valeDeductionSource?: ValeDeductionSource;
   createdAt: string;
   updatedAt: string;
@@ -97,5 +100,6 @@ export interface UpdateBarbershopPayload {
   clubName?: string | null;
   dpoteCommissionPercent?: number | null;
   hideFichaFromBarberReport?: boolean;
+  commissionUnitType?: CommissionUnitType;
   valeDeductionSource?: ValeDeductionSource;
 }

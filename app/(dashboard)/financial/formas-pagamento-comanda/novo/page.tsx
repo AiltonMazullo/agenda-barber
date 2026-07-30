@@ -28,19 +28,33 @@ export default function NovaFormaPagamentoComandaPage() {
   const [name, setName] = useState("");
   const [timing, setTiming] = useState<PaymentMethodTiming>("AVISTA");
   const [branchConfigs, setBranchConfigs] = useState<
-    Record<string, { bankAccountId: string; feePercent: string; autoMarkAsReceived: boolean }>
+    Record<
+      string,
+      {
+        bankAccountId: string;
+        feePercent: string;
+        receiptDeadlineDays: string;
+        autoMarkAsReceived: boolean;
+      }
+    >
   >({});
   const [saving, setSaving] = useState(false);
 
   function updateBranchConfig(
     branchId: string,
-    patch: Partial<{ bankAccountId: string; feePercent: string; autoMarkAsReceived: boolean }>,
+    patch: Partial<{
+      bankAccountId: string;
+      feePercent: string;
+      receiptDeadlineDays: string;
+      autoMarkAsReceived: boolean;
+    }>,
   ) {
     setBranchConfigs((prev) => ({
       ...prev,
       [branchId]: {
         bankAccountId: prev[branchId]?.bankAccountId ?? "",
         feePercent: prev[branchId]?.feePercent ?? "0",
+        receiptDeadlineDays: prev[branchId]?.receiptDeadlineDays ?? "0",
         autoMarkAsReceived: prev[branchId]?.autoMarkAsReceived ?? false,
         ...patch,
       },
@@ -56,6 +70,8 @@ export default function NovaFormaPagamentoComandaPage() {
         branchId: b.id,
         bankAccountId: branchConfigs[b.id]?.bankAccountId || null,
         feePercent: Number(branchConfigs[b.id]?.feePercent ?? 0) || 0,
+        receiptDeadlineDays:
+          timing === "APRAZO" ? Number(branchConfigs[b.id]?.receiptDeadlineDays ?? 0) || 0 : 0,
         autoMarkAsReceived: branchConfigs[b.id]?.autoMarkAsReceived ?? false,
       }));
       await updateBranchConfigs(created.id, configs);
@@ -118,6 +134,22 @@ export default function NovaFormaPagamentoComandaPage() {
                       className="bg-surface-base border-border text-foreground"
                     />
                   </Field>
+                  {timing === "APRAZO" && (
+                    <Field className="w-36">
+                      <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                        Prazo p/ recebimento (dias)
+                      </FieldLabel>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={branchConfigs[b.id]?.receiptDeadlineDays ?? "0"}
+                        onChange={(e) =>
+                          updateBranchConfig(b.id, { receiptDeadlineDays: e.target.value })
+                        }
+                        className="bg-surface-base border-border text-foreground"
+                      />
+                    </Field>
+                  )}
                   <label className="flex items-center gap-2 text-xs text-muted-foreground h-10">
                     <input
                       type="checkbox"

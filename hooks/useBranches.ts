@@ -20,11 +20,6 @@ function pickExtras(
 ): BranchConfigExtras {
   return {
     cnpj: p.cnpj ?? null,
-    isReceivingBranch: p.isReceivingBranch,
-    isHidden: p.isHidden,
-    receiptDeadlineDays: p.receiptDeadlineDays ?? null,
-    bankAccount: p.bankAccount ?? null,
-    paymentConfigs: p.paymentConfigs,
   };
 }
 

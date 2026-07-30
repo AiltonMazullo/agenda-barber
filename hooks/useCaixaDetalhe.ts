@@ -27,6 +27,7 @@ interface CashRegisterCrud {
     closedAt: string | null;
     countedCashInCents?: number | null;
     cashDifferenceInCents?: number | null;
+    divergenceReasonNote?: string | null;
   } | null>;
   reopen: (id: string) => Promise<{ closedAt: string | null } | null>;
   getClosingSummary: (
@@ -97,6 +98,7 @@ export function useCaixaDetalhe(crud: CashRegisterCrud) {
                 closedAt: closed.closedAt,
                 countedCashInCents: closed.countedCashInCents,
                 cashDifferenceInCents: closed.cashDifferenceInCents,
+                divergenceReasonNote: closed.divergenceReasonNote,
               }
             : prev,
         );

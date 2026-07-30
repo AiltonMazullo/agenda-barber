@@ -16,6 +16,19 @@ export interface SubscriptionPlanSummary {
 
 export type SubscriptionBillingType = "GATEWAY" | "MANUAL";
 
+export type SubscriptionPaymentMethod = "CREDIT_CARD" | "PIX_AUTOMATICO";
+
+export type PaymentAuthorizationStatus = "PENDING" | "AUTHORIZED" | "CANCELLED";
+
+/** Autorização de consentimento de Pix Automático — 1:1 com a Subscription. */
+export interface PaymentAuthorization {
+  id: string;
+  status: PaymentAuthorizationStatus;
+  authorizationUrl: string | null;
+  authorizedAt: string | null;
+  cancelledAt: string | null;
+}
+
 export interface Subscription {
   id: string;
   clientId: string;
@@ -30,6 +43,8 @@ export interface Subscription {
   billingDay: number | null;
   billingType: SubscriptionBillingType;
   soldByEmployeeId: string | null;
+  paymentMethod: SubscriptionPaymentMethod;
+  paymentAuthorization?: PaymentAuthorization | null;
   client: SubscriptionClient;
   plan: SubscriptionPlanSummary;
 }
@@ -93,21 +108,38 @@ export type ServicePricing =
 export interface MySubscription {
   subscription: Subscription & { plan: Plan };
   usage: ServiceUsage[];
+  /** Assinatura Pix Automático criada mas ainda aguardando o cliente autorizar no app do banco — sem benefícios de plano ainda. */
+  pendingAuthorization?: boolean;
 }
 
 export interface SubscribePayload {
   planId: string;
+  paymentMethod?: SubscriptionPaymentMethod;
 }
 
 /**
- * Resposta de `POST /subscriptions` (self-service) — não é mais a Subscription
- * em si, e sim o registro de pré-aprovado com a sessão de checkout gerada no
- * gateway ativo. A Subscription só é criada quando o webhook confirmar o
- * pagamento (spec-gateways-pagamento.md — checkout externo).
+ * Resposta de `POST /subscriptions` para `paymentMethod: "CREDIT_CARD"` — não
+ * é a Subscription em si, e sim o registro de pré-aprovado com a sessão de
+ * checkout gerada no gateway ativo. A Subscription só é criada quando o
+ * webhook confirmar o pagamento (spec-gateways-pagamento.md — checkout externo).
  */
 export interface SubscribeCheckoutResult {
   id: string;
   status: "AGUARDANDO" | "ERRO" | "SUCESSO";
   checkoutUrl: string | null;
   errorMessage: string | null;
+}
+
+/** Resposta de `POST /subscriptions` para `paymentMethod: "PIX_AUTOMATICO"`. */
+export interface SubscribePixAuthorizationResult {
+  subscription: Subscription;
+  paymentAuthorization: PaymentAuthorization;
+}
+
+export type SubscribeResult = SubscribeCheckoutResult | SubscribePixAuthorizationResult;
+
+export function isPixAuthorizationResult(
+  result: SubscribeResult,
+): result is SubscribePixAuthorizationResult {
+  return (result as SubscribePixAuthorizationResult).paymentAuthorization !== undefined;
 }

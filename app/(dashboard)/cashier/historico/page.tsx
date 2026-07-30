@@ -162,8 +162,8 @@ export default function CaixaHistoricoPage() {
         loading={detalhe.loading}
         busy={detalhe.busy}
         onAddTransaction={(input) => void detalhe.addTransaction(input)}
-        onClose={(countedCashInCents) =>
-          void detalhe.handleClose({ countedCashInCents })
+        onClose={(countedCashInCents, divergenceReasonNote) =>
+          void detalhe.handleClose({ countedCashInCents, divergenceReasonNote })
         }
         onRemove={() => void detalhe.handleRemove()}
         fetchClosingSummary={detalhe.fetchClosingSummary}

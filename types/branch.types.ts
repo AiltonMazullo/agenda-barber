@@ -1,20 +1,13 @@
 /**
  * Tipos espelhando o modelo `Branch` (filial) do backend.
  *
- * Os campos de configuração financeira/visibilidade (cnpj, flags, taxas, prazo,
- * conta bancária) são **opcionais** — ainda não persistidos pelo backend (o
- * modelo atual só guarda os campos de endereço). São coletados na UI e ficam
- * prontos para integração quando as rotas suportarem.
+ * `isReceivingBranch`/`isHidden` são persistidos de fato pelo backend. `cnpj`
+ * ainda não tem coluna própria no modelo `Branch` — segue coletado na UI via
+ * `lib/branch-config-store.ts` até uma decisão de produto sobre onde deve morar.
+ * As formas de pagamento e prazo de recebimento por filial vivem em
+ * `PaymentMethodConfig`/`PaymentMethodBranchConfig` (ver `types/payment-method.types.ts`),
+ * não neste model.
  */
-
-import type { PaymentMethod } from "@/types/cash-register.types";
-
-/** Forma de pagamento aceita pela filial + taxa (%). */
-export interface BranchPaymentConfig {
-  method: PaymentMethod;
-  /** Taxa em porcentagem (ex.: 2.5 = 2,5%). */
-  feePercent: number;
-}
 
 export interface Branch {
   id: string;
@@ -28,21 +21,13 @@ export interface Branch {
   uf: string;
   number: string;
   complement: string | null;
+  isReceivingBranch: boolean;
+  isHidden: boolean;
   barbershopId: string;
   createdAt: string;
   updatedAt: string;
-  // ─── Configuração independente da filial (opcional, pendente de backend) ──
+  /** Ainda não persistido pelo backend — ver `lib/branch-config-store.ts`. */
   cnpj?: string | null;
-  /** Marca a filial como responsável pelos recebimentos da empresa. */
-  isReceivingBranch?: boolean;
-  /** Oculta a filial de seleções públicas (vitrine, agendamento). */
-  isHidden?: boolean;
-  /** Prazo para recebimento, em dias. */
-  receiptDeadlineDays?: number | null;
-  /** Conta bancária associada (descrição: banco / agência / conta). */
-  bankAccount?: string | null;
-  /** Formas de pagamento aceitas + taxas. */
-  paymentConfigs?: BranchPaymentConfig[];
 }
 
 export interface CreateBranchPayload {
@@ -56,13 +41,10 @@ export interface CreateBranchPayload {
   uf: string;
   number: string;
   complement?: string;
-  // ─── Opcionais (UI; backend ignora até suportar) ──────────────────────────
-  cnpj?: string;
   isReceivingBranch?: boolean;
   isHidden?: boolean;
-  receiptDeadlineDays?: number;
-  bankAccount?: string;
-  paymentConfigs?: BranchPaymentConfig[];
+  /** Ainda não persistido pelo backend — ver `lib/branch-config-store.ts`. */
+  cnpj?: string;
 }
 
 export interface UpdateBranchPayload {
@@ -76,10 +58,8 @@ export interface UpdateBranchPayload {
   uf?: string;
   number?: string;
   complement?: string;
-  cnpj?: string;
   isReceivingBranch?: boolean;
   isHidden?: boolean;
-  receiptDeadlineDays?: number;
-  bankAccount?: string;
-  paymentConfigs?: BranchPaymentConfig[];
+  /** Ainda não persistido pelo backend — ver `lib/branch-config-store.ts`. */
+  cnpj?: string;
 }

@@ -134,6 +134,13 @@ export default function ProfessionalNovoPage() {
             differentiatedCommissionToPayload(config.differentiated),
           )
           .catch(() => {}),
+        config.attendancePeriodDays != null
+          ? employeesService
+              .update(barbershop.id, created.id, {
+                attendancePeriodDays: config.attendancePeriodDays,
+              })
+              .catch(() => {})
+          : Promise.resolve(),
       ]);
 
       professionalConfigStore.set(barbershop.id, created.id, {

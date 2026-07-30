@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog, Loading } from "@/components/shared";
 import { useComandaForm } from "@/hooks/useComandaForm";
 import { formatBRL } from "@/utils/format";
+import { COMANDA_FORMA_PAGAMENTO_LABELS } from "@/utils/comanda";
 import { TipoSection } from "./TipoSection";
 import { AgendamentosSection } from "./AgendamentosSection";
 import { ItensSection } from "./ItensSection";
@@ -66,6 +67,18 @@ export function ComandaForm({
         onEmployeeIdChange={form.setEmployeeId}
         employeeOptions={form.employeeOptions}
       />
+
+      {comanda?.formaPagamento && (
+        <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-surface-base px-4 py-2.5 text-xs text-muted-foreground">
+          <span>
+            Forma de pagamento do último fechamento:{" "}
+            <span className="font-semibold text-foreground">
+              {COMANDA_FORMA_PAGAMENTO_LABELS[comanda.formaPagamento]}
+            </span>
+            . Pode ser alterada ao fechar novamente.
+          </span>
+        </div>
+      )}
 
       {form.tipo === "AGENDAMENTO" && (
         <AgendamentosSection

@@ -140,8 +140,8 @@ export const employeesService = {
   async getProductCommissionRule(
     barbershopId: string,
     id: string,
-  ): Promise<EmployeeProductCommissionRule | null> {
-    const { data } = await api.get<EmployeeProductCommissionRule | null>(
+  ): Promise<EmployeeProductCommissionRule[]> {
+    const { data } = await api.get<EmployeeProductCommissionRule[]>(
       `/barbershops/${barbershopId}/employees/${id}/product-commission`,
     );
     return data;
@@ -151,8 +151,8 @@ export const employeesService = {
     barbershopId: string,
     id: string,
     payload: UpdateProductCommissionRulePayload,
-  ): Promise<EmployeeProductCommissionRule> {
-    const { data } = await api.put<EmployeeProductCommissionRule>(
+  ): Promise<EmployeeProductCommissionRule[]> {
+    const { data } = await api.put<EmployeeProductCommissionRule[]>(
       `/barbershops/${barbershopId}/employees/${id}/product-commission`,
       payload,
     );

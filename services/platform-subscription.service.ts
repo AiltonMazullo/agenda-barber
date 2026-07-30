@@ -2,7 +2,9 @@ import { api } from "@/lib/api";
 import type {
   BillingProfile,
   BillingProfilePayload,
+  ChangePaymentMethodResponse,
   CheckoutResponse,
+  PlatformPaymentMethod,
   PlatformSubscriptionMe,
 } from "@/types/platform-subscription.types";
 
@@ -24,9 +26,22 @@ export const platformSubscriptionService = {
     return data;
   },
 
-  async checkout(): Promise<CheckoutResponse> {
+  async checkout(
+    paymentMethod: PlatformPaymentMethod = "CREDIT_CARD",
+  ): Promise<CheckoutResponse> {
     const { data } = await api.post<CheckoutResponse>(
       "/platform-subscription/checkout",
+      { paymentMethod },
+    );
+    return data;
+  },
+
+  async changePaymentMethod(
+    paymentMethod: PlatformPaymentMethod,
+  ): Promise<ChangePaymentMethodResponse> {
+    const { data } = await api.put<ChangePaymentMethodResponse>(
+      "/platform-subscription/payment-method",
+      { paymentMethod },
     );
     return data;
   },

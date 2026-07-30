@@ -22,6 +22,33 @@ function fromGroup(group: AccessGroup | null): Set<string> {
   return new Set(group?.permissions ?? []);
 }
 
+/**
+ * Subconjunto de permissões para um profissional com agenda (ver
+ * spec-revisao-cliente-1.md §7.3) — o profissional deve ter acesso restrito
+ * apenas à área exclusiva de profissional, não ao catálogo completo. Mapeado
+ * para os itens mais próximos já existentes no catálogo (nomes exatos do
+ * PDF do cliente entre colchetes onde diferem do rótulo atual):
+ *   • Agendamento: Cadastrar [Cadastro de agendamento], Atualizar [Edição de
+ *     agendamento], Alterar data e hora do agendamento, Cancelar intervalo
+ *     [Cadastrar horário bloqueado], Cancelar folga [Remoção de folgas].
+ *   • Comanda: Adicionar/Remover produtos [Gerenciar produtos na comanda],
+ *     Adicionar/Remover/Editar serviços [Gerenciar serviços na comanda].
+ *   • Cliente: Editar notas [Edição de notas].
+ */
+const PROFISSIONAL_COM_AGENDA_PRESET: { module: string; name: string }[] = [
+  { module: "Agendamento", name: "Cadastrar" },
+  { module: "Agendamento", name: "Atualizar" },
+  { module: "Agendamento", name: "Alterar data e hora do agendamento." },
+  { module: "Agendamento", name: "Cancelar intervalo" },
+  { module: "Agendamento", name: "Cancelar folga" },
+  { module: "Comanda", name: "Adicionar produtos" },
+  { module: "Comanda", name: "Remover produtos" },
+  { module: "Comanda", name: "Adicionar serviços" },
+  { module: "Comanda", name: "Remover serviços" },
+  { module: "Comanda", name: "Editar serviço" },
+  { module: "Cliente", name: "Editar notas" },
+];
+
 export function DialogGrupoAcesso({
   open,
   onOpenChange,
@@ -76,6 +103,17 @@ export function DialogGrupoAcesso({
       else next.add(moduleName);
       return next;
     });
+  }
+
+  function applyProfissionalComAgendaPreset() {
+    const keys = new Set<string>();
+    for (const target of PROFISSIONAL_COM_AGENDA_PRESET) {
+      const mod = catalog.find((m) => m.module === target.module);
+      const item = mod?.items.find((i) => i.name === target.name);
+      if (item) keys.add(item.key);
+    }
+    setSelected(keys);
+    setOpenModules(new Set(PROFISSIONAL_COM_AGENDA_PRESET.map((t) => t.module)));
   }
 
   function toggleAll(value: boolean) {
@@ -149,15 +187,24 @@ export function DialogGrupoAcesso({
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
                 Permissões ({selected.size}/{totalItems})
               </label>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <span className="text-[11px] text-muted-foreground">
-                  Selecionar tudo
-                </span>
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(c) => toggleAll(c === true)}
-                />
-              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={applyProfissionalComAgendaPreset}
+                  className="text-[11px] font-semibold text-brand hover:underline"
+                >
+                  Predefinição: Profissional com agenda
+                </button>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-[11px] text-muted-foreground">
+                    Selecionar tudo
+                  </span>
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(c) => toggleAll(c === true)}
+                  />
+                </label>
+              </div>
             </div>
 
             {catalogLoading ? (

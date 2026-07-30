@@ -97,21 +97,15 @@ import type {
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
 import { barbershopsService } from "@/services/barbershops.service";
-import {
-  companyConfigStore,
-  type CompanyConfig,
-} from "@/lib/company-config-store";
 import { barbershopAppearanceStore } from "@/lib/barbershop-appearance-store";
+import type { Branch, CreateBranchPayload } from "@/types/branch.types";
 import type {
-  Branch,
-  BranchPaymentConfig,
-  CreateBranchPayload,
-} from "@/types/branch.types";
-import type { ValeDeductionSource } from "@/types/barbershop.types";
-import {
-  PAYMENT_METHOD_LABELS,
-  type PaymentMethod,
-} from "@/types/cash-register.types";
+  CommissionUnitType,
+  ValeDeductionSource,
+} from "@/types/barbershop.types";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useBankAccounts } from "@/hooks/useBankAccounts";
+import type { PaymentMethodConfig } from "@/types/payment-method.types";
 import type { CreateEmployeePayload, Employee } from "@/types/employee.types";
 import type { AccessGroup } from "@/types/access-group.types";
 import type {
@@ -177,11 +171,10 @@ const CANCELLATION_TOLERANCE_OPTIONS: { value: number; label: string }[] = [
 ];
 
 const PENALTY_DURATION_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "1 hora" },
   { value: 6, label: "6 horas" },
   { value: 12, label: "12 horas" },
   { value: 24, label: "24 horas" },
-  { value: 48, label: "48 horas" },
-  { value: 72, label: "72 horas" },
 ];
 
 const VALE_DEDUCTION_OPTIONS: { value: ValeDeductionSource; label: string }[] = [
@@ -190,6 +183,23 @@ const VALE_DEDUCTION_OPTIONS: { value: ValeDeductionSource; label: string }[] = 
   { value: "SERVICOS_ASSINATURA", label: "Serviços assinatura" },
   { value: "PRODUTOS", label: "Produtos" },
 ];
+
+const COMMISSION_UNIT_TYPE_OPTIONS: {
+  value: CommissionUnitType;
+  label: string;
+}[] = [
+  { value: "FICHA", label: "Fichas" },
+  { value: "MINUTO", label: "Minutos" },
+];
+
+/** Rótulo singular/plural da unidade de comissão configurada pela barbearia (§3.1). */
+function commissionUnitLabel(
+  unitType: CommissionUnitType | undefined,
+  plural = true,
+): string {
+  if (unitType === "MINUTO") return plural ? "minutos" : "minuto";
+  return plural ? "fichas" : "ficha";
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -240,11 +250,6 @@ function parseBRLToCents(input: string): number {
 function TabEmpresa() {
   const router = useRouter();
   const { barbershop, updateBarbershop, logout } = useAuth();
-  /** Configuração da unidade principal (nível empresa, persistida localmente). */
-  const [config, setConfig] = useState<CompanyConfig>({
-    isReceivingBranch: false,
-    isHidden: false,
-  });
 
   const [name, setName] = useState(barbershop?.name ?? "");
   const [phone, setPhone] = useState(barbershop?.phone ?? "");
@@ -273,6 +278,10 @@ function TabEmpresa() {
   const [valeDeductionSource, setValeDeductionSource] =
     useState<ValeDeductionSource>(
       barbershop?.valeDeductionSource ?? "TODOS",
+    );
+  const [commissionUnitType, setCommissionUnitType] =
+    useState<CommissionUnitType>(
+      barbershop?.commissionUnitType ?? "FICHA",
     );
   const [logoCentered, setLogoCentered] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -303,8 +312,8 @@ function TabEmpresa() {
     );
     setHideFichaFromBarberReport(barbershop?.hideFichaFromBarberReport ?? false);
     setValeDeductionSource(barbershop?.valeDeductionSource ?? "TODOS");
+    setCommissionUnitType(barbershop?.commissionUnitType ?? "FICHA");
     if (barbershop) {
-      setConfig(companyConfigStore.get(barbershop.id));
       setLogoCentered(
         barbershopAppearanceStore.get(barbershop.id).logoCentered,
       );
@@ -315,14 +324,6 @@ function TabEmpresa() {
     setLogoCentered(value);
     if (barbershop)
       barbershopAppearanceStore.set(barbershop.id, { logoCentered: value });
-  }
-
-  function toggleConfig(patch: Partial<CompanyConfig>) {
-    setConfig((prev) => {
-      const next = { ...prev, ...patch };
-      if (barbershop) companyConfigStore.set(barbershop.id, patch);
-      return next;
-    });
   }
 
   async function handleLogoUpload(file: File) {
@@ -346,6 +347,17 @@ function TabEmpresa() {
     const available = 3 - bannerUrls.length;
     if (available <= 0) {
       toast.error("Limite de 3 imagens atingido.");
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const maxSizeBytes = 2 * 1024 * 1024;
+    const invalid = files.find(
+      (f) => !allowedTypes.includes(f.type) || f.size > maxSizeBytes,
+    );
+    if (invalid) {
+      toast.error(
+        "Cada imagem deve ser JPG, PNG ou WebP e ter no máximo 2 MB.",
+      );
       return;
     }
     const toUpload = files.slice(0, available);
@@ -417,6 +429,7 @@ function TabEmpresa() {
             ? dpotePercent
             : null,
         hideFichaFromBarberReport,
+        commissionUnitType,
         valeDeductionSource,
       });
       updateBarbershop(updated);
@@ -461,7 +474,7 @@ function TabEmpresa() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         {/* ─── Col 1: Empresa ─── */}
         <Card className="bg-surface-raised border-border">
           <CardContent className="p-5 space-y-5">
@@ -669,7 +682,7 @@ function TabEmpresa() {
                     {carouselUploading ? "Enviando…" : "Adicionar"}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       multiple
                       className="hidden"
                       onChange={(e) => {
@@ -681,6 +694,9 @@ function TabEmpresa() {
                   </label>
                 )}
               </div>
+              <p className="text-[11px] text-text-faint">
+                JPG, PNG ou WebP · até 2 MB por imagem · máximo de 3 imagens
+              </p>
               {bannerUrls.length === 0 ? (
                 <p className="text-[11px] text-text-faint">
                   Nenhuma imagem. Adicione fotos para exibir um carrossel na
@@ -708,68 +724,6 @@ function TabEmpresa() {
                   ))}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ─── Col 3: Configuração da filial ─── */}
-        <Card className="bg-surface-raised border-border">
-          <CardContent className="p-5 space-y-4">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
-                Configuração da filial
-              </h3>
-              <p className="text-[11px] text-text-faint mt-1">
-                Defina como esta filial será utilizada no sistema e suas
-                visibilidades.
-              </p>
-            </div>
-
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <Checkbox
-                checked={config.isReceivingBranch}
-                onCheckedChange={(c) =>
-                  toggleConfig({ isReceivingBranch: c === true })
-                }
-                className="mt-0.5"
-              />
-              <div>
-                <p className="text-sm font-medium text-white">
-                  Filial de recebimentos
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Marca esta filial como responsável pelos recebimentos da
-                  empresa.
-                </p>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <Checkbox
-                checked={config.isHidden}
-                onCheckedChange={(c) => toggleConfig({ isHidden: c === true })}
-                className="mt-0.5"
-              />
-              <div>
-                <p className="text-sm font-medium text-white">Filial oculta</p>
-                <p className="text-xs text-muted-foreground">
-                  Oculta esta filial de seleções públicas no sistema (ex.:
-                  agendamentos de clientes).
-                </p>
-              </div>
-            </label>
-
-            <div className="flex items-start gap-2 rounded-md border border-border-subtle bg-surface-base p-3">
-              <Info className="size-4 text-brand shrink-0 mt-0.5" />
-              <p className="text-[11px] text-text-faint">
-                Estas configurações impactam o comportamento da filial em todo o
-                sistema, incluindo{" "}
-                <span className="font-semibold text-muted-foreground">
-                  vitrines públicas, fluxos de agendamento e conciliação
-                  financeira
-                </span>
-                .
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -895,10 +849,11 @@ function TabEmpresa() {
           <CardContent className="p-5 space-y-4">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-widest text-brand">
-                Configurações módulo Dpote
+                Comissão padrão sobre as assinaturas
               </h3>
               <p className="text-[11px] text-text-faint mt-1">
-                Apenas para assinantes Dpote
+                Percentual padrão de comissão aplicado sobre atendimentos de
+                clientes assinantes.
               </p>
             </div>
 
@@ -921,6 +876,40 @@ function TabEmpresa() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <FormLabel>Unidade de comissão</FormLabel>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full">
+                  <div className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-white flex items-center justify-between gap-2 hover:border-[#f5b82e]/40 transition-colors cursor-pointer">
+                    <span className="text-white">
+                      {COMMISSION_UNIT_TYPE_OPTIONS.find(
+                        (o) => o.value === commissionUnitType,
+                      )?.label ?? "Fichas"}
+                    </span>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-surface-raised border-border text-white max-h-48 overflow-y-auto">
+                  {COMMISSION_UNIT_TYPE_OPTIONS.map((o) => (
+                    <DropdownMenuItem
+                      key={o.value}
+                      onClick={() => setCommissionUnitType(o.value)}
+                      className={cn(
+                        "text-xs hover:bg-surface-elevated cursor-pointer",
+                        commissionUnitType === o.value && "text-brand",
+                      )}
+                    >
+                      {o.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <p className="text-[11px] text-text-faint">
+                Define o rótulo usado no cadastro de serviços e nos
+                relatórios de comissão ({commissionUnitLabel(commissionUnitType)}
+                ).
+              </p>
+            </div>
+
             <label className="flex items-start gap-3 cursor-pointer select-none">
               <Checkbox
                 checked={hideFichaFromBarberReport}
@@ -931,11 +920,13 @@ function TabEmpresa() {
               />
               <div>
                 <p className="text-sm font-medium text-white">
-                  Ocultar fichas no relatório do barbeiro
+                  Ocultar {commissionUnitLabel(commissionUnitType)} no
+                  relatório do barbeiro
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  O profissional deixa de ver a contagem de fichas no
-                  relatório de comissões de serviços.
+                  O profissional deixa de ver a contagem de{" "}
+                  {commissionUnitLabel(commissionUnitType)} no relatório de
+                  comissões de serviços.
                 </p>
               </div>
             </label>
@@ -1079,10 +1070,6 @@ interface BranchFormState {
   uf: string;
   number: string;
   complement: string;
-  // Configuração financeira
-  paymentConfigs: BranchPaymentConfig[];
-  receiptDeadlineDays: string;
-  bankAccount: string;
   // Configuração da filial
   isReceivingBranch: boolean;
   isHidden: boolean;
@@ -1100,14 +1087,38 @@ const EMPTY_BRANCH_FORM: BranchFormState = {
   uf: "",
   number: "",
   complement: "",
-  paymentConfigs: [],
-  receiptDeadlineDays: "",
-  bankAccount: "",
   isReceivingBranch: false,
   isHidden: false,
 };
 
-const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[];
+/** Estado de configuração de uma forma de pagamento (global) nesta filial. */
+interface BranchPaymentMethodState {
+  enabled: boolean;
+  feePercent: string;
+  receiptDeadlineDays: string;
+  bankAccountId: string;
+  autoMarkAsReceived: boolean;
+}
+
+function buildBranchPaymentSettings(
+  methods: PaymentMethodConfig[],
+  branchId: string | null,
+): Record<string, BranchPaymentMethodState> {
+  const map: Record<string, BranchPaymentMethodState> = {};
+  for (const method of methods) {
+    const cfg = branchId
+      ? method.branchConfigs.find((c) => c.branchId === branchId)
+      : undefined;
+    map[method.id] = {
+      enabled: Boolean(cfg),
+      feePercent: cfg ? String(cfg.feePercent) : "0",
+      receiptDeadlineDays: cfg ? String(cfg.receiptDeadlineDays) : "0",
+      bankAccountId: cfg?.bankAccountId ?? "",
+      autoMarkAsReceived: cfg?.autoMarkAsReceived ?? false,
+    };
+  }
+  return map;
+}
 
 interface CompanyDefaults {
   name: string;
@@ -1127,13 +1138,21 @@ function DialogFilial({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   branch: Branch | null;
-  onSave: (payload: CreateBranchPayload) => Promise<void>;
+  onSave: (payload: CreateBranchPayload) => Promise<Branch | null>;
   /** Dados da empresa para pré-preencher a primeira filial. */
   companyDefaults?: CompanyDefaults | null;
   /** Quando true (sem filiais), marca como filial de recebimentos por padrão. */
   isFirstBranch?: boolean;
 }) {
+  const { barbershop } = useAuth();
+  const { methods: paymentMethods, updateBranchConfigs } = usePaymentMethods(
+    barbershop?.id,
+  );
+  const { accounts: bankAccounts } = useBankAccounts(barbershop?.id);
   const [form, setForm] = useState<BranchFormState>(EMPTY_BRANCH_FORM);
+  const [paymentSettings, setPaymentSettings] = useState<
+    Record<string, BranchPaymentMethodState>
+  >({});
   const [saving, setSaving] = useState(false);
   const [fetchingCep, setFetchingCep] = useState(false);
 
@@ -1152,14 +1171,8 @@ function DialogFilial({
         uf: branch.uf,
         number: branch.number,
         complement: branch.complement ?? "",
-        paymentConfigs: branch.paymentConfigs ?? [],
-        receiptDeadlineDays:
-          branch.receiptDeadlineDays != null
-            ? String(branch.receiptDeadlineDays)
-            : "",
-        bankAccount: branch.bankAccount ?? "",
-        isReceivingBranch: branch.isReceivingBranch ?? false,
-        isHidden: branch.isHidden ?? false,
+        isReceivingBranch: branch.isReceivingBranch,
+        isHidden: branch.isHidden,
       });
     } else {
       // Primeiro cadastro / nova filial: pré-preenche com os dados da empresa
@@ -1175,6 +1188,13 @@ function DialogFilial({
     }
   }, [open, branch, companyDefaults, isFirstBranch]);
 
+  useEffect(() => {
+    if (!open) return;
+    setPaymentSettings(
+      buildBranchPaymentSettings(paymentMethods, branch?.id ?? null),
+    );
+  }, [open, branch, paymentMethods]);
+
   function update<K extends keyof BranchFormState>(
     key: K,
     value: BranchFormState[K],
@@ -1182,30 +1202,60 @@ function DialogFilial({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function isPaymentOn(method: PaymentMethod): boolean {
-    return form.paymentConfigs.some((p) => p.method === method);
-  }
-  function togglePayment(method: PaymentMethod, on: boolean) {
-    setForm((prev) => {
-      const others = prev.paymentConfigs.filter((p) => p.method !== method);
-      return {
-        ...prev,
-        paymentConfigs: on ? [...others, { method, feePercent: 0 }] : others,
-      };
-    });
-  }
-  function setFee(method: PaymentMethod, fee: number) {
-    setForm((prev) => ({
+  function updatePaymentSetting(
+    methodId: string,
+    patch: Partial<BranchPaymentMethodState>,
+  ) {
+    setPaymentSettings((prev) => ({
       ...prev,
-      paymentConfigs: prev.paymentConfigs.map((p) =>
-        p.method === method ? { ...p, feePercent: fee } : p,
-      ),
+      [methodId]: { ...prev[methodId], ...patch },
     }));
   }
-  function feeOf(method: PaymentMethod): number {
-    return (
-      form.paymentConfigs.find((p) => p.method === method)?.feePercent ?? 0
-    );
+
+  /** Propaga as configurações desta filial para cada forma de pagamento global alterada. */
+  async function savePaymentSettings(branchId: string) {
+    for (const method of paymentMethods) {
+      const state = paymentSettings[method.id];
+      if (!state) continue;
+      const others = method.branchConfigs.filter(
+        (c) => c.branchId !== branchId,
+      );
+      const current = method.branchConfigs.find((c) => c.branchId === branchId);
+      const nextEntry = state.enabled
+        ? {
+            branchId,
+            bankAccountId: state.bankAccountId || null,
+            feePercent: Number(state.feePercent.replace(",", ".")) || 0,
+            receiptDeadlineDays:
+              method.timing === "APRAZO"
+                ? parseInt(state.receiptDeadlineDays, 10) || 0
+                : 0,
+            autoMarkAsReceived: state.autoMarkAsReceived,
+          }
+        : null;
+
+      const unchanged =
+        (!current && !nextEntry) ||
+        (current &&
+          nextEntry &&
+          current.bankAccountId === nextEntry.bankAccountId &&
+          current.feePercent === nextEntry.feePercent &&
+          current.receiptDeadlineDays === nextEntry.receiptDeadlineDays &&
+          current.autoMarkAsReceived === nextEntry.autoMarkAsReceived);
+      if (unchanged) continue;
+
+      const configs = [
+        ...others.map((c) => ({
+          branchId: c.branchId,
+          bankAccountId: c.bankAccountId,
+          feePercent: c.feePercent,
+          receiptDeadlineDays: c.receiptDeadlineDays,
+          autoMarkAsReceived: c.autoMarkAsReceived,
+        })),
+        ...(nextEntry ? [nextEntry] : []),
+      ];
+      await updateBranchConfigs(method.id, configs);
+    }
   }
 
   async function handleCepChange(raw: string) {
@@ -1243,17 +1293,10 @@ function DialogFilial({
     if (!form.city.trim()) return toast.error("Informe a cidade.");
     if (form.uf.length !== 2) return toast.error("UF deve ter 2 letras.");
     if (!form.number.trim()) return toast.error("Informe o número.");
-    // Parametrização (ref. CashB): filial de recebimentos exige conta bancária.
-    if (form.isReceivingBranch && !form.bankAccount.trim())
-      return toast.error("Filial de recebimentos requer uma conta bancária.");
-
-    const deadline = form.receiptDeadlineDays
-      ? parseInt(form.receiptDeadlineDays, 10)
-      : undefined;
 
     setSaving(true);
     try {
-      await onSave({
+      const saved = await onSave({
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -1267,11 +1310,11 @@ function DialogFilial({
         cnpj: form.cnpj ? form.cnpj.replace(/\D/g, "") : undefined,
         isReceivingBranch: form.isReceivingBranch,
         isHidden: form.isHidden,
-        receiptDeadlineDays: deadline,
-        bankAccount: form.bankAccount.trim() || undefined,
-        paymentConfigs: form.paymentConfigs,
       });
-      onOpenChange(false);
+      if (saved) {
+        await savePaymentSettings(saved.id);
+        onOpenChange(false);
+      }
     } finally {
       setSaving(false);
     }
@@ -1431,74 +1474,103 @@ function DialogFilial({
 
           <div className="space-y-1.5">
             <FormLabel>Formas de pagamento e taxas</FormLabel>
-            <div className="space-y-1.5">
-              {PAYMENT_METHODS.map((method) => {
-                const on = isPaymentOn(method);
-                return (
-                  <div
-                    key={method}
-                    className="flex items-center gap-3 rounded-md border border-border-subtle bg-surface-base px-3 py-2"
-                  >
-                    <label className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0">
-                      <Checkbox
-                        checked={on}
-                        onCheckedChange={(c) =>
-                          togglePayment(method, c === true)
-                        }
-                      />
-                      <span className="text-sm text-white truncate">
-                        {PAYMENT_METHOD_LABELS[method]}
-                      </span>
-                    </label>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Input
-                        value={on ? String(feeOf(method)) : ""}
-                        onChange={(e) =>
-                          setFee(
-                            method,
-                            parseFloat(e.target.value.replace(",", ".")) || 0,
-                          )
-                        }
-                        disabled={!on}
-                        inputMode="decimal"
-                        placeholder="0"
-                        className="h-8 w-20 bg-surface-raised border-border text-white text-right disabled:opacity-50"
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        % taxa
-                      </span>
+            {paymentMethods.length === 0 ? (
+              <p className="text-[11px] text-text-faint rounded-md border border-border-subtle bg-surface-base p-3">
+                Nenhuma forma de pagamento cadastrada. Cadastre em{" "}
+                <span className="font-semibold text-muted-foreground">
+                  Financeiro → Formas de pagamento
+                </span>{" "}
+                para poder habilitá-las nesta filial.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {paymentMethods.map((method) => {
+                  const state = paymentSettings[method.id];
+                  const on = state?.enabled ?? false;
+                  return (
+                    <div
+                      key={method.id}
+                      className="rounded-md border border-border-subtle bg-surface-base px-3 py-2 space-y-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0">
+                          <Checkbox
+                            checked={on}
+                            onCheckedChange={(c) =>
+                              updatePaymentSetting(method.id, {
+                                enabled: c === true,
+                              })
+                            }
+                          />
+                          <span className="text-sm text-white truncate">
+                            {method.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {method.timing === "AVISTA" ? "À vista" : "A prazo"}
+                          </span>
+                        </label>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Input
+                            value={state?.feePercent ?? "0"}
+                            onChange={(e) =>
+                              updatePaymentSetting(method.id, {
+                                feePercent: e.target.value,
+                              })
+                            }
+                            disabled={!on}
+                            inputMode="decimal"
+                            placeholder="0"
+                            className="h-8 w-20 bg-surface-raised border-border text-white text-right disabled:opacity-50"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            % taxa
+                          </span>
+                        </div>
+                      </div>
+                      {on && method.timing === "APRAZO" && (
+                        <div className="grid grid-cols-2 gap-2 pl-7">
+                          <div className="space-y-1">
+                            <FormLabel>
+                              Prazo p/ recebimento (dias)
+                            </FormLabel>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={state?.receiptDeadlineDays ?? "0"}
+                              onChange={(e) =>
+                                updatePaymentSetting(method.id, {
+                                  receiptDeadlineDays: e.target.value,
+                                })
+                              }
+                              className="h-8 bg-surface-raised border-border text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <FormLabel>Conta bancária</FormLabel>
+                            <select
+                              value={state?.bankAccountId ?? ""}
+                              onChange={(e) =>
+                                updatePaymentSetting(method.id, {
+                                  bankAccountId: e.target.value,
+                                })
+                              }
+                              className="h-8 w-full rounded-md bg-surface-raised border border-border text-white text-xs px-2"
+                            >
+                              <option value="">Nenhuma</option>
+                              {bankAccounts.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <FormLabel>Prazo p/ recebimento (dias)</FormLabel>
-              <Input
-                value={form.receiptDeadlineDays}
-                onChange={(e) =>
-                  update(
-                    "receiptDeadlineDays",
-                    e.target.value.replace(/\D/g, "").slice(0, 3),
-                  )
-                }
-                inputMode="numeric"
-                placeholder="Ex.: 30"
-                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FormLabel>Conta bancária</FormLabel>
-              <Input
-                value={form.bankAccount}
-                onChange={(e) => update("bankAccount", e.target.value)}
-                placeholder="Banco · Agência · Conta"
-                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
-              />
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* ── Configuração da filial ── */}
@@ -1582,10 +1654,9 @@ function TabFiliais() {
 
   async function handleSave(payload: CreateBranchPayload) {
     if (editing) {
-      await update(editing.id, payload);
-    } else {
-      await create(payload);
+      return update(editing.id, payload);
     }
+    return create(payload);
   }
 
   async function handleDelete(id: string) {
@@ -2466,6 +2537,7 @@ function DialogServico({
   /** Cria uma categoria de serviço sem sair do formulário (reaproveita o `create` de `useCategories`). */
   onCreateCategory: (name: string) => Promise<Category | null>;
 }) {
+  const { barbershop } = useAuth();
   const [form, setForm] = useState<ServiceFormState>(EMPTY_SERVICE_FORM);
   const [saving, setSaving] = useState(false);
   const [newCategoryDialog, setNewCategoryDialog] = useState(false);
@@ -2696,8 +2768,14 @@ function DialogServico({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <div className="flex items-center gap-1">
-                <FormLabel>Valor em fichas</FormLabel>
-                <InfoTooltip text="Valor em fichas equivalente a este serviço, usado no controle de recompensas." />
+                <FormLabel>
+                  Valor em {commissionUnitLabel(barbershop?.commissionUnitType)}
+                </FormLabel>
+                <InfoTooltip
+                  text={`Valor em ${commissionUnitLabel(
+                    barbershop?.commissionUnitType,
+                  )} equivalente a este serviço, usado no controle de recompensas.`}
+                />
               </div>
               <Input
                 type="text"

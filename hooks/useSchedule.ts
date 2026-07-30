@@ -77,6 +77,10 @@ export function useSchedule(
     cancel,
     replaceLocal,
     reschedule,
+    resize,
+    update,
+    transfer,
+    refetch,
   } = useAppointments(barbershopId);
 
   const [overlay, setOverlay] = useState<Record<string, Overlay>>({});
@@ -85,6 +89,10 @@ export function useSchedule(
   const [subscriberStatusByClient, setSubscriberStatusByClient] = useState<
     Map<string, AssinanteSituacao>
   >(new Map());
+  /** Nomes dos planos ativos (status ACTIVE) de cada cliente — usado pelo indicador "Cliente possui plano X + Y ativo" do modal de detalhe. */
+  const [clientActivePlans, setClientActivePlans] = useState<Map<string, string[]>>(
+    new Map(),
+  );
 
   useEffect(() => {
     if (!barbershopId) return;
@@ -93,15 +101,22 @@ export function useSchedule(
       .getContracts(barbershopId)
       .then((res) => {
         if (!active) return;
-        const map = new Map<string, AssinanteSituacao>();
+        const statusMap = new Map<string, AssinanteSituacao>();
+        const plansMap = new Map<string, string[]>();
         for (const contract of res.contracts) {
           const situacao: AssinanteSituacao =
             contract.contractStatus === "ATRASADO" ? "inadimplente" : "ativo";
-          if (map.get(contract.clientId) !== "inadimplente") {
-            map.set(contract.clientId, situacao);
+          if (statusMap.get(contract.clientId) !== "inadimplente") {
+            statusMap.set(contract.clientId, situacao);
+          }
+          if (contract.status === "ACTIVE") {
+            const names = plansMap.get(contract.clientId) ?? [];
+            names.push(contract.plan.name);
+            plansMap.set(contract.clientId, names);
           }
         }
-        setSubscriberStatusByClient(map);
+        setSubscriberStatusByClient(statusMap);
+        setClientActivePlans(plansMap);
       })
       .catch(() => {
         // silencioso — ícone de assinante simplesmente não aparece
@@ -126,6 +141,7 @@ export function useSchedule(
         cor: s.hex ?? DEFAULT_HEX,
         tempoPadrao: s.durationMin,
         preco: s.priceInCents / 100,
+        fitIn: s.fitIn,
       })),
     [services],
   );
@@ -223,10 +239,21 @@ export function useSchedule(
       const primary = sorted[0];
       const ov = overlay[primary.id] ?? {};
 
-      const totalDur = sorted.reduce((sum, m) => {
-        const servico = servicoById.get(m.serviceId);
-        return sum + (servico?.tempoPadrao ?? 30);
-      }, 0);
+      // Serviço de encaixe (§3.2) não abre bloco de tempo próprio quando
+      // combinado com outro serviço no mesmo agendamento — só soma sua
+      // duração normalmente quando é o único serviço do grupo.
+      const totalDurFromServices =
+        sorted.length > 1
+          ? sorted.reduce((sum, m) => {
+              const servico = servicoById.get(m.serviceId);
+              if (servico?.fitIn) return sum;
+              return sum + (servico?.tempoPadrao ?? 30);
+            }, 0) || (servicoById.get(sorted[0].serviceId)?.tempoPadrao ?? 30)
+          : (servicoById.get(sorted[0].serviceId)?.tempoPadrao ?? 30);
+      // Resize persistido (§5.3): sobrescreve a soma dos serviços, mas só se
+      // aplica ao membro "primário" — combos com múltiplos serviços não
+      // cascateiam o resize pros demais (limitação documentada no backend).
+      const totalDur = primary.durationOverrideMin ?? totalDurFromServices;
       const servicos = sorted.map((m) => ({
         id: m.serviceId,
         nome: servicoById.get(m.serviceId)?.nome ?? "Serviço",
@@ -249,6 +276,8 @@ export function useSchedule(
         groupId: primary.groupId,
         profissionalId: profId,
         profissionalNome: profNome,
+        semPreferencia: !primary.employeeId,
+        branchId: primary.branchId ?? null,
         cliente: primary.client?.name ?? "Cliente",
         telefone: primary.client?.phone ?? "",
         inicioMin: ov.inicioMin ?? isoToMin(primary.scheduledAt),
@@ -407,6 +436,43 @@ export function useSchedule(
     [selectedDate, reschedule, clearOverlay],
   );
 
+  /**
+   * Persiste o redimensionamento (arrastar a borda inferior do card) via
+   * `PATCH /appointments/:id/resize` (ver spec-revisao-cliente-1.md §5.3).
+   * `resizeLocal` já aplicou a prévia otimista; aqui confirmamos (limpando o
+   * overlay) ou revertemos em caso de falha.
+   */
+  const resizeAgendamento = useCallback(
+    async (id: string, novaDuracao: number): Promise<boolean> => {
+      const updated = await resize(id, novaDuracao);
+      clearOverlay(id);
+      return updated !== null;
+    },
+    [resize, clearOverlay],
+  );
+
+  /**
+   * Atualização unificada do modal de detalhe (`DialogDetalhe`): serviços,
+   * data/horário, filial e profissional. Ver `AppointmentsService.update`
+   * no backend e `useAppointments.update` no front.
+   */
+  const updateAgendamento = useCallback(
+    async (id: string, payload: Parameters<typeof update>[1]) => {
+      const updated = await update(id, payload);
+      return updated !== null;
+    },
+    [update],
+  );
+
+  /** Troca o cliente do agendamento (modal de detalhe) — envolve `transfer` numa assinatura booleana, como `updateAgendamento`. */
+  const transferAgendamento = useCallback(
+    async (id: string, clientId: string) => {
+      const updated = await transfer(id, { clientId });
+      return updated !== null;
+    },
+    [transfer],
+  );
+
   const isLoading =
     loadingServices || loadingEmployees || loadingClients || loadingAppts;
 
@@ -426,5 +492,10 @@ export function useSchedule(
     moveLocal,
     resizeLocal,
     rescheduleAgendamento,
+    resizeAgendamento,
+    updateAgendamento,
+    transferAgendamento,
+    clientActivePlans,
+    refetchAgendamentos: refetch,
   };
 }

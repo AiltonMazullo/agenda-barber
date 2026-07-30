@@ -1,12 +1,12 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared";
-import { maskBRLInput, parseBRL } from "@/utils/format";
+import { maskBRLInput, parseBRL, formatBRL } from "@/utils/format";
 import type { Category } from "@/types/category.types";
 import type {
-  CommissionTier,
   DifferentiatedCommission,
   ProductCommissionRule,
 } from "@/types/professional-config.types";
@@ -33,32 +33,40 @@ export function RegrasComissao({
     differentiated?: DifferentiatedCommission;
   }) => void;
 }) {
-  function setProduct(patch: Partial<ProductCommissionRule>) {
-    onChange({ productCommission: { ...productCommission, ...patch } });
-  }
+  const [draftCategory, setDraftCategory] = useState("");
+  const [draftMinSaleValue, setDraftMinSaleValue] = useState(0);
+  const [draftPercent, setDraftPercent] = useState(0);
+
   function setDiff(patch: Partial<DifferentiatedCommission>) {
     onChange({ differentiated: { ...differentiated, ...patch } });
   }
 
-  function addTier() {
-    setProduct({
-      tiers: [
-        ...productCommission.tiers,
-        { id: crypto.randomUUID(), from: 0, to: null, percent: 0 },
+  function addRule() {
+    onChange({
+      productCommission: [
+        ...productCommission,
+        {
+          id: crypto.randomUUID(),
+          category: draftCategory,
+          minSaleValue: draftMinSaleValue,
+          percent: draftPercent,
+        },
       ],
     });
+    setDraftCategory("");
+    setDraftMinSaleValue(0);
+    setDraftPercent(0);
   }
-  function patchTier(id: string, p: Partial<CommissionTier>) {
-    setProduct({
-      tiers: productCommission.tiers.map((t) =>
-        t.id === id ? { ...t, ...p } : t,
-      ),
+
+  function removeRule(id: string) {
+    onChange({
+      productCommission: productCommission.filter((r) => r.id !== id),
     });
   }
-  function removeTier(id: string) {
-    setProduct({
-      tiers: productCommission.tiers.filter((t) => t.id !== id),
-    });
+
+  function categoryLabel(categoryId: string): string {
+    if (!categoryId) return "Todas as categorias";
+    return categories.find((c) => c.id === categoryId)?.name ?? categoryId;
   }
 
   return (
@@ -73,100 +81,87 @@ export function RegrasComissao({
             Defina faixas de comissão por categoria e valor mínimo de venda.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1.5 flex-1 min-w-[160px]">
               <FieldLabel>Categoria</FieldLabel>
               <SelectField
                 id="rc-categoria"
-                value={productCommission.category}
+                value={draftCategory}
                 options={[
                   { value: "", label: "Todas as categorias" },
                   ...categories.map((c) => ({ value: c.id, label: c.name })),
                 ]}
-                onChange={(v) => setProduct({ category: v })}
+                onChange={setDraftCategory}
                 className="min-w-0"
               />
             </div>
-            <div className="space-y-1.5">
-              <FieldLabel>Valor mínimo da venda</FieldLabel>
+            <div className="space-y-1.5 w-32">
+              <FieldLabel>Valor mínimo</FieldLabel>
               <Input
-                value={money(productCommission.minSaleValue)}
+                value={money(draftMinSaleValue)}
                 onChange={(e) =>
-                  setProduct({
-                    minSaleValue: parseBRL(maskBRLInput(e.target.value)),
-                  })
+                  setDraftMinSaleValue(parseBRL(maskBRLInput(e.target.value)))
                 }
                 inputMode="numeric"
                 className={INPUT_CLS}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-1 text-[10px] font-bold uppercase tracking-widest text-text-faint">
-              <span>De (R$)</span>
-              <span>Até (R$)</span>
-              <span className="w-20 text-right">Comissão</span>
-              <span className="w-8" />
+            <div className="space-y-1.5 w-24">
+              <FieldLabel>Comissão (%)</FieldLabel>
+              <Input
+                value={String(draftPercent)}
+                onChange={(e) => setDraftPercent(clampPct(e.target.value))}
+                inputMode="numeric"
+                className={INPUT_CLS}
+              />
             </div>
-            {productCommission.tiers.map((t) => (
-              <div
-                key={t.id}
-                className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center"
-              >
-                <Input
-                  value={money(t.from)}
-                  onChange={(e) =>
-                    patchTier(t.id, {
-                      from: parseBRL(maskBRLInput(e.target.value)),
-                    })
-                  }
-                  inputMode="numeric"
-                  className="h-9 bg-surface-base border-border text-foreground focus-visible:ring-brand/30"
-                />
-                <Input
-                  value={t.to === null ? "" : money(t.to)}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    patchTier(t.id, {
-                      to: digits ? parseBRL(maskBRLInput(e.target.value)) : null,
-                    });
-                  }}
-                  inputMode="numeric"
-                  placeholder="em diante"
-                  className="h-9 bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30"
-                />
-                <div className="relative w-20">
-                  <Input
-                    value={String(t.percent)}
-                    onChange={(e) =>
-                      patchTier(t.id, { percent: clampPct(e.target.value) })
-                    }
-                    inputMode="numeric"
-                    className="h-9 pr-6 bg-surface-base border-border text-foreground text-right focus-visible:ring-brand/30"
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-text-faint">
-                    %
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeTier(t.id)}
-                  className="size-8 rounded-md border border-border bg-surface-base text-text-faint hover:text-danger-foreground hover:border-danger/40 transition-colors grid place-items-center"
-                  aria-label="Remover faixa"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            ))}
             <button
               type="button"
-              onClick={addTier}
-              className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline pt-1"
+              onClick={addRule}
+              className="size-9 rounded-md bg-brand text-brand-foreground grid place-items-center hover:bg-brand-hover transition-colors shrink-0"
+              aria-label="Adicionar regra"
             >
-              <Plus className="size-3.5" />
-              Adicionar faixa
+              <Plus className="size-4" />
             </button>
+          </div>
+
+          <div className="rounded-lg border border-border overflow-hidden">
+            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-surface-base text-[10px] font-bold uppercase tracking-widest text-text-faint">
+              <span>Categoria</span>
+              <span>Valor mínimo</span>
+              <span className="w-14 text-right">Comissão</span>
+              <span className="w-8" />
+            </div>
+            {productCommission.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Nenhuma regra cadastrada.
+              </p>
+            ) : (
+              productCommission.map((r) => (
+                <div
+                  key={r.id}
+                  className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center px-3 py-2 border-t border-border-subtle"
+                >
+                  <span className="text-sm text-foreground truncate">
+                    {categoryLabel(r.category)}
+                  </span>
+                  <span className="text-sm text-foreground">
+                    {formatBRL(r.minSaleValue)}
+                  </span>
+                  <span className="w-14 text-right text-sm font-semibold text-foreground">
+                    {r.percent}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeRule(r.id)}
+                    className="size-8 rounded-md border border-border bg-surface-base text-text-faint hover:text-danger-foreground hover:border-danger/40 transition-colors grid place-items-center"
+                    aria-label="Remover regra"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

@@ -23,6 +23,18 @@ export const scheduleBlocksService = {
     return data;
   },
 
+  async update(
+    barbershopId: string,
+    id: string,
+    payload: { startAt: string; endAt: string },
+  ): Promise<ScheduleBlock> {
+    const { data } = await api.patch<ScheduleBlock>(
+      `/barbershops/${barbershopId}/schedule-blocks/${id}`,
+      payload,
+    );
+    return data;
+  },
+
   async remove(barbershopId: string, id: string): Promise<void> {
     await api.delete<void>(
       `/barbershops/${barbershopId}/schedule-blocks/${id}`,

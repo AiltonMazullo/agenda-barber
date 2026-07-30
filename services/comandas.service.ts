@@ -11,7 +11,7 @@ const base = (barbershopId: string) => `/barbershops/${barbershopId}/comandas`;
 export const comandasService = {
   async list(
     barbershopId: string,
-    filters: { clientId?: string } = {},
+    filters: { clientId?: string; dateFrom?: string; dateTo?: string } = {},
   ): Promise<Comanda[]> {
     const { data } = await api.get<Comanda[]>(base(barbershopId), {
       params: filters,

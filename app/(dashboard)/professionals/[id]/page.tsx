@@ -55,8 +55,9 @@ export default function ProfessionalEditPage() {
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [backendTimeOff, setBackendTimeOff] = useState<EmployeeTimeOff[]>([]);
   const [timeOffLoaded, setTimeOffLoaded] = useState(false);
-  const [backendProductCommission, setBackendProductCommission] =
-    useState<EmployeeProductCommissionRule | null>(null);
+  const [backendProductCommission, setBackendProductCommission] = useState<
+    EmployeeProductCommissionRule[]
+  >([]);
   const [productCommissionLoaded, setProductCommissionLoaded] = useState(false);
   const [backendDifferentiated, setBackendDifferentiated] =
     useState<EmployeeDifferentiatedCommission | null>(null);
@@ -137,6 +138,10 @@ export default function ProfessionalEditPage() {
   // Days absent from the backend response are treated as disabled.
   const effectiveConfig: ProfessionalConfig = {
     ...config,
+    // Backend é a fonte de verdade quando já tem valor salvo; cai para o
+    // valor local (config store) só para registros que ainda não migraram.
+    attendancePeriodDays:
+      employee?.attendancePeriodDays ?? config.attendancePeriodDays,
     workingHours: defaultWorkingHours().map((wh) => {
       const s = backendSchedules.find((bs) => bs.dayOfWeek === wh.day);
       return s
@@ -170,6 +175,7 @@ export default function ProfessionalEditPage() {
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
       accessGroupId: basic.accessGroupId,
+      attendancePeriodDays: cfg.attendancePeriodDays,
       ...(basic.password ? { password: basic.password } : {}),
     };
 
