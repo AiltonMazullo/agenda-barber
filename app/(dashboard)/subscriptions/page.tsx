@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -646,7 +646,7 @@ function PlanosTab() {
   );
 }
 
-export default function SubscriptionsPage() {
+function SubscriptionsContent() {
   const [tab, setTab] = useState<Tab>("assinantes");
 
   return (
@@ -682,5 +682,13 @@ export default function SubscriptionsPage() {
 
       {tab === "assinantes" ? <AssinantesTab /> : <PlanosTab />}
     </div>
+  );
+}
+
+export default function SubscriptionsPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <SubscriptionsContent />
+    </Suspense>
   );
 }
