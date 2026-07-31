@@ -2798,19 +2798,26 @@ function DialogServico({
                   )} equivalente a este serviço, usado no controle de recompensas.`}
                 />
               </div>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={form.fichaValue}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    fichaValue: e.target.value.replace(/\D/g, ""),
-                  }))
-                }
-                placeholder="Ex.: 10"
-                className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10"
-              />
+              <div className="relative">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.fichaValue}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      fichaValue: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  placeholder={
+                    barbershop?.commissionUnitType === "MINUTO" ? "Ex.: 30" : "Ex.: 10"
+                  }
+                  className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 h-10 pr-14"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-text-faint pointer-events-none">
+                  {barbershop?.commissionUnitType === "MINUTO" ? "min" : "fichas"}
+                </span>
+              </div>
             </div>
             <div className="space-y-1.5">
               <FormLabel>Período p/ recompra (dias)</FormLabel>
