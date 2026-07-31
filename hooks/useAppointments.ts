@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { appointmentsService } from "@/services/appointments.service";
+import { appointmentsService, isCreateAppointmentWarning } from "@/services/appointments.service";
 import type {
   Appointment,
   CreateAppointmentPayload,
@@ -60,10 +60,25 @@ export function useAppointments(barbershopId: string | undefined) {
     async (payload: CreateAppointmentPayload) => {
       if (!barbershopId) return null;
       try {
-        const created = await appointmentsService.create(barbershopId, payload);
-        setAppointments((prev) => [...prev, ...(created as unknown as Appointment[])]);
+        const result = await appointmentsService.create(barbershopId, payload);
+
+        // Regra dos 30 min por plano (§1.1): a recepção pode confirmar mesmo
+        // assim — reenvia com `force: true` uma única vez.
+        if (isCreateAppointmentWarning(result)) {
+          if (!window.confirm(result.warning)) return null;
+          const forced = await appointmentsService.create(barbershopId, {
+            ...payload,
+            force: true,
+          });
+          if (isCreateAppointmentWarning(forced)) return null;
+          setAppointments((prev) => [...prev, ...forced]);
+          toast.success("Agendamento criado.");
+          return forced[0] ?? null;
+        }
+
+        setAppointments((prev) => [...prev, ...result]);
         toast.success("Agendamento criado.");
-        return created[0] ?? null;
+        return result[0] ?? null;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Falha ao criar agendamento.",

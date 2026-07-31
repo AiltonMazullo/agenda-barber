@@ -9,6 +9,9 @@ export interface WhatsappSettings {
   confirmationTemplate: string;
   preApprovedPlanTemplate: string;
   birthdayTemplate: string;
+  reminderTemplate: string;
+  /** Quantas horas antes do agendamento o lembrete é disparado. Default 24h. */
+  reminderHoursBefore: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -17,4 +20,6 @@ export interface UpdateWhatsappSettingsPayload {
   confirmationTemplate?: string;
   preApprovedPlanTemplate?: string;
   birthdayTemplate?: string;
+  reminderTemplate?: string;
+  reminderHoursBefore?: number;
 }

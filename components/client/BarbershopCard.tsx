@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { MapPin, Phone, ChevronRight } from "lucide-react";
+import { apiAssetUrl } from "@/lib/api";
 import type { Barbershop } from "@/types/barbershop.types";
 
 interface BarbershopCardProps {
@@ -16,15 +17,25 @@ export function BarbershopCard({ barbershop }: BarbershopCardProps) {
     .join("")
     .toUpperCase();
 
+  const logoUrl = apiAssetUrl(barbershop.logoUrl);
+
   return (
     <Link
       href={`/client/${barbershop.slug}`}
-      className="group rounded-xl border border-border-subtle bg-surface-raised p-5 hover:border-brand/60 hover:bg-surface-raised/80 transition-all flex flex-col gap-4"
+      className="group rounded-xl border border-border-subtle bg-surface-raised p-5 hover:border-brand/60 hover:bg-surface-raised/80 transition-all flex flex-col gap-4 min-h-[152px]"
     >
       <div className="flex items-center gap-3">
-        <div className="size-12 rounded-lg bg-brand/15 text-brand grid place-items-center text-base font-bold shrink-0">
-          {initials || "??"}
-        </div>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={barbershop.name}
+            className="size-12 rounded-lg object-cover shrink-0 bg-surface"
+          />
+        ) : (
+          <div className="size-12 rounded-lg bg-brand/15 text-brand grid place-items-center text-base font-bold shrink-0">
+            {initials || "??"}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-bold text-foreground truncate">
             {barbershop.name}
@@ -36,19 +47,23 @@ export function BarbershopCard({ barbershop }: BarbershopCardProps) {
         <ChevronRight className="size-4 text-text-faint group-hover:text-brand transition-colors shrink-0" />
       </div>
 
-      <div className="space-y-1.5 text-xs text-muted-foreground">
-        {barbershop.address && (
-          <div className="flex items-center gap-2">
-            <MapPin className="size-3 shrink-0" />
-            <span className="truncate">{barbershop.address}</span>
-          </div>
-        )}
-        {barbershop.phone && (
-          <div className="flex items-center gap-2">
-            <Phone className="size-3 shrink-0" />
-            <span>{barbershop.phone}</span>
-          </div>
-        )}
+      <div className="space-y-1.5 text-xs text-muted-foreground flex-1">
+        <div className="flex items-center gap-2 min-h-[18px]">
+          {barbershop.address && (
+            <>
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{barbershop.address}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2 min-h-[18px]">
+          {barbershop.phone && (
+            <>
+              <Phone className="size-3 shrink-0" />
+              <span>{barbershop.phone}</span>
+            </>
+          )}
+        </div>
       </div>
     </Link>
   );

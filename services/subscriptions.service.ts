@@ -19,6 +19,15 @@ export const subscriptionsService = {
     return data;
   },
 
+  /** Recepção/dono cria a assinatura em nome de um cliente já cadastrado. */
+  async createManual(
+    barbershopId: string,
+    payload: { clientId: string; planId: string; paymentMethod?: "CREDIT_CARD" | "PIX_AUTOMATICO" },
+  ): Promise<Subscription> {
+    const { data } = await api.post<Subscription>(`${base(barbershopId)}/manual`, payload);
+    return data;
+  },
+
   async cancel(
     barbershopId: string,
     id: string,

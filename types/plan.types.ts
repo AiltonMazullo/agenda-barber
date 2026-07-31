@@ -59,6 +59,10 @@ export interface Plan {
   serviceFrequencyDays: number;
   hidden: boolean;
   freeDays: number[];
+  /** Dias da semana (0=Dom..6=Sáb) em que o plano pode ser usado para agendar. Vazio = todos os dias. */
+  availableWeekdays: number[];
+  /** Vagas restantes (availableQuantity - assinantes ativos). `null` quando `availableQuantity` é ilimitado. */
+  availableSlots?: number | null;
   status: "ACTIVE" | "INACTIVE";
   contractUrl: string | null;
   order: number;
@@ -98,6 +102,7 @@ export interface CreatePlanPayload {
   serviceFrequencyDays?: number;
   hidden?: boolean;
   freeDays?: number[];
+  availableWeekdays?: number[];
   services?: PlanServiceInput[];
   employees?: PlanEmployeeInput[];
   products?: PlanProductInput[];

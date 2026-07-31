@@ -15,9 +15,18 @@ export const BUSINESS_CATEGORIES = [
   "Barbearia",
   "Salão de Beleza",
   "Manicure",
+  "Spa",
 ] as const;
 
 export type BusinessCategory = (typeof BUSINESS_CATEGORIES)[number];
+
+/** Rótulo (PT-BR, exibido no filtro) → código enviado pra API (`Barbershop.category`). */
+export const BUSINESS_CATEGORY_CODES: Record<BusinessCategory, string> = {
+  Barbearia: "BARBEARIA",
+  "Salão de Beleza": "SALAO",
+  Manicure: "MANICURE",
+  Spa: "SPA",
+};
 
 interface BarbershopFiltersProps {
   query: string;

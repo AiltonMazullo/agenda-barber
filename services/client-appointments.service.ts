@@ -46,4 +46,17 @@ export const clientAppointmentsService = {
       `/barbershops/${barbershopId}/appointments/${id}`,
     );
   },
+
+  /** Remarca um agendamento existente do próprio cliente (mesmo profissional/serviço). */
+  async reschedule(
+    barbershopId: string,
+    id: string,
+    scheduledAt: string,
+  ): Promise<Appointment> {
+    const { data } = await clientApi.patch<Appointment>(
+      `/barbershops/${barbershopId}/appointments/${id}/reschedule-client`,
+      { scheduledAt },
+    );
+    return data;
+  },
 };

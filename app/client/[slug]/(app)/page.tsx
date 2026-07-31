@@ -3,19 +3,21 @@
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Mail,
-  Phone,
+  MessageCircle,
   MapPin,
+  Navigation,
   Scissors,
   Clock,
   AlertCircle,
   CalendarPlus,
   CalendarDays,
 } from "lucide-react";
+import { buildWhatsappLink } from "@/utils/whatsapp-template";
 import { servicesService } from "@/services/services.service";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
 import { clientCatalogService } from "@/services/client-catalog.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
+import { ClubBannerCarousel } from "@/components/client/ClubBannerCarousel";
 import { FeaturedFlag } from "@/components/client/FeaturedFlag";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
 import { Loading } from "@/components/shared/Loading";
@@ -159,7 +161,14 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
       {barbershop && !isLoading && (
         <>
-          <BarbershopHero barbershop={barbershop} />
+          {isAuthenticated ? (
+            <ClubBannerCarousel
+              barbershopId={barbershop.id}
+              fallback={<BarbershopHero barbershop={barbershop} />}
+            />
+          ) : (
+            <BarbershopHero barbershop={barbershop} />
+          )}
 
           <section className="rounded-xl border border-brand/40 bg-linear-to-br from-brand/10 to-brand/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -212,40 +221,54 @@ export default function BarbershopPublicPage({ params }: PageProps) {
             </section>
           )}
 
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
-              <Mail className="size-4 text-brand shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  E-mail
-                </p>
-                <p className="text-sm text-foreground truncate">
-                  {barbershop.email}
-                </p>
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {barbershop.phone ? (
+              <a
+                href={buildWhatsappLink(barbershop.phone, "")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3 hover:border-brand/60 transition-colors"
+              >
+                <MessageCircle className="size-4 text-brand shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    WhatsApp
+                  </p>
+                  <p className="text-sm text-foreground">{barbershop.phone}</p>
+                </div>
+              </a>
+            ) : (
+              <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
+                <MessageCircle className="size-4 text-brand shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    WhatsApp
+                  </p>
+                  <p className="text-sm text-foreground">—</p>
+                </div>
               </div>
-            </div>
-
-            <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
-              <Phone className="size-4 text-brand shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Telefone
-                </p>
-                <p className="text-sm text-foreground">
-                  {barbershop.phone ?? "—"}
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="rounded-lg bg-surface-raised border border-border-subtle p-4 flex items-start gap-3">
               <MapPin className="size-4 text-brand shrink-0 mt-0.5" />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Endereço
                 </p>
                 <p className="text-sm text-foreground">
                   {barbershop.address ?? "—"}
                 </p>
+                {barbershop.address && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(barbershop.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+                  >
+                    <Navigation className="size-3" />
+                    Como chegar
+                  </a>
+                )}
               </div>
             </div>
           </section>

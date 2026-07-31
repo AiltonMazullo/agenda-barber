@@ -29,10 +29,13 @@ export interface Barbershop {
   title?: string | null;
   subtitle?: string | null;
   description?: string | null;
-  /** Categoria do negócio (Barbearia, Salão de Beleza, Manicure…). Filtro da
-   * vitrine pública; backend ainda não expõe — quando expuser, o filtro passa
-   * a ser estrito automaticamente. */
+  /** Categoria do negócio (BARBEARIA | SALAO | MANICURE | SPA). Filtro da vitrine pública. */
   category?: string | null;
+  /** Coordenadas p/ busca por geolocalização — `null` quando ainda não geocodificado. */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Distância até a posição do usuário (km), preenchida só quando `?lat=&lng=` é enviado na busca. */
+  distanceKm?: number | null;
   // ─── Regras de tolerância/penalidade, Clube da Barba, Dpote e Financeiro ──
   cancellationToleranceMinutes?: number | null;
   penaltyDurationHours?: number | null;
@@ -102,4 +105,7 @@ export interface UpdateBarbershopPayload {
   hideFichaFromBarberReport?: boolean;
   commissionUnitType?: CommissionUnitType;
   valeDeductionSource?: ValeDeductionSource;
+  category?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }

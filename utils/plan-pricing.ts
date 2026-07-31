@@ -57,6 +57,26 @@ export function priceServiceUnderSubscription(
   };
 }
 
+/**
+ * Rótulo de desconto exibido no card de plano do cliente.
+ * - `discountPercent === 100` → "Incluso".
+ * - `monthlyLimit` definido e `discountPercent > 0` → "N% OFF para usar mais vezes" +
+ *   quantidade restante no mês.
+ * - Caso contrário → "N% off".
+ */
+export function formatDiscountLabel(
+  discountPercent: number,
+  monthlyLimit?: number | null,
+  used?: number,
+): string {
+  if (discountPercent >= 100) return "Incluso";
+  if (monthlyLimit != null && discountPercent > 0) {
+    const remaining = Math.max(0, monthlyLimit - (used ?? 0));
+    return `${discountPercent}% OFF para usar mais vezes (${remaining}/${monthlyLimit} no mês)`;
+  }
+  return `${discountPercent}% off`;
+}
+
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 /** Formata dias da semana: `[1,2,3,4,5]` → "Seg, Ter, Qua, Qui e Sex". */

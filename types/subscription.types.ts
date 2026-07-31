@@ -128,6 +128,8 @@ export interface SubscribeCheckoutResult {
   status: "AGUARDANDO" | "ERRO" | "SUCESSO";
   checkoutUrl: string | null;
   errorMessage: string | null;
+  /** Link do contrato do plano (`Plan.contractUrl`), quando cadastrado. */
+  plan?: { contractUrl: string | null } | null;
 }
 
 /** Resposta de `POST /subscriptions` para `paymentMethod: "PIX_AUTOMATICO"`. */

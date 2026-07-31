@@ -53,6 +53,14 @@ function isValidHex(value: string) {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
 }
 
+/** WEEK_DAYS usa ISO (1=Seg..7=Dom); `Plan.availableWeekdays` usa 0=Dom..6=Sáb (mesma convenção de `plano/page.tsx`). */
+function isoToWeekday0(iso: number): number {
+  return iso === 7 ? 0 : iso;
+}
+function weekday0ToIso(day: number): number {
+  return day === 0 ? 7 : day;
+}
+
 // ─── componente ──────────────────────────────────────────────────────────────
 
 export function DialogNovoPlano({
@@ -92,6 +100,7 @@ export function DialogNovoPlano({
 
   // regras operacionais
   const [freeDays, setFreeDays] = useState<number[]>([]);
+  const [availableWeekdays, setAvailableWeekdays] = useState<number[]>([]);
   const [maxSimultaneous, setMaxSimultaneous] = useState("1");
   const [lockDays, setLockDays] = useState("30");
   const [frequencyDays, setFrequencyDays] = useState("7");
@@ -133,6 +142,9 @@ export function DialogNovoPlano({
     );
     setHidden(plan?.hidden ?? false);
     setFreeDays(plan?.freeDays ?? []);
+    setAvailableWeekdays(
+      (plan?.availableWeekdays ?? []).map(weekday0ToIso).sort((a, b) => a - b),
+    );
     setMaxSimultaneous(String(plan?.maxSimultaneousServices ?? 1));
     setLockDays(String(plan?.subscriptionLockDays ?? 30));
     setFrequencyDays(String(plan?.serviceFrequencyDays ?? 7));
@@ -413,6 +425,7 @@ export function DialogNovoPlano({
         availableQuantity: qty ?? null,
         hidden,
         freeDays,
+        availableWeekdays: availableWeekdays.map(isoToWeekday0).sort((a, b) => a - b),
         maxSimultaneousServices: maxSimultaneousNum,
         subscriptionLockDays: lockDaysNum,
         serviceFrequencyDays: frequencyDaysNum,
@@ -565,16 +578,25 @@ export function DialogNovoPlano({
                   label="Bloqueio (dias)"
                   value={lockDays}
                   onChange={setLockDays}
-                  options={["30", "60", "90"]}
+                  options={[{ value: "0", label: "Sem bloqueio" }, "30", "60", "90"]}
                 />
-                <SelectField
-                  id="frequencyDays"
-                  label="Periodicidade (dias)"
-                  value={frequencyDays}
-                  onChange={setFrequencyDays}
-                  options={["7", "15", "21", "30"]}
-                />
+                <Field label="Periodicidade (dias)">
+                  <Input
+                    id="frequencyDays"
+                    type="number"
+                    min={0}
+                    value={frequencyDays}
+                    onChange={(e) => setFrequencyDays(e.target.value)}
+                    className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+                  />
+                </Field>
               </div>
+              <p className="text-[11px] text-text-faint -mt-1">
+                &quot;Serviços simultâneos&quot; define o intervalo mínimo entre usos: após o cliente usar
+                um serviço do plano, o próximo agendamento online de outro serviço do plano só
+                libera 30 min após o término do anterior — não é a quantidade de serviços no
+                mesmo agendamento (isso é o carrinho de serviços).
+              </p>
 
               <Field label="Dias de gratuidade">
                 <div className="flex gap-1.5 flex-nowrap">
@@ -602,6 +624,37 @@ export function DialogNovoPlano({
                     );
                   })}
                 </div>
+              </Field>
+
+              <Field label="Dias livres para agendar">
+                <div className="flex gap-1.5 flex-nowrap">
+                  {WEEK_DAYS.map(({ value, short }) => {
+                    const active = availableWeekdays.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() =>
+                          setAvailableWeekdays((prev) =>
+                            active
+                              ? prev.filter((d) => d !== value)
+                              : [...prev, value].sort((a, b) => a - b),
+                          )
+                        }
+                        className={`w-full h-9 rounded-md text-xs font-bold border transition-colors ${
+                          active
+                            ? "bg-brand text-brand-foreground border-brand"
+                            : "bg-surface-base text-muted-foreground border-border hover:border-brand/40 hover:text-foreground"
+                        }`}
+                      >
+                        {short}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-text-faint mt-1">
+                  Deixe vazio para o plano valer todos os dias.
+                </p>
               </Field>
             </div>
           </Section>

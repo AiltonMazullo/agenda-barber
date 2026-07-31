@@ -31,6 +31,7 @@ import {
   Handshake,
   Ticket,
   Percent,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -111,7 +112,15 @@ const navOperacional: NavItem[] = [
 ];
 
 const navGestao: NavItem[] = [
-  { title: "Assinaturas", href: "/subscriptions", icon: CreditCard, module: "cliente" },
+  {
+    title: "Assinaturas",
+    href: "/subscriptions",
+    icon: CreditCard,
+    module: "cliente",
+    children: [
+      { title: "Criar assinatura", href: "/subscriptions?abrir=nova", icon: Plus },
+    ],
+  },
   { title: "Comissões", href: "/commissions", icon: TrendingUp, module: "comissao" },
   { title: "Estoque", href: "/inventory", icon: Package, module: "produto" },
   {

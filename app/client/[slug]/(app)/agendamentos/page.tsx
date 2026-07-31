@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CalendarCheck, AlertCircle, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
+import { RescheduleDialog } from "@/components/client/RescheduleDialog";
 import { AgendamentosHelpCard } from "@/components/client/AgendamentosHelpCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -156,6 +157,20 @@ export default function AgendamentosPage({ params }: PageProps) {
     router.push(`/client/${slug}/agendar`);
   }
 
+  const [rescheduleTarget, setRescheduleTarget] = useState<ClientAppointment | null>(null);
+
+  function handleReschedule(appt: ClientAppointment) {
+    setRescheduleTarget(appt);
+  }
+
+  function handleRescheduled() {
+    setIsLoading(true);
+    clientAppointmentsService
+      .listMine()
+      .then(setAppointments)
+      .finally(() => setIsLoading(false));
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -218,7 +233,7 @@ export default function AgendamentosPage({ params }: PageProps) {
                         }
                         photoUrl={empId ? localPhotos[empId] ?? null : null}
                         onCancel={handleCancel}
-                        onReschedule={goToAgendar}
+                        onReschedule={handleReschedule}
                       />
                     );
                   })}
@@ -283,6 +298,14 @@ export default function AgendamentosPage({ params }: PageProps) {
           </TabsContent>
         </Tabs>
       )}
+
+      <RescheduleDialog
+        open={rescheduleTarget !== null}
+        onOpenChange={(v) => !v && setRescheduleTarget(null)}
+        barbershopId={rescheduleTarget?.barbershopId ?? ""}
+        appointment={rescheduleTarget}
+        onRescheduled={handleRescheduled}
+      />
     </div>
   );
 }

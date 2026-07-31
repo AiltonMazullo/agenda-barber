@@ -13,6 +13,7 @@ import {
   Repeat2,
   AlertCircle,
   Star,
+  Flame,
   CreditCard,
   QrCode,
   Copy,
@@ -33,8 +34,10 @@ import { clientPlansService } from "@/services/client-plans.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { formatBRL } from "@/utils/format";
+import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
 import type { Plan } from "@/types/plan.types";
 import type {
+  ServiceUsage,
   SubscribePixAuthorizationResult,
   SubscriptionPaymentMethod,
 } from "@/types/subscription.types";
@@ -50,6 +53,7 @@ interface PlanCardProps {
   isCurrentPlan: boolean;
   hasOtherActivePlan: boolean;
   subscribing: boolean;
+  usage?: ServiceUsage[];
   onSubscribe: () => void;
   onCancel: () => void;
 }
@@ -59,6 +63,7 @@ function PlanCard({
   isCurrentPlan,
   hasOtherActivePlan,
   subscribing,
+  usage = [],
   onSubscribe,
   onCancel,
 }: PlanCardProps) {
@@ -69,6 +74,9 @@ function PlanCard({
       ? plan.freeDays.map((d) => DAY_NAMES[d] ?? String(d)).join(", ")
       : null;
 
+  const availableWeekdaysLabel =
+    plan.availableWeekdays.length > 0 ? formatWeekdays(plan.availableWeekdays) : "Todos os dias";
+
   return (
     <div className="relative rounded-xl border border-border-subtle bg-surface-raised overflow-hidden flex flex-col">
       {/* Color bar */}
@@ -78,6 +86,20 @@ function PlanCard({
         <div className="absolute top-3 right-3 h-6 px-2.5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold flex items-center gap-1 shadow-sm">
           <Star className="size-3 fill-current" />
           Mais vendido
+        </div>
+      )}
+
+      {plan.availableSlots != null && plan.availableSlots > 0 && (
+        <div className="mx-5 mt-4 -mb-1 rounded-lg bg-orange-500/10 border border-orange-500/30 px-3 py-2 flex items-center gap-2">
+          <Flame className="size-4 text-orange-500 shrink-0" />
+          <div>
+            <p className="text-xs font-extrabold text-orange-500 uppercase tracking-wide">
+              Restam {plan.availableSlots} {plan.availableSlots === 1 ? "vaga" : "vagas"}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Garanta já o seu e não fique de fora
+            </p>
+          </div>
         </div>
       )}
 
@@ -135,15 +157,35 @@ function PlanCard({
             </div>
           </div>
 
+          <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
+            <Calendar className="size-3.5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-[10px] text-muted-foreground">Dias livres</p>
+              <p className="text-xs font-semibold text-foreground">
+                {availableWeekdaysLabel}
+              </p>
+            </div>
+          </div>
+
           {freeDayLabels && (
             <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
               <Calendar className="size-3.5 text-muted-foreground shrink-0" />
               <div>
-                <p className="text-[10px] text-muted-foreground">Dias livres</p>
+                <p className="text-[10px] text-muted-foreground">Dias de gratuidade</p>
                 <p className="text-xs font-semibold text-foreground">
                   {freeDayLabels}
                 </p>
               </div>
+            </div>
+          )}
+
+          {plan.serviceFrequencyDays > 0 && (
+            <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
+              <Repeat2 className="size-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs font-semibold text-foreground">
+                Agenda liberada com {plan.serviceFrequencyDays}{" "}
+                {plan.serviceFrequencyDays === 1 ? "dia" : "dias"} de antecedência
+              </p>
             </div>
           )}
         </div>
@@ -158,21 +200,26 @@ function PlanCard({
               </p>
             </div>
             <div className="space-y-1">
-              {plan.planServices.map((ps) => (
-                <div
-                  key={ps.id}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-base px-3 py-1.5"
-                >
-                  <span className="text-xs text-foreground truncate flex-1">
-                    {ps.service.name}
-                  </span>
-                  <span className="text-xs font-semibold text-green-500 whitespace-nowrap">
-                    {ps.discountPercent === 100
-                      ? "Incluso"
-                      : `${ps.discountPercent}% off`}
-                  </span>
-                </div>
-              ))}
+              {plan.planServices.map((ps) => {
+                const svcUsage = usage.find((u) => u.serviceId === ps.serviceId);
+                return (
+                  <div
+                    key={ps.id}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-base px-3 py-1.5"
+                  >
+                    <span className="text-xs text-foreground truncate flex-1">
+                      {ps.service.name}
+                    </span>
+                    <span className="text-xs font-semibold text-green-500 whitespace-nowrap">
+                      {formatDiscountLabel(
+                        ps.discountPercent,
+                        ps.monthlyLimit,
+                        svcUsage?.used,
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -418,6 +465,7 @@ export default function PlanoClientePage() {
                 isCurrentPlan={isCurrentPlan}
                 hasOtherActivePlan={hasOtherActivePlan}
                 subscribing={subscribingId === plan.id}
+                usage={isCurrentPlan ? mySubscription?.usage : undefined}
                 onSubscribe={() =>
                   hasOtherActivePlan ? setSwitchTarget(plan) : openPaymentDialog(plan)
                 }
@@ -501,6 +549,17 @@ export default function PlanoClientePage() {
                   </div>
                 </button>
               </div>
+
+              {checkoutPlan?.contractUrl && (
+                <a
+                  href={checkoutPlan.contractUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-brand hover:underline"
+                >
+                  Ver contrato
+                </a>
+              )}
 
               <DialogFooter>
                 <button

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CreditCard,
   Plus,
@@ -53,6 +54,7 @@ import {
   Loading,
 } from "@/components/shared";
 import { DialogNovoPlano } from "@/components/plans/DialogNovoPlano";
+import { DialogNovaAssinatura } from "@/components/plans/DialogNovaAssinatura";
 import { formatBRL, formatDate } from "@/utils/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlans } from "@/hooks/usePlans";
@@ -95,12 +97,24 @@ function QuickLinksBar() {
 
 function AssinantesTab() {
   const { barbershop } = useAuth();
-  const { activeSubscriptions, summary, isLoading, cancel } = useSubscriptions(
+  const { activeSubscriptions, summary, isLoading, cancel, refetch } = useSubscriptions(
     barbershop?.id,
   );
 
+  const { plans } = usePlans(barbershop?.id);
   const [search, setSearch] = useState("");
   const [toCancel, setToCancel] = useState<Subscription | null>(null);
+  const [novaAssinaturaOpen, setNovaAssinaturaOpen] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("abrir") === "nova") {
+      setNovaAssinaturaOpen(true);
+      router.replace("/subscriptions");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -175,8 +189,8 @@ function AssinantesTab() {
 
       <Card className="bg-surface-raised border-border">
         <CardContent className="p-0">
-          <div className="px-4 py-4 border-b border-border-subtle">
-            <div className="relative">
+          <div className="px-4 py-4 border-b border-border-subtle flex items-center gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou e-mail..."
@@ -185,6 +199,14 @@ function AssinantesTab() {
                 className="pl-9 bg-surface-base border-border text-foreground placeholder:text-muted-foreground h-9 text-sm focus-visible:ring-brand/40"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setNovaAssinaturaOpen(true)}
+              className="h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <Plus className="size-3.5" />
+              Criar assinatura
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -300,6 +322,16 @@ function AssinantesTab() {
         tone="danger"
         onConfirm={doCancel}
       />
+
+      {barbershop && (
+        <DialogNovaAssinatura
+          open={novaAssinaturaOpen}
+          onOpenChange={setNovaAssinaturaOpen}
+          barbershopId={barbershop.id}
+          plans={plans}
+          onCreated={refetch}
+        />
+      )}
     </div>
   );
 }

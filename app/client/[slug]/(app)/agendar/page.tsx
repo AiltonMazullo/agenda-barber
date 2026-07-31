@@ -2,6 +2,14 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Building2,
   Scissors,
@@ -16,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { clientCatalogService } from "@/services/client-catalog.service";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
+import { clientPlansService } from "@/services/client-plans.service";
 import { availabilityService } from "@/services/availability.service";
 import { FilialSelectCard } from "@/components/client/FilialSelectCard";
 import { ServicoSelectCard } from "@/components/client/ServicoSelectCard";
@@ -199,6 +208,25 @@ export default function AgendarPage({ params }: PageProps) {
   const isSubscriber = mySubscription !== null;
   const subscription = mySubscription?.subscription ?? null;
   const usage = mySubscription?.usage ?? [];
+
+  // Popup de planos (§2.4): dispara uma vez por sessão ao entrar no passo 1,
+  // se o cliente não é assinante e a barbearia tem ao menos um plano ativo.
+  const [hasActivePlans, setHasActivePlans] = useState(false);
+  const [showPlansPopup, setShowPlansPopup] = useState(false);
+  useEffect(() => {
+    if (!barbershop) return;
+    clientPlansService
+      .list(barbershop.id)
+      .then((plans) => setHasActivePlans(plans.some((p) => p.status === "ACTIVE" && !p.hidden)))
+      .catch(() => setHasActivePlans(false));
+  }, [barbershop]);
+  useEffect(() => {
+    if (step !== 1 || isSubscriber || !hasActivePlans) return;
+    const key = `plans-popup-shown-${slug}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    setShowPlansPopup(true);
+  }, [step, isSubscriber, hasActivePlans, slug]);
 
   // Há filiais? Se não (caso raro), o passo "Filial" é pulado e todos os
   // profissionais ficam disponíveis.
@@ -752,6 +780,32 @@ export default function AgendarPage({ params }: PageProps) {
           </div>
         </>
       )}
+
+      <Dialog open={showPlansPopup} onOpenChange={setShowPlansPopup}>
+        <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Conheça nossos planos</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Assine um plano e tenha serviços inclusos, descontos e prioridade no agendamento.
+          </p>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setShowPlansPopup(false)}
+              className="h-10 px-4 rounded-lg text-sm font-semibold border border-border-subtle hover:bg-surface-base transition-colors"
+            >
+              Agora não
+            </button>
+            <Link
+              href={`/client/${slug}/plano`}
+              className="h-10 px-4 rounded-lg text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center justify-center"
+            >
+              Ver planos
+            </Link>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2,11 +2,18 @@ import { api } from "@/lib/api";
 import type {
   Appointment,
   CreateAppointmentPayload,
+  CreateAppointmentWarning,
   RescheduleAppointmentPayload,
   TransferAppointmentPayload,
   UpdateAppointmentPayload,
   UpdateAppointmentStatusPayload,
 } from "@/types/appointment.types";
+
+export function isCreateAppointmentWarning(
+  result: Appointment[] | CreateAppointmentWarning,
+): result is CreateAppointmentWarning {
+  return (result as CreateAppointmentWarning).requiresConfirmation === true;
+}
 
 export const appointmentsService = {
   async list(barbershopId: string): Promise<Appointment[]> {
@@ -24,8 +31,8 @@ export const appointmentsService = {
   async create(
     barbershopId: string,
     payload: CreateAppointmentPayload,
-  ): Promise<Appointment[]> {
-    const { data } = await api.post<Appointment[]>(
+  ): Promise<Appointment[] | CreateAppointmentWarning> {
+    const { data } = await api.post<Appointment[] | CreateAppointmentWarning>(
       `/barbershops/${barbershopId}/appointments`,
       payload,
     );

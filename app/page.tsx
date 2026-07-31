@@ -1,7 +1,6 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,7 +8,7 @@ import { Plus, Building2, AlertCircle } from "lucide-react";
 import { barbershopsService } from "@/services/barbershops.service";
 import { BarbershopCard } from "@/components/client/BarbershopCard";
 import { BarbershopCardSkeleton } from "@/components/client/BarbershopCardSkeleton";
-import { BarbershopFilters } from "@/components/client/BarbershopFilters";
+import { BarbershopFilters, BUSINESS_CATEGORY_CODES } from "@/components/client/BarbershopFilters";
 import type { Barbershop } from "@/types/barbershop.types";
 
 const gridVariants = {
@@ -37,47 +36,59 @@ export default function HomePage() {
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("all");
 
+  // Geolocalização (§3.2): solicitada uma vez ao abrir a página; se o
+  // usuário negar ou o navegador não suportar, a busca segue sem filtro de
+  // distância (fallback gracioso).
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
-    let active = true;
-    setIsLoading(true);
-    barbershopsService
-      .list()
-      .then((data) => {
-        if (active) setBarbershops(data);
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Não foi possível carregar as barbearias.",
-        );
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    if (!("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setCoords(null),
+      { timeout: 8000 },
+    );
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const c = city.trim().toLowerCase();
-    return barbershops.filter((b) => {
-      const matchesName =
-        !q ||
-        b.name.toLowerCase().includes(q) ||
-        b.slug.toLowerCase().includes(q);
-      const matchesCity = !c || (b.address ?? "").toLowerCase().includes(c);
-      // Permissivo: enquanto o backend não envia `category`, nenhuma empresa é
-      // ocultada ao escolher uma categoria; vira filtro estrito quando o campo
-      // existir.
-      const matchesCategory =
-        category === "all" || !b.category || b.category === category;
-      return matchesName && matchesCity && matchesCategory;
-    });
-  }, [barbershops, query, city, category]);
+  // Busca real no backend (§3.1): nome/slug, cidade e categoria viram query
+  // params de verdade; debounce simples pra não disparar uma request por tecla.
+  useEffect(() => {
+    let active = true;
+    const timeout = setTimeout(() => {
+      setIsLoading(true);
+      barbershopsService
+        .list({
+          q: query.trim() || undefined,
+          city: city.trim() || undefined,
+          category:
+            category !== "all"
+              ? BUSINESS_CATEGORY_CODES[category as keyof typeof BUSINESS_CATEGORY_CODES]
+              : undefined,
+          lat: coords?.lat,
+          lng: coords?.lng,
+          radiusKm: coords ? 10 : undefined,
+        })
+        .then((data) => {
+          if (active) setBarbershops(data);
+        })
+        .catch((err: unknown) => {
+          if (!active) return;
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Não foi possível carregar as barbearias.",
+          );
+        })
+        .finally(() => {
+          if (active) setIsLoading(false);
+        });
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [query, city, category, coords]);
+
+  const filtered = barbershops;
 
   return (
     <div className="min-h-screen bg-surface-base text-foreground">

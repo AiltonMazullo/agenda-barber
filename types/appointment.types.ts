@@ -98,6 +98,14 @@ export interface CreateAppointmentPayload {
   employeeId?: string;
   /** ISO datetime string (UTC). */
   scheduledAt: string;
+  /** Confirma a criação mesmo com o aviso de conflito de plano (§1.1). */
+  force?: boolean;
+}
+
+/** Resposta de `POST /appointments` quando há um conflito não bloqueante (regra dos 30 min por plano). */
+export interface CreateAppointmentWarning {
+  requiresConfirmation: true;
+  warning: string;
 }
 
 export type UpdatableAppointmentStatus = Exclude<AppointmentStatus, "PENDING">;

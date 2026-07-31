@@ -39,9 +39,18 @@ async function findInList(slug: string): Promise<Barbershop> {
   return found;
 }
 
+export interface ListBarbershopsParams {
+  q?: string;
+  city?: string;
+  category?: string;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+}
+
 export const barbershopsService = {
-  async list(): Promise<Barbershop[]> {
-    const { data } = await reader().get<Barbershop[]>("/barbershops");
+  async list(params?: ListBarbershopsParams): Promise<Barbershop[]> {
+    const { data } = await reader().get<Barbershop[]>("/barbershops", { params });
     return data;
   },
 

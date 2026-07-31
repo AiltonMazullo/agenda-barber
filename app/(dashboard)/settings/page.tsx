@@ -68,6 +68,7 @@ import {
   DatePickerField,
   DataTablePagination,
   Loading,
+  SelectField,
 } from "@/components/shared";
 import {
   RegistrosAtivosTable,
@@ -266,6 +267,7 @@ function TabEmpresa() {
   const [penaltyDurationHours, setPenaltyDurationHours] = useState<
     number | null
   >(barbershop?.penaltyDurationHours ?? null);
+  const [category, setCategory] = useState(barbershop?.category ?? "");
   const [clubName, setClubName] = useState(barbershop?.clubName ?? "");
   const [dpoteCommissionPercent, setDpoteCommissionPercent] = useState(
     barbershop?.dpoteCommissionPercent != null
@@ -304,6 +306,7 @@ function TabEmpresa() {
       barbershop?.cancellationToleranceMinutes ?? null,
     );
     setPenaltyDurationHours(barbershop?.penaltyDurationHours ?? null);
+    setCategory(barbershop?.category ?? "");
     setClubName(barbershop?.clubName ?? "");
     setDpoteCommissionPercent(
       barbershop?.dpoteCommissionPercent != null
@@ -421,6 +424,7 @@ function TabEmpresa() {
         title: title.trim(),
         subtitle: subtitle.trim(),
         description: description.trim(),
+        category: category || null,
         cancellationToleranceMinutes,
         penaltyDurationHours,
         clubName: clubName.trim() || null,
@@ -661,6 +665,23 @@ function TabEmpresa() {
                 className="bg-surface-base border-border text-white placeholder:text-text-faint focus-visible:ring-[#f5b82e]/30 resize-none min-h-[80px]"
               />
             </div>
+
+            <SelectField
+              id="category"
+              label="Categoria"
+              value={category}
+              onChange={setCategory}
+              placeholder="Não categorizada"
+              options={[
+                { value: "BARBEARIA", label: "Barbearia" },
+                { value: "SALAO", label: "Salão de Beleza" },
+                { value: "MANICURE", label: "Manicure" },
+                { value: "SPA", label: "Spa" },
+              ]}
+            />
+            <p className="text-[11px] text-text-faint -mt-2">
+              Usada no filtro de categoria da vitrine pública de busca de salões.
+            </p>
 
             {/* Carrossel */}
             <div className="space-y-2">
