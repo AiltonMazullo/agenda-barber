@@ -127,7 +127,7 @@ export function ProfissionalColuna({
   );
 
   return (
-    <div className="flex flex-col flex-1 min-w-0">
+    <div className="flex flex-col flex-1 min-w-[140px]">
       <div className="sticky top-0 z-20 bg-surface-base border-b border-border-subtle h-[92px] px-2 flex flex-col items-center justify-center gap-1">
         <div
           className="size-8 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center shrink-0 bg-cover bg-center overflow-hidden"

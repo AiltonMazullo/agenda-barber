@@ -1123,7 +1123,7 @@ export default function SchedulePage() {
                   {profissionaisVisiveis.map((prof) => (
                     <div
                       key={prof.id}
-                      className="relative flex flex-col flex-1 min-w-0"
+                      className="relative flex flex-col flex-1 min-w-[140px]"
                     >
                       {nowTopPx !== null && (
                         <div
