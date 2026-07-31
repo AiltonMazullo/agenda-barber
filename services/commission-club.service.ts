@@ -8,8 +8,26 @@ import type {
 } from "@/types/commission-club.types";
 
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/commission-club/runs`;
+const suggestBase = (barbershopId: string) =>
+  `/barbershops/${barbershopId}/commission-club/suggest`;
+
+export interface CommissionClubSuggestion {
+  totalServicesByCategory: Record<string, number>;
+  servicesByEmployee: Record<string, Record<string, number>>;
+  subscriptionRevenueInCents: number;
+}
 
 export const commissionClubService = {
+  async suggest(
+    barbershopId: string,
+    filters: { branchId: string; periodStart: string; periodEnd: string },
+  ): Promise<CommissionClubSuggestion> {
+    const { data } = await api.get<CommissionClubSuggestion>(suggestBase(barbershopId), {
+      params: filters,
+    });
+    return data;
+  },
+
   async list(barbershopId: string, branchId?: string): Promise<CommissionClubRun[]> {
     const { data } = await api.get<CommissionClubRun[]>(base(barbershopId), {
       params: { branchId },

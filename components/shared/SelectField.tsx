@@ -17,6 +17,7 @@ interface SelectFieldProps<T extends string> {
   onChange: (value: T) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 function normalize<T extends string>(
@@ -33,6 +34,7 @@ export function SelectField<T extends string>({
   onChange,
   placeholder,
   className,
+  disabled,
 }: SelectFieldProps<T>) {
   const items = options.map(normalize);
   const selected = items.find((opt) => opt.value === value);
@@ -50,7 +52,8 @@ export function SelectField<T extends string>({
       <DropdownMenu>
         <DropdownMenuTrigger
           id={id}
-          className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors outline-none cursor-pointer"
+          disabled={disabled}
+          className="w-full h-10 px-3 rounded-md border border-border bg-surface-base text-sm text-foreground flex items-center justify-between gap-2 hover:border-brand/40 transition-colors outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border"
         >
           <span className="truncate">
             {selected?.label ?? placeholder ?? "Selecione"}

@@ -6,6 +6,7 @@ import { expensePaymentMethodsService } from "@/services/expense-payment-methods
 import type {
   CreateExpensePaymentMethodPayload,
   ExpensePaymentMethod,
+  UpdateExpensePaymentMethodPayload,
 } from "@/types/expense-payment-method.types";
 
 export function useExpensePaymentMethods(barbershopId: string | undefined) {
@@ -49,6 +50,22 @@ export function useExpensePaymentMethods(barbershopId: string | undefined) {
     [barbershopId, fetchMethods],
   );
 
+  const update = useCallback(
+    async (id: string, payload: UpdateExpensePaymentMethodPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await expensePaymentMethodsService.update(barbershopId, id, payload);
+        toast.success("Forma de pagamento atualizada.");
+        await fetchMethods();
+        return updated;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Falha ao atualizar forma de pagamento.");
+        return null;
+      }
+    },
+    [barbershopId, fetchMethods],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       if (!barbershopId) return false;
@@ -65,5 +82,5 @@ export function useExpensePaymentMethods(barbershopId: string | undefined) {
     [barbershopId, fetchMethods],
   );
 
-  return { methods, isLoading, create, remove };
+  return { methods, isLoading, create, update, remove };
 }

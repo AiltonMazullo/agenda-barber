@@ -23,6 +23,11 @@ import { useAuditLogs } from "@/hooks/useAuditLogs";
 import { useClients } from "@/hooks/useClients";
 import { exportToCsv } from "@/utils/csv-export";
 import { formatDate } from "@/utils/format";
+import {
+  translateAction,
+  translateField,
+  translateValue,
+} from "@/lib/audit-log-labels";
 import type { AuditEntityType, AuditLog } from "@/types/audit-log.types";
 import type { SelectOption } from "@/types/common.types";
 
@@ -114,10 +119,10 @@ export default function AuditoriasPage() {
         tipo: l.entityType,
         cliente: l.clientId ? (clientNameMap.get(l.clientId) ?? l.clientId) : "",
         responsavel: l.actorName,
-        operacao: l.action,
-        campo: l.field,
-        valorAntigo: l.oldValue ?? "",
-        valorNovo: l.newValue ?? "",
+        operacao: translateAction(l.action),
+        campo: translateField(l.field),
+        valorAntigo: translateValue(l.oldValue),
+        valorNovo: translateValue(l.newValue),
         data: formatDate(l.createdAt, {
           day: "2-digit",
           month: "2-digit",
@@ -206,9 +211,6 @@ export default function AuditoriasPage() {
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto" />
                     <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
-                      ID
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
                       Cliente
                     </TableHead>
                     <TableHead className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto">
@@ -232,13 +234,16 @@ export default function AuditoriasPage() {
                               <ChevronRight className="size-4 text-muted-foreground" />
                             )}
                           </TableCell>
-                          <TableCell className="px-4 py-4 text-xs font-mono text-muted-foreground">
-                            {g.entityId.slice(0, 10)}…
-                          </TableCell>
                           <TableCell className="px-4 py-4 text-sm font-semibold">
                             {g.clientId
-                              ? (clientNameMap.get(g.clientId) ?? g.clientId)
-                              : "—"}
+                              ? (clientNameMap.get(g.clientId) ??
+                                ENTITY_TYPE_OPTIONS.find(
+                                  (o) => o.value === g.entityType,
+                                )?.label ??
+                                g.entityType)
+                              : (ENTITY_TYPE_OPTIONS.find(
+                                  (o) => o.value === g.entityType,
+                                )?.label ?? g.entityType)}
                           </TableCell>
                           <TableCell className="px-4 py-4 text-sm text-muted-foreground">
                             {formatDate(g.latestAt, {
@@ -252,7 +257,7 @@ export default function AuditoriasPage() {
                         </TableRow>
                         {isOpen && (
                           <TableRow className="border-border hover:bg-transparent">
-                            <TableCell colSpan={4} className="px-4 pb-4 pt-0">
+                            <TableCell colSpan={3} className="px-4 pb-4 pt-0">
                               <div className="rounded-md border border-border-subtle overflow-hidden">
                                 <table className="w-full text-xs">
                                   <thead>
@@ -294,7 +299,7 @@ export default function AuditoriasPage() {
                                             {e.actorName}
                                           </td>
                                           <td className="px-3 py-2">
-                                            {e.action}
+                                            {translateAction(e.action)}
                                           </td>
                                           <td className="px-3 py-2 whitespace-nowrap">
                                             {formatDate(e.createdAt, {
@@ -306,13 +311,13 @@ export default function AuditoriasPage() {
                                             })}
                                           </td>
                                           <td className="px-3 py-2 font-medium">
-                                            {e.field}
+                                            {translateField(e.field)}
                                           </td>
                                           <td className="px-3 py-2 text-muted-foreground">
-                                            {e.oldValue ?? "—"}
+                                            {translateValue(e.oldValue)}
                                           </td>
                                           <td className="px-3 py-2 text-foreground">
-                                            {e.newValue ?? "—"}
+                                            {translateValue(e.newValue)}
                                           </td>
                                         </tr>
                                       ))}

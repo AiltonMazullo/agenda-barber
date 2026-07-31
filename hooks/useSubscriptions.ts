@@ -14,13 +14,23 @@ function startOfMonth(): Date {
 export function useSubscriptions(barbershopId: string | undefined) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Inadimplentes (§4.2) — reaproveita o `contractStatus` já calculado pelo
+  // endpoint de contratos (última cobrança OVERDUE, ou PENDING já vencida),
+  // em vez de duplicar essa regra no frontend.
+  const [overdueIds, setOverdueIds] = useState<Set<string>>(new Set());
+  const [overdueAmountInCents, setOverdueAmountInCents] = useState(0);
 
   const fetchSubscriptions = useCallback(async () => {
     if (!barbershopId) return;
     setIsLoading(true);
     try {
-      const data = await subscriptionsService.list(barbershopId);
+      const [data, overdue] = await Promise.all([
+        subscriptionsService.list(barbershopId),
+        subscriptionsService.getContracts(barbershopId, { status: "ATRASADO" }),
+      ]);
       setSubscriptions(data);
+      setOverdueIds(new Set(overdue.contracts.map((c) => c.id)));
+      setOverdueAmountInCents(overdue.totals.total);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao carregar assinaturas.");
     } finally {
@@ -92,9 +102,12 @@ export function useSubscriptions(barbershopId: string | undefined) {
       cancelledCount,
       newThisMonth,
       mrrInCents,
+      overdueCount: overdueIds.size,
+      overdueAmountInCents,
+      overdueSubscriptionIds: overdueIds,
       byPlan: Array.from(byPlanMap.values()),
     };
-  }, [subscriptions, activeSubscriptions]);
+  }, [subscriptions, activeSubscriptions, overdueIds, overdueAmountInCents]);
 
   return {
     subscriptions,

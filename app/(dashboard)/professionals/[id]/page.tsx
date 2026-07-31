@@ -142,6 +142,10 @@ export default function ProfessionalEditPage() {
     // valor local (config store) só para registros que ainda não migraram.
     attendancePeriodDays:
       employee?.attendancePeriodDays ?? config.attendancePeriodDays,
+    defaultBonusInCents:
+      employee?.defaultBonusInCents ?? config.defaultBonusInCents,
+    defaultValeInCents:
+      employee?.defaultValeInCents ?? config.defaultValeInCents,
     workingHours: defaultWorkingHours().map((wh) => {
       const s = backendSchedules.find((bs) => bs.dayOfWeek === wh.day);
       return s
@@ -176,6 +180,8 @@ export default function ProfessionalEditPage() {
       hasBranchAccess: basic.hasBranchAccess,
       accessGroupId: basic.accessGroupId,
       attendancePeriodDays: cfg.attendancePeriodDays,
+      defaultBonusInCents: cfg.defaultBonusInCents,
+      defaultValeInCents: cfg.defaultValeInCents,
       ...(basic.password ? { password: basic.password } : {}),
     };
 

@@ -7,6 +7,7 @@ import type {
   CreateFinancialCategoryPayload,
   FinancialCategory,
   FinancialCategoryType,
+  UpdateFinancialCategoryPayload,
 } from "@/types/financial-category.types";
 
 export function useFinancialCategories(
@@ -53,6 +54,22 @@ export function useFinancialCategories(
     [barbershopId, fetchCategories],
   );
 
+  const update = useCallback(
+    async (id: string, payload: UpdateFinancialCategoryPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await financialCategoriesService.update(barbershopId, id, payload);
+        toast.success("Categoria atualizada.");
+        await fetchCategories();
+        return updated;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Falha ao atualizar categoria.");
+        return null;
+      }
+    },
+    [barbershopId, fetchCategories],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       if (!barbershopId) return false;
@@ -69,5 +86,5 @@ export function useFinancialCategories(
     [barbershopId, fetchCategories],
   );
 
-  return { categories, isLoading, create, remove };
+  return { categories, isLoading, create, update, remove };
 }

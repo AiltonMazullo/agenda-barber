@@ -114,12 +114,30 @@ function DialogEditarLinha({
 
 // ─── Célula de categoria (valor bruto / vencimento / valor líquido) ───────────
 
-function CategoryCell({ cents }: { cents: number }) {
+function CategoryCell({
+  cents,
+  vencidoCents,
+  liquidoCents,
+}: {
+  cents: number;
+  vencidoCents: number;
+  liquidoCents: number;
+}) {
   return (
     <div className="space-y-0.5 min-w-[110px]">
       <div className="font-semibold text-foreground">{formatBRL(cents / 100)}</div>
-      <div className="text-[10px] text-muted-foreground">Venc.: N/A</div>
-      <div className="text-[10px] text-muted-foreground">Líquido: N/A</div>
+      <div
+        className="text-[10px] text-muted-foreground"
+        title="Comissão desta categoria já gerada em apurações anteriores e ainda não paga em Contas a pagar."
+      >
+        Venc.: {formatBRL(vencidoCents / 100)}
+      </div>
+      <div
+        className="text-[10px] text-muted-foreground"
+        title="Valor líquido desta categoria: bruto menos o rateio de vale, quando a categoria de desconto do vale (Configurações) aponta para ela."
+      >
+        Líquido: {formatBRL(liquidoCents / 100)}
+      </div>
     </div>
   );
 }
@@ -186,7 +204,7 @@ export default function ComissoesPage() {
     );
   }
 
-  function buildPayload(dryRun: boolean) {
+  function buildPayload(dryRun: boolean, employeeIds?: string[]) {
     const payload: {
       periodStart: string;
       periodEnd: string;
@@ -195,12 +213,14 @@ export default function ComissoesPage() {
       valeByEmployee: Record<string, number>;
       subscriptionRevenueInCents?: number;
       commissionPercent?: number;
+      employeeIds?: string[];
     } = {
       periodStart: periodStart!.toISOString(),
       periodEnd: periodEnd!.toISOString(),
       dryRun,
       bonusByEmployee: bonusMap(),
       valeByEmployee: valeMap(),
+      employeeIds,
     };
 
     if (subscriptionRevenueBRL.trim()) {
@@ -227,6 +247,27 @@ export default function ComissoesPage() {
       setSelected(
         Object.fromEntries(result.results.map((r) => [r.employeeId, true])),
       );
+      // Pré-preenche Bônus/Vale com os valores padrão do profissional (já
+      // aplicados pelo backend quando o payload não traz um valor explícito),
+      // mantendo os campos abertos para alteração (§3.2).
+      setBonusInputs((prev) => {
+        const next = { ...prev };
+        for (const r of result.results) {
+          if (next[r.employeeId] === undefined) {
+            next[r.employeeId] = r.bonusInCents > 0 ? (r.bonusInCents / 100).toFixed(2).replace(".", ",") : "";
+          }
+        }
+        return next;
+      });
+      setValeInputs((prev) => {
+        const next = { ...prev };
+        for (const r of result.results) {
+          if (next[r.employeeId] === undefined) {
+            next[r.employeeId] = r.valeInCents > 0 ? (r.valeInCents / 100).toFixed(2).replace(".", ",") : "";
+          }
+        }
+        return next;
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao calcular comissões.");
     } finally {
@@ -248,6 +289,31 @@ export default function ComissoesPage() {
       toast.error(err instanceof Error ? err.message : "Falha ao gerar movimentações.");
     } finally {
       setConfirming(false);
+    }
+  }
+
+  const [confirmingRow, setConfirmingRow] = useState<string | null>(null);
+
+  // Gera o pagamento apenas do profissional da linha (§3.5), sem exigir que o
+  // usuário desmarque manualmente os demais checkboxes da tabela.
+  async function confirmSingle(employeeId: string) {
+    if (!barbershop?.id || !periodStart || !periodEnd) return;
+    setConfirmingRow(employeeId);
+    try {
+      const payload = buildPayload(false, [employeeId]);
+      payload.bonusByEmployee = bonusInputs[employeeId]
+        ? { [employeeId]: Math.round(parseBRL(bonusInputs[employeeId]) * 100) }
+        : {};
+      payload.valeByEmployee = valeInputs[employeeId]
+        ? { [employeeId]: Math.round(parseBRL(valeInputs[employeeId]) * 100) }
+        : {};
+      const result = await financialEntriesService.generateCommissions(barbershop.id, payload);
+      toast.success(`${result.createdEntryIds.length} lançamento(s) gerado(s) em Contas a pagar.`);
+      setResults((prev) => prev?.filter((r) => r.employeeId !== employeeId) ?? null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao gerar pagamento.");
+    } finally {
+      setConfirmingRow(null);
     }
   }
 
@@ -335,10 +401,8 @@ export default function ComissoesPage() {
                 <th className="px-4 py-3">Serviços avulso</th>
                 <th className="px-4 py-3">Produtos</th>
                 <th className="px-4 py-3">Serviços assinatura</th>
-                <th className="px-4 py-3">Bônus</th>
-                <th className="px-4 py-3">Vales</th>
-                <th className="px-4 py-3">Total bruto</th>
-                <th className="px-4 py-3">Total líquido</th>
+                <th className="px-4 py-3">Bônus / Vale</th>
+                <th className="px-4 py-3">Total (bruto / líquido)</th>
                 <th className="px-4 py-3">Opções</th>
               </tr>
             </thead>
@@ -355,15 +419,27 @@ export default function ComissoesPage() {
                   </td>
                   <td className="px-4 py-3 font-semibold">{r.employeeName}</td>
                   <td className="px-4 py-3">
-                    <CategoryCell cents={r.servicesAvulsoInCents} />
+                    <CategoryCell
+                      cents={r.servicesAvulsoInCents}
+                      vencidoCents={r.servicesAvulsoVencidoInCents}
+                      liquidoCents={r.servicesAvulsoLiquidoInCents}
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    <CategoryCell cents={r.servicesProdutoInCents} />
+                    <CategoryCell
+                      cents={r.servicesProdutoInCents}
+                      vencidoCents={r.servicesProdutoVencidoInCents}
+                      liquidoCents={r.servicesProdutoLiquidoInCents}
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    <CategoryCell cents={r.servicesClubInCents} />
+                    <CategoryCell
+                      cents={r.servicesClubInCents}
+                      vencidoCents={r.servicesClubVencidoInCents}
+                      liquidoCents={r.servicesClubLiquidoInCents}
+                    />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 space-y-1.5">
                     <Input
                       value={bonusInputs[r.employeeId] ?? ""}
                       onChange={(e) =>
@@ -372,11 +448,9 @@ export default function ComissoesPage() {
                           [r.employeeId]: maskBRLInput(e.target.value),
                         }))
                       }
-                      placeholder="R$ 0,00"
+                      placeholder="Bônus R$ 0,00"
                       className="w-28 h-8 text-xs bg-surface-base border-border text-foreground"
                     />
-                  </td>
-                  <td className="px-4 py-3">
                     <Input
                       value={valeInputs[r.employeeId] ?? ""}
                       onChange={(e) =>
@@ -385,29 +459,40 @@ export default function ComissoesPage() {
                           [r.employeeId]: maskBRLInput(e.target.value),
                         }))
                       }
-                      placeholder="R$ 0,00"
+                      placeholder="Vale R$ 0,00"
                       className="w-28 h-8 text-xs bg-surface-base border-border text-foreground"
                     />
                   </td>
-                  <td className="px-4 py-3 font-bold">
-                    {formatBRL(totalBrutoInCents(r) / 100)}
-                  </td>
-                  <td className="px-4 py-3 font-bold">
-                    {formatBRL(
-                      (totalBrutoInCents(r) -
-                        Math.round(parseBRL(valeInputs[r.employeeId] ?? "0") * 100)) /
-                        100,
-                    )}
+                  <td className="px-4 py-3">
+                    <div className="font-bold">{formatBRL(totalBrutoInCents(r) / 100)}</div>
+                    <div className="text-xs text-muted-foreground font-semibold mt-0.5">
+                      {formatBRL(
+                        (totalBrutoInCents(r) -
+                          Math.round(parseBRL(valeInputs[r.employeeId] ?? "0") * 100)) /
+                          100,
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditingRow(r)}
-                      title="Editar"
-                      className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
-                    >
-                      <Pencil className="size-3" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingRow(r)}
+                        title="Editar"
+                        className="size-7 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                      >
+                        <Pencil className="size-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => confirmSingle(r.employeeId)}
+                        disabled={confirmingRow === r.employeeId}
+                        title="Gerar pagamento individual"
+                        className="size-7 rounded-md border border-success-foreground/40 bg-transparent text-success-foreground flex items-center justify-center hover:bg-success/10 transition-colors disabled:opacity-50"
+                      >
+                        <Send className="size-3" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

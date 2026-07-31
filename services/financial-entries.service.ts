@@ -13,7 +13,10 @@ const base = (barbershopId: string) => `/barbershops/${barbershopId}/financial-e
 
 export const financialEntriesService = {
   async list(barbershopId: string, filters: FinancialEntryFilters = {}): Promise<FinancialEntry[]> {
-    const { data } = await api.get<FinancialEntry[]>(base(barbershopId), { params: filters });
+    const { categoryIds, ...rest } = filters;
+    const { data } = await api.get<FinancialEntry[]>(base(barbershopId), {
+      params: { ...rest, categoryIds: categoryIds?.length ? categoryIds.join(",") : undefined },
+    });
     return data;
   },
 
@@ -45,10 +48,17 @@ export const financialEntriesService = {
 
   async getBalance(
     barbershopId: string,
-    filters: { branchId?: string; dueDateFrom?: string; dueDateTo?: string } = {},
+    filters: {
+      branchId?: string;
+      dueDateFrom?: string;
+      dueDateTo?: string;
+      description?: string;
+      categoryIds?: string[];
+    } = {},
   ): Promise<FinancialBalance> {
+    const { categoryIds, ...rest } = filters;
     const { data } = await api.get<FinancialBalance>(`${base(barbershopId)}/balance`, {
-      params: filters,
+      params: { ...rest, categoryIds: categoryIds?.length ? categoryIds.join(",") : undefined },
     });
     return data;
   },

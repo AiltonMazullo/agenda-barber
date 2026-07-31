@@ -14,12 +14,21 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useExpensePaymentMethods } from "@/hooks/useExpensePaymentMethods";
 import { useFinancialEntries } from "@/hooks/useFinancialEntries";
 import { maskBRLInput, parseBRL } from "@/utils/format";
-import type { FinancialEntryType } from "@/types/financial-entry.types";
+import type {
+  FinancialEntryRecurrenceFrequency,
+  FinancialEntryType,
+} from "@/types/financial-entry.types";
 
 const PAYMENT_CONDITION_OPTIONS = [
   { value: "AVISTA", label: "À vista" },
   { value: "PARCELADO", label: "Parcelado" },
 ] as const;
+
+const RECURRENCE_FREQUENCY_OPTIONS: { value: FinancialEntryRecurrenceFrequency; label: string }[] = [
+  { value: "DAILY", label: "Diário" },
+  { value: "BIWEEKLY", label: "Quinzenal" },
+  { value: "MONTHLY", label: "Mensal" },
+];
 
 export function FinancialEntryForm({
   type,
@@ -47,7 +56,9 @@ export function FinancialEntryForm({
   const [repeatEntry, setRepeatEntry] = useState(false);
   const [paymentCondition, setPaymentCondition] = useState<"AVISTA" | "PARCELADO">("AVISTA");
   const [installmentsTotal, setInstallmentsTotal] = useState("2");
-  const [recurrenceDay, setRecurrenceDay] = useState("");
+  const [recurrenceFrequency, setRecurrenceFrequency] =
+    useState<FinancialEntryRecurrenceFrequency>("MONTHLY");
+  const [recurrenceCount, setRecurrenceCount] = useState("");
   const [paymentMethodId, setPaymentMethodId] = useState("");
   const [expensePaymentMethodId, setExpensePaymentMethodId] = useState("");
   const [bankAccountId, setBankAccountId] = useState("");
@@ -83,7 +94,8 @@ export function FinancialEntryForm({
       paymentCondition: repeatEntry ? "RECORRENTE" : paymentCondition,
       installmentsTotal: paymentCondition === "PARCELADO" ? Number(installmentsTotal) : undefined,
       isRecurring: repeatEntry,
-      recurrenceDay: repeatEntry && recurrenceDay ? Number(recurrenceDay) : undefined,
+      recurrenceFrequency: repeatEntry ? recurrenceFrequency : undefined,
+      recurrenceCount: repeatEntry && recurrenceCount ? Number(recurrenceCount) : undefined,
       paymentMethodId: type === "RECEIVABLE" ? paymentMethodId || undefined : undefined,
       expensePaymentMethodId: type === "PAYABLE" ? expensePaymentMethodId || undefined : undefined,
       bankAccountId: bankAccountId || undefined,
@@ -221,17 +233,28 @@ export function FinancialEntryForm({
             </Field>
           )}
           {repeatEntry && (
-            <Field className="w-40">
-              <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                Dia de vencimento
-              </FieldLabel>
-              <Input
-                value={recurrenceDay}
-                onChange={(e) => setRecurrenceDay(e.target.value.replace(/\D/g, ""))}
-                placeholder="1-28"
-                className="bg-surface-base border-border text-foreground"
+            <>
+              <SelectField
+                id="recurrenceFrequency"
+                label="Periodicidade *"
+                value={recurrenceFrequency}
+                onChange={setRecurrenceFrequency}
+                options={RECURRENCE_FREQUENCY_OPTIONS}
               />
-            </Field>
+              <Field className="w-40">
+                <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                  Número de recorrências
+                </FieldLabel>
+                <Input
+                  type="number"
+                  min={1}
+                  value={recurrenceCount}
+                  onChange={(e) => setRecurrenceCount(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Sem limite"
+                  className="bg-surface-base border-border text-foreground"
+                />
+              </Field>
+            </>
           )}
           {type === "RECEIVABLE" ? (
             <SelectField

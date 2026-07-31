@@ -15,7 +15,13 @@ const EMPTY_BALANCE: FinancialBalance = {
 
 export function useFinancialBalance(
   barbershopId: string | undefined,
-  filters: { branchId?: string; dueDateFrom?: string; dueDateTo?: string } = {},
+  filters: {
+    branchId?: string;
+    dueDateFrom?: string;
+    dueDateTo?: string;
+    description?: string;
+    categoryIds?: string[];
+  } = {},
 ) {
   const [balance, setBalance] = useState<FinancialBalance>(EMPTY_BALANCE);
   const [isLoading, setIsLoading] = useState(true);

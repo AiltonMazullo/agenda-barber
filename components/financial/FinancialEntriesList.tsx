@@ -31,6 +31,8 @@ interface FinancialEntriesListProps {
   branchId?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
+  search?: string;
+  categoryIds?: string[];
   /** Modo somente-leitura: esconde ações de marcar pago/remover e o botão de adicionar. */
   readOnly?: boolean;
   /** Esconde o grid de totalizadores (útil quando a página-mãe já exibe os totais, ex. Balanço). */
@@ -44,6 +46,8 @@ export function FinancialEntriesList({
   branchId,
   dueDateFrom,
   dueDateTo,
+  search,
+  categoryIds,
   readOnly = false,
   hideTotals = false,
 }: FinancialEntriesListProps) {
@@ -52,6 +56,8 @@ export function FinancialEntriesList({
     branchId,
     dueDateFrom,
     dueDateTo,
+    search,
+    categoryIds,
   });
   const [toDelete, setToDelete] = useState<FinancialEntry | null>(null);
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader, EmptyState, ConfirmDialog, Loading, StatusBadge } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useFinancialCategories } from "@/hooks/useFinancialCategories";
@@ -67,13 +67,29 @@ export default function CategoriasFinanceirasPage() {
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setToDelete(cat)}
-                className="size-9 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors shrink-0"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/financial/categorias/${cat.id}`}
+                  title="Editar"
+                  className="size-9 rounded-md border border-border bg-surface-base text-muted-foreground flex items-center justify-center hover:border-brand/40 hover:text-brand transition-colors"
+                >
+                  <Pencil className="size-3.5" />
+                </Link>
+                <Link
+                  href={`/financial/categorias/${cat.id}?mode=view`}
+                  title="Visualizar"
+                  className="size-9 rounded-md border border-info/30 bg-transparent text-info-foreground flex items-center justify-center hover:bg-info/10 transition-colors"
+                >
+                  <Eye className="size-3.5" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setToDelete(cat)}
+                  className="size-9 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
             </div>
           ))
         )}

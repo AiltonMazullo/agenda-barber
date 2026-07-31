@@ -87,6 +87,9 @@ export interface Employee {
   employeeServices?: { serviceId: string }[];
   /** Dias à frente que o cliente pode ver/agendar online com este profissional. `null` = sem limite. */
   attendancePeriodDays?: number | null;
+  /** Valores padrão pré-preenchidos ao gerar comissões (§3.2) — continuam editáveis na tela. */
+  defaultBonusInCents?: number | null;
+  defaultValeInCents?: number | null;
 }
 
 export interface CreateEmployeePayload {
@@ -110,6 +113,8 @@ export interface CreateEmployeePayload {
   number: string;
   complement?: string;
   attendancePeriodDays?: number | null;
+  defaultBonusInCents?: number | null;
+  defaultValeInCents?: number | null;
 }
 
 export interface UpdateEmployeePayload {
@@ -133,4 +138,6 @@ export interface UpdateEmployeePayload {
   number?: string;
   complement?: string;
   attendancePeriodDays?: number | null;
+  defaultBonusInCents?: number | null;
+  defaultValeInCents?: number | null;
 }

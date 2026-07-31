@@ -2,15 +2,25 @@
 
 import { Info } from "lucide-react";
 import { SelectField } from "@/components/shared";
+import { Input } from "@/components/ui/input";
+import { maskBRLInput, parseBRL } from "@/utils/format";
 import { SectionShell, FieldLabel } from "./Primitives";
 import { PERIOD_OPTIONS } from "./helpers";
 
 export function AreaProfissional({
   attendancePeriodDays,
   onChange,
+  defaultBonusInCents,
+  defaultValeInCents,
+  onChangeDefaultBonus,
+  onChangeDefaultVale,
 }: {
   attendancePeriodDays: number | null;
   onChange: (days: number | null) => void;
+  defaultBonusInCents?: number | null;
+  defaultValeInCents?: number | null;
+  onChangeDefaultBonus?: (cents: number | null) => void;
+  onChangeDefaultVale?: (cents: number | null) => void;
 }) {
   return (
     <SectionShell title="Configurações do profissional">
@@ -36,6 +46,45 @@ export function AreaProfissional({
             className="min-w-0"
           />
         </div>
+
+        {onChangeDefaultBonus && onChangeDefaultVale && (
+          <div className="flex flex-col sm:flex-row gap-4 max-w-lg">
+            <div className="space-y-1.5 flex-1">
+              <FieldLabel>Bônus padrão</FieldLabel>
+              <p className="text-[11px] text-muted-foreground">
+                Pré-preenche o campo "Bônus" ao gerar comissões — continua editável.
+              </p>
+              <Input
+                value={
+                  defaultBonusInCents ? (defaultBonusInCents / 100).toFixed(2).replace(".", ",") : ""
+                }
+                onChange={(e) => {
+                  const masked = maskBRLInput(e.target.value);
+                  onChangeDefaultBonus(masked ? Math.round(parseBRL(masked) * 100) : null);
+                }}
+                placeholder="R$ 0,00"
+                className="bg-surface-base border-border text-foreground"
+              />
+            </div>
+            <div className="space-y-1.5 flex-1">
+              <FieldLabel>Vale padrão</FieldLabel>
+              <p className="text-[11px] text-muted-foreground">
+                Pré-preenche o campo "Vale" ao gerar comissões — continua editável.
+              </p>
+              <Input
+                value={
+                  defaultValeInCents ? (defaultValeInCents / 100).toFixed(2).replace(".", ",") : ""
+                }
+                onChange={(e) => {
+                  const masked = maskBRLInput(e.target.value);
+                  onChangeDefaultVale(masked ? Math.round(parseBRL(masked) * 100) : null);
+                }}
+                placeholder="R$ 0,00"
+                className="bg-surface-base border-border text-foreground"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </SectionShell>
   );

@@ -7,6 +7,7 @@ import type {
   BranchConfigInput,
   CreatePaymentMethodPayload,
   PaymentMethodConfig,
+  UpdatePaymentMethodPayload,
 } from "@/types/payment-method.types";
 
 export function usePaymentMethods(barbershopId: string | undefined) {
@@ -50,6 +51,22 @@ export function usePaymentMethods(barbershopId: string | undefined) {
     [barbershopId, fetchMethods],
   );
 
+  const update = useCallback(
+    async (id: string, payload: UpdatePaymentMethodPayload) => {
+      if (!barbershopId) return null;
+      try {
+        const updated = await paymentMethodsService.update(barbershopId, id, payload);
+        toast.success("Forma de pagamento atualizada.");
+        await fetchMethods();
+        return updated;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Falha ao atualizar forma de pagamento.");
+        return null;
+      }
+    },
+    [barbershopId, fetchMethods],
+  );
+
   const updateBranchConfigs = useCallback(
     async (id: string, configs: BranchConfigInput[]) => {
       if (!barbershopId) return null;
@@ -82,5 +99,5 @@ export function usePaymentMethods(barbershopId: string | undefined) {
     [barbershopId, fetchMethods],
   );
 
-  return { methods, isLoading, create, updateBranchConfigs, remove };
+  return { methods, isLoading, create, update, updateBranchConfigs, remove };
 }

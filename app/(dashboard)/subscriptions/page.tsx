@@ -116,15 +116,21 @@ function AssinantesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  const [showOnlyOverdue, setShowOnlyOverdue] = useState(false);
+
   const filtered = useMemo(() => {
+    let base = activeSubscriptions;
+    if (showOnlyOverdue) {
+      base = base.filter((s) => summary.overdueSubscriptionIds.has(s.id));
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return activeSubscriptions;
-    return activeSubscriptions.filter(
+    if (!q) return base;
+    return base.filter(
       (s) =>
         s.client.name.toLowerCase().includes(q) ||
         s.client.email.toLowerCase().includes(q),
     );
-  }, [activeSubscriptions, search]);
+  }, [activeSubscriptions, search, showOnlyOverdue, summary.overdueSubscriptionIds]);
 
   const pag = usePagination(filtered, 10);
 
@@ -136,7 +142,7 @@ function AssinantesTab() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <SummaryCard
           label="Assinantes ativos"
           value={isLoading ? "—" : String(summary.activeCount)}
@@ -147,6 +153,7 @@ function AssinantesTab() {
         <SummaryCard
           label="Receita recorrente"
           value={isLoading ? "—" : formatBRL(summary.mrrInCents / 100)}
+          subtitle="Valor mensal recorrente de assinaturas ativas hoje"
           icon={<TrendingUp className="size-3.5" />}
           tone="success"
         />
@@ -162,6 +169,28 @@ function AssinantesTab() {
           icon={<UserMinus className="size-3.5" />}
           tone="danger"
         />
+        <button
+          type="button"
+          onClick={() => setShowOnlyOverdue((v) => !v)}
+          title="Filtrar assinantes com cobrança vencida"
+          className="text-left rounded-xl transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40"
+        >
+          <SummaryCard
+            label="Clientes inadimplentes"
+            value={isLoading ? "—" : String(summary.overdueCount)}
+            subtitle={
+              showOnlyOverdue
+                ? "Filtro ativo — clique para limpar"
+                : isLoading
+                  ? undefined
+                  : formatBRL(summary.overdueAmountInCents / 100)
+            }
+            subtitleTone="danger"
+            icon={<UserMinus className="size-3.5" />}
+            tone="danger"
+            emphasized={showOnlyOverdue}
+          />
+        </button>
       </div>
 
       {summary.byPlan.length > 0 && (

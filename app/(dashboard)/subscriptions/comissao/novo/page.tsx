@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { PageHeader, SelectField } from "@/components/shared";
+import { ArrowLeft, Wand2 } from "lucide-react";
+import { toast } from "sonner";
+import { PageHeader, DatePickerField, SelectField } from "@/components/shared";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranches } from "@/hooks/useBranches";
 import { useEmployees } from "@/hooks/useEmployees";
-import { useServices } from "@/hooks/useServices";
+import { usePlans } from "@/hooks/usePlans";
 import { useCommissionClub } from "@/hooks/useCommissionClub";
+import { commissionClubService } from "@/services/commission-club.service";
 import { formatBRL } from "@/utils/format";
 
 type Step = 1 | 2 | 3;
@@ -21,11 +23,29 @@ export default function NovoCalculoComissaoPage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
   const { employees } = useEmployees(barbershop?.id);
-  const { services } = useServices(barbershop?.id);
+  const { plans } = usePlans(barbershop?.id);
   const { create } = useCommissionClub(barbershop?.id);
+
+  // Apenas serviços vinculados a pelo menos um plano ativo (§4.4 — bug
+  // confirmado: a tela listava todos os serviços da barbearia, inclusive os
+  // que não pertencem a nenhum plano).
+  const services = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const plan of plans) {
+      for (const ps of plan.planServices) {
+        map.set(ps.service.id, ps.service);
+      }
+    }
+    return Array.from(map.values());
+  }, [plans]);
 
   const [step, setStep] = useState<Step>(1);
   const [branchId, setBranchId] = useState("");
+  const now = new Date();
+  const [periodStart, setPeriodStart] = useState<Date | undefined>(
+    new Date(now.getFullYear(), now.getMonth(), 1),
+  );
+  const [periodEnd, setPeriodEnd] = useState<Date | undefined>(now);
   const [totalServicesByCategory, setTotalServicesByCategory] = useState<Record<string, number>>(
     {},
   );
@@ -35,11 +55,49 @@ export default function NovoCalculoComissaoPage() {
   const [subscriptionRevenue, setSubscriptionRevenue] = useState("");
   const [commissionPercent, setCommissionPercent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
 
   const branchEmployees = useMemo(
     () => employees.filter((e) => e.branchId === branchId),
     [employees, branchId],
   );
+
+  // Puxa automaticamente os dados (serviços concluídos + receita de
+  // assinaturas do período) assim que filial e período estiverem definidos —
+  // os valores continuam editáveis manualmente depois de pré-preenchidos.
+  useEffect(() => {
+    if (!barbershop?.id || !branchId || !periodStart || !periodEnd) return;
+    let cancelled = false;
+    setSuggesting(true);
+    commissionClubService
+      .suggest(barbershop.id, {
+        branchId,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setTotalServicesByCategory(data.totalServicesByCategory);
+        setServicesByEmployee(data.servicesByEmployee);
+        setSubscriptionRevenue(
+          data.subscriptionRevenueInCents > 0
+            ? (data.subscriptionRevenueInCents / 100).toFixed(2).replace(".", ",")
+            : "",
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : "Falha ao puxar dados automaticamente.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSuggesting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só refaz a busca quando filial/período mudam, não a cada edição manual
+  }, [barbershop?.id, branchId, periodStart, periodEnd]);
 
   const totalFichas = Object.values(totalServicesByCategory).reduce((sum, v) => sum + v, 0);
   const poolInCents = Math.round(
@@ -49,15 +107,12 @@ export default function NovoCalculoComissaoPage() {
   );
 
   async function handleSubmit() {
-    if (!branchId) return;
+    if (!branchId || !periodStart || !periodEnd) return;
     setSaving(true);
-    const now = new Date();
-    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
     const created = await create({
       branchId,
-      periodStart,
-      periodEnd,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
       totalServicesByCategory,
       servicesByEmployee,
       subscriptionRevenueInCents: Math.round(
@@ -115,16 +170,33 @@ export default function NovoCalculoComissaoPage() {
         <div className="p-5 border-t border-border-subtle space-y-4">
           {step === 1 && (
             <>
-              <SelectField
-                id="branch"
-                label="Filial"
-                value={branchId}
-                onChange={setBranchId}
-                placeholder="Selecione a filial"
-                options={branches.map((b) => ({ value: b.id, label: b.name }))}
-              />
-              <p className="text-xs text-muted-foreground">
-                Selecione a filial e a quantidade de serviços realizados
+              <div className="flex flex-col sm:flex-row gap-3">
+                <SelectField
+                  id="branch"
+                  label="Filial"
+                  value={branchId}
+                  onChange={setBranchId}
+                  placeholder="Selecione a filial"
+                  options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                />
+                <DatePickerField
+                  id="periodStart"
+                  label="Período inicial"
+                  date={periodStart}
+                  onChange={setPeriodStart}
+                />
+                <DatePickerField
+                  id="periodEnd"
+                  label="Período final"
+                  date={periodEnd}
+                  onChange={setPeriodEnd}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Wand2 className="size-3.5" />
+                {suggesting
+                  ? "Puxando quantidade de serviços e receita de assinaturas automaticamente…"
+                  : "Selecione a filial e o período para puxar os dados automaticamente — os valores continuam editáveis."}
               </p>
               <div className="space-y-2">
                 {services.map((svc) => (

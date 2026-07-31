@@ -153,6 +153,10 @@ export function ProfessionalForm({
           <AreaProfissional
             attendancePeriodDays={config.attendancePeriodDays}
             onChange={(days) => updateConfig({ attendancePeriodDays: days })}
+            defaultBonusInCents={config.defaultBonusInCents}
+            defaultValeInCents={config.defaultValeInCents}
+            onChangeDefaultBonus={(cents) => updateConfig({ defaultBonusInCents: cents })}
+            onChangeDefaultVale={(cents) => updateConfig({ defaultValeInCents: cents })}
           />
         )}
 

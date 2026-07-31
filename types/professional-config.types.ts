@@ -64,6 +64,8 @@ export interface ProfessionalConfig {
   emergencyContactPhone: string;
   contractFileName: string | null;
   attendancePeriodDays: number | null;
+  defaultBonusInCents: number | null;
+  defaultValeInCents: number | null;
   services: ServiceCommission[];
   workingHours: WorkingHour[];
   intervals: ProfessionalInterval[];
@@ -92,6 +94,8 @@ export function defaultProfessionalConfig(): ProfessionalConfig {
     emergencyContactPhone: "",
     contractFileName: null,
     attendancePeriodDays: null,
+    defaultBonusInCents: null,
+    defaultValeInCents: null,
     services: [],
     workingHours: defaultWorkingHours(),
     intervals: [],

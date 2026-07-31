@@ -523,15 +523,12 @@ function ClientesContent() {
               <TableHeader className="border-t border-border">
                 <TableRow className="border-border hover:bg-transparent">
                   {[
-                    "ID",
                     "Cliente",
                     "Contato",
                     "Atendimentos",
                     "Total gasto",
-                    "Última visita",
-                    "Próxima",
-                    "Criado em",
-                    "Atualizado em",
+                    "Visitas",
+                    "Histórico",
                     "",
                   ].map((col) => (
                     <TableHead
@@ -546,13 +543,13 @@ function ClientesContent() {
               <TableBody>
                 {isLoading ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={9} className="py-4">
+                    <TableCell colSpan={7} className="py-4">
                       <Loading />
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableCell colSpan={9} className="py-4">
+                    <TableCell colSpan={7} className="py-4">
                       <EmptyState
                         message={
                           clients.length === 0
@@ -566,19 +563,8 @@ function ClientesContent() {
                   pag.pageItems.map((c) => (
                     <TableRow
                       key={c.id}
-                      className="border-border hover:bg-surface-elevated/50 transition-colors"
+                      className="group border-border hover:bg-surface-elevated/50 transition-colors"
                     >
-                      <TableCell className="px-4 py-4 text-xs text-muted-foreground">
-                        <button
-                          type="button"
-                          onClick={() => copyId(c.id)}
-                          title={c.id}
-                          className="flex items-center gap-1 font-mono hover:text-brand transition-colors"
-                        >
-                          {c.id.slice(0, 8)}…
-                          <Copy className="size-3" />
-                        </button>
-                      </TableCell>
                       <TableCell className="px-4 py-4 font-semibold text-sm">
                         <Link
                           href={`/clients/${c.id}`}
@@ -595,6 +581,17 @@ function ClientesContent() {
                             </span>
                           )}
                         </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            copyId(c.id);
+                          }}
+                          title="Copiar ID (suporte técnico)"
+                          className="opacity-0 group-hover:opacity-100 size-5 rounded flex items-center justify-center text-text-faint hover:text-brand transition-opacity ml-1 inline-flex"
+                        >
+                          <Copy className="size-3" />
+                        </button>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
@@ -619,24 +616,40 @@ function ClientesContent() {
                       <TableCell className="px-4 py-4 text-success-foreground font-semibold text-sm">
                         {formatBRL(c.stats.totalSpent)}
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-muted-foreground text-sm">
-                        {c.stats.lastVisit ? formatDate(toWallClockDate(c.stats.lastVisit)) : "—"}
-                      </TableCell>
                       <TableCell className="px-4 py-4 text-sm">
-                        {c.stats.upcomingVisit ? (
-                          <span className="flex items-center gap-1.5 text-info-foreground">
-                            <Clock className="size-3" />
-                            {formatDate(toWallClockDate(c.stats.upcomingVisit))}
+                        <div className="text-muted-foreground">
+                          <span className="text-[10px] uppercase tracking-wider text-text-faint mr-1">
+                            Última:
                           </span>
-                        ) : (
-                          <span className="text-text-faint">—</span>
-                        )}
+                          {c.stats.lastVisit ? formatDate(toWallClockDate(c.stats.lastVisit)) : "—"}
+                        </div>
+                        <div className="mt-0.5">
+                          <span className="text-[10px] uppercase tracking-wider text-text-faint mr-1">
+                            Próxima:
+                          </span>
+                          {c.stats.upcomingVisit ? (
+                            <span className="inline-flex items-center gap-1 text-info-foreground">
+                              <Clock className="size-3" />
+                              {formatDate(toWallClockDate(c.stats.upcomingVisit))}
+                            </span>
+                          ) : (
+                            <span className="text-text-faint">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-muted-foreground text-xs whitespace-nowrap">
-                        {formatDate(c.createdAt)}
-                      </TableCell>
-                      <TableCell className="px-4 py-4 text-muted-foreground text-xs whitespace-nowrap">
-                        {formatDate(c.updatedAt)}
+                        <div>
+                          <span className="text-[10px] uppercase tracking-wider text-text-faint mr-1">
+                            Criado:
+                          </span>
+                          {formatDate(c.createdAt)}
+                        </div>
+                        <div className="mt-0.5">
+                          <span className="text-[10px] uppercase tracking-wider text-text-faint mr-1">
+                            Atualizado:
+                          </span>
+                          {formatDate(c.updatedAt)}
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4">
                         <div className="flex items-center gap-2">

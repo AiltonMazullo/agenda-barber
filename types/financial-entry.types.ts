@@ -1,6 +1,7 @@
 export type FinancialEntryType = "PAYABLE" | "RECEIVABLE";
 export type FinancialEntryStatus = "PENDING" | "PAID" | "OVERDUE" | "CANCELLED";
 export type FinancialEntryPaymentCondition = "AVISTA" | "PARCELADO" | "RECORRENTE";
+export type FinancialEntryRecurrenceFrequency = "DAILY" | "BIWEEKLY" | "MONTHLY";
 
 export interface FinancialEntry {
   id: string;
@@ -16,6 +17,8 @@ export interface FinancialEntry {
   installmentNumber: number | null;
   isRecurring: boolean;
   recurrenceDay: number | null;
+  recurrenceFrequency: FinancialEntryRecurrenceFrequency | null;
+  recurrenceCount: number | null;
   paymentMethodId: string | null;
   expensePaymentMethodId: string | null;
   bankAccountId: string | null;
@@ -37,6 +40,7 @@ export interface FinancialEntryFilters {
   type?: FinancialEntryType;
   status?: FinancialEntryStatus;
   categoryId?: string;
+  categoryIds?: string[];
   branchId?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
@@ -57,6 +61,8 @@ export interface CreateFinancialEntryPayload {
   installmentsTotal?: number;
   isRecurring: boolean;
   recurrenceDay?: number;
+  recurrenceFrequency?: FinancialEntryRecurrenceFrequency;
+  recurrenceCount?: number;
   paymentMethodId?: string;
   expensePaymentMethodId?: string;
   bankAccountId?: string;
@@ -105,6 +111,8 @@ export interface GenerateCommissionsPayload {
   subscriptionRevenueInCents?: number;
   /** Percentual do pote de comissão do Clube (0–100) aplicado sobre `subscriptionRevenueInCents`. */
   commissionPercent?: number;
+  /** Restringe o cálculo/geração a um subconjunto de profissionais (§3.5). */
+  employeeIds?: string[];
 }
 
 export interface CommissionResultRow {
@@ -120,6 +128,12 @@ export interface CommissionResultRow {
   servicesAvulsoLiquidoInCents: number;
   servicesProdutoLiquidoInCents: number;
   servicesClubLiquidoInCents: number;
+  /** Comissão já gerada em apurações anteriores para essa categoria, ainda
+   * não paga (PENDING/OVERDUE em Contas a pagar) — distinta do valor
+   * calculado agora para o período filtrado. */
+  servicesAvulsoVencidoInCents: number;
+  servicesProdutoVencidoInCents: number;
+  servicesClubVencidoInCents: number;
   bonusInCents: number;
   valeInCents: number;
   totalInCents: number;
