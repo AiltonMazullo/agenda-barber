@@ -679,7 +679,12 @@ export default function SchedulePage() {
         .schedule-scroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
       `}</style>
 
-      <div className="flex flex-col bg-surface-base text-foreground overflow-x-hidden md:flex-1 md:min-h-0 md:overflow-hidden">
+      <div
+        className={cn(
+          "flex flex-col bg-surface-base text-foreground overflow-x-hidden",
+          viewMode !== "kanban" && "md:flex-1 md:min-h-0 md:overflow-hidden",
+        )}
+      >
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
@@ -1103,7 +1108,7 @@ export default function SchedulePage() {
         ) : viewMode === "kanban" ? (
           <div
             ref={kanbanScrollRef}
-            className="overflow-x-auto schedule-scroll md:flex-1 md:overflow-y-auto md:overflow-x-hidden"
+            className="overflow-x-auto schedule-scroll shrink-0"
           >
             <DndContext
               sensors={sensors}
