@@ -81,7 +81,7 @@ export default function NovaFormaPagamentoComandaPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-2xl">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Nova forma de pagamento de comanda"
         subtitle="Cadastro de forma de pagamento com configuração por filial"

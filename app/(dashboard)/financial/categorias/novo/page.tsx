@@ -41,7 +41,7 @@ export default function NovaCategoriaFinanceiraPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-xl">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Nova categoria financeira"
         subtitle="Formulário de categoria com nome, tipo e categoria primária"

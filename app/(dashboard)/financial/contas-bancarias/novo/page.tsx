@@ -53,7 +53,7 @@ export default function NovaContaBancariaPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-2xl">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Nova conta bancária"
         subtitle="Cadastro de uma conta com titular, documento, banco, agência, número e tipo"

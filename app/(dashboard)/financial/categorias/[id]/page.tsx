@@ -38,7 +38,7 @@ export default function EditarCategoriaFinanceiraPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-xl">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title={isView ? "Visualizar categoria financeira" : "Editar categoria financeira"}
         subtitle={category?.name}
