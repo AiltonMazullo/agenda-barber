@@ -230,19 +230,6 @@ export default function SchedulePage() {
 
   const totalSlots = ((gridEndHour - gridStartHour) * 60) / slotSize;
 
-  // No celular a agenda não pode ter scroll vertical — o dia inteiro precisa
-  // caber na tela, só o scroll horizontal (entre profissionais) é permitido.
-  // Por isso a altura do slot é recalculada para caber na altura disponível
-  // do grid em vez de usar o SLOT_HEIGHT_PX fixo (usado no desktop, onde o
-  // grid rola verticalmente).
-  const GRID_HEADER_PX = 92;
-  const [isMobile, setIsMobile] = useState(false);
-  const [kanbanHeightPx, setKanbanHeightPx] = useState(0);
-  const effectiveSlotHeightPx =
-    isMobile && kanbanHeightPx > 0
-      ? Math.max(4, (kanbanHeightPx - GRID_HEADER_PX) / totalSlots)
-      : SLOT_HEIGHT_PX;
-
   const [nowTopPx, setNowTopPx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -254,39 +241,18 @@ export default function SchedulePage() {
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       if (nowMin >= gridStartHour * 60 && nowMin <= gridEndHour * 60) {
-        setNowTopPx(
-          ((nowMin - gridStartHour * 60) / slotSize) * effectiveSlotHeightPx,
-        );
+        setNowTopPx(((nowMin - gridStartHour * 60) / slotSize) * SLOT_HEIGHT_PX);
       } else setNowTopPx(null);
     };
     calcNow();
     const iv = setInterval(calcNow, 60_000);
     return () => clearInterval(iv);
-  }, [slotSize, effectiveSlotHeightPx, selectedDate, gridStartHour, gridEndHour]);
+  }, [slotSize, SLOT_HEIGHT_PX, selectedDate, gridStartHour, gridEndHour]);
 
   // Ao abrir a agenda (ou trocar de dia), rola até a posição da linha do
   // tempo atual (ver spec-revisao-cliente-1.md §5.4) — uma vez por dia
   // selecionado, não a cada recálculo de `nowTopPx` (a cada minuto).
   const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    const el = kanbanScrollRef.current;
-    if (!el || viewMode !== "kanban") return;
-    const ro = new ResizeObserver((entries) => {
-      setKanbanHeightPx(entries[0].contentRect.height);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [viewMode]);
-
   const scrolledToNowForDate = useRef<string | null>(null);
   useEffect(() => {
     if (nowTopPx === null || viewMode !== "kanban") return;
@@ -385,7 +351,7 @@ export default function SchedulePage() {
         | { profissionalId?: string }
         | undefined;
       const newProfId = overData?.profissionalId ?? ag.profissionalId;
-      const deltaSlotsY = Math.round(delta.y / effectiveSlotHeightPx);
+      const deltaSlotsY = Math.round(delta.y / SLOT_HEIGHT_PX);
       let newInicio = snapToSlot(ag.inicioMin + deltaSlotsY * slotSize, slotSize);
       newInicio = Math.max(
         gridStartHour * 60,
@@ -435,14 +401,7 @@ export default function SchedulePage() {
         if (ok) toast.success("Agendamento reagendado.");
       });
     },
-    [
-      agendamentos,
-      slotSize,
-      effectiveSlotHeightPx,
-      bloqueios,
-      moveLocal,
-      rescheduleAgendamento,
-    ],
+    [agendamentos, slotSize, SLOT_HEIGHT_PX, bloqueios, moveLocal, rescheduleAgendamento],
   );
 
   const confirmarConflito = useCallback(() => {
@@ -720,14 +679,7 @@ export default function SchedulePage() {
         .schedule-scroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
       `}</style>
 
-      <div
-        className={cn(
-          "flex flex-col bg-surface-base text-foreground overflow-x-hidden",
-          viewMode === "kanban"
-            ? "flex-1 min-h-0 overflow-hidden"
-            : "md:flex-1 md:min-h-0 md:overflow-hidden",
-        )}
-      >
+      <div className="flex flex-col bg-surface-base text-foreground overflow-x-hidden md:flex-1 md:min-h-0 md:overflow-hidden">
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
@@ -1151,7 +1103,7 @@ export default function SchedulePage() {
         ) : viewMode === "kanban" ? (
           <div
             ref={kanbanScrollRef}
-            className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden schedule-scroll md:overflow-y-auto md:overflow-x-hidden"
+            className="overflow-x-auto schedule-scroll md:flex-1 md:overflow-y-auto md:overflow-x-hidden"
           >
             <DndContext
               sensors={sensors}
@@ -1162,7 +1114,7 @@ export default function SchedulePage() {
               <div className="flex min-h-full">
                 <TimeLine
                   slotSize={slotSize}
-                  slotHeightPx={effectiveSlotHeightPx}
+                  slotHeightPx={SLOT_HEIGHT_PX}
                   totalSlots={totalSlots}
                   startHour={gridStartHour}
                 />
@@ -1187,7 +1139,7 @@ export default function SchedulePage() {
                         agendamentos={agPorProfissional[prof.id] ?? []}
                         servicoById={servicoById}
                         slotSize={slotSize}
-                        slotHeightPx={effectiveSlotHeightPx}
+                        slotHeightPx={SLOT_HEIGHT_PX}
                         totalSlots={totalSlots}
                         activeId={activeId}
                         onCardClick={handleCardClick}
@@ -1218,7 +1170,7 @@ export default function SchedulePage() {
                         agendamento={agendamentoAtivo}
                         servico={servicoById.get(agendamentoAtivo.servicoId)!}
                         slotSize={slotSize}
-                        slotHeightPx={effectiveSlotHeightPx}
+                        slotHeightPx={SLOT_HEIGHT_PX}
                       />
                     </div>
                   )}
