@@ -25,7 +25,6 @@ export const TIME_OPTIONS: string[] = (() => {
 
 /** Opções de periodicidade de atendimento (dias). */
 export const PERIOD_OPTIONS: { value: string; label: string }[] = [
-  { value: "7", label: "7 dias" },
   { value: "8", label: "8 dias" },
   { value: "15", label: "15 dias" },
   { value: "30", label: "30 dias" },

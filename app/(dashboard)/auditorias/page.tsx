@@ -38,6 +38,7 @@ const ENTITY_TYPE_OPTIONS: SelectOption<EntityTypeFilter>[] = [
   { value: "AGENDAMENTO", label: "Agendamentos" },
   { value: "BLOQUEIO", label: "Agendamentos bloqueados" },
   { value: "ASSINATURA", label: "Assinaturas" },
+  { value: "COMANDA", label: "Comandas" },
 ];
 
 interface EntityGroup {

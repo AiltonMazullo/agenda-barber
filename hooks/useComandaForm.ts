@@ -16,6 +16,7 @@ import type {
   Comanda,
   ComandaAgendamento,
   ComandaDraft,
+  ComandaFormaPagamento,
   ComandaItem,
   ComandaItemTipo,
   ComandaTipo,
@@ -86,7 +87,13 @@ export function useComandaForm(
   const [employeeId, setEmployeeId] = useState(comanda?.employeeId ?? "");
   const [itens, setItens] = useState<ComandaItem[]>(comanda?.itens ?? []);
   const [observacoes, setObservacoes] = useState(comanda?.observacoes ?? "");
+  const [formaPagamento, setFormaPagamento] = useState<ComandaFormaPagamento | "">(
+    comanda?.formaPagamento ?? "",
+  );
   const [erro, setErro] = useState<string | null>(null);
+
+  /** Comanda travada para edição — só permite reabrir, não editar diretamente. */
+  const isLocked = comanda != null && comanda.status !== "ABERTA";
 
   const isLoadingCatalog =
     loadingAppointments || loadingProducts || loadingServices;
@@ -161,17 +168,25 @@ export function useComandaForm(
     return notLinked.filter((o) => sameDayClientIds.has(o.value));
   }, [agendamentoOptions, linkedAppointmentIds, appointments]);
 
-  const addLinkedAppointment = useCallback((appointmentId: string) => {
-    setLinkedAppointmentIds((prev) =>
-      prev.includes(appointmentId) ? prev : [...prev, appointmentId],
-    );
-  }, []);
+  const addLinkedAppointment = useCallback(
+    (appointmentId: string) => {
+      if (isLocked) return;
+      setLinkedAppointmentIds((prev) =>
+        prev.includes(appointmentId) ? prev : [...prev, appointmentId],
+      );
+    },
+    [isLocked],
+  );
 
   /** Remove o vínculo e também os itens que apontavam para aquele agendamento. */
-  const removeLinkedAppointment = useCallback((appointmentId: string) => {
-    setLinkedAppointmentIds((prev) => prev.filter((id) => id !== appointmentId));
-    setItens((prev) => prev.filter((i) => i.appointmentId !== appointmentId));
-  }, []);
+  const removeLinkedAppointment = useCallback(
+    (appointmentId: string) => {
+      if (isLocked) return;
+      setLinkedAppointmentIds((prev) => prev.filter((id) => id !== appointmentId));
+      setItens((prev) => prev.filter((i) => i.appointmentId !== appointmentId));
+    },
+    [isLocked],
+  );
 
   const clienteOptions = useMemo<SelectOption<string>[]>(
     () => clients.map((c) => ({ value: c.id, label: c.name })),
@@ -193,12 +208,16 @@ export function useComandaForm(
   const hasComposicao = itens.length > 0 || linkedAppointmentIds.length > 0;
 
   /** Troca o tipo zerando itens e agendamentos vinculados — os vínculos deixam de fazer sentido. */
-  const setTipo = useCallback((next: ComandaTipo) => {
-    setTipoState(next);
-    setItens([]);
-    setLinkedAppointmentIds([]);
-    setErro(null);
-  }, []);
+  const setTipo = useCallback(
+    (next: ComandaTipo) => {
+      if (isLocked) return;
+      setTipoState(next);
+      setItens([]);
+      setLinkedAppointmentIds([]);
+      setErro(null);
+    },
+    [isLocked],
+  );
 
   // ─── Catálogo ───────────────────────────────────────────────────────────────
   const produtos = useMemo<CatalogoOption[]>(
@@ -269,6 +288,7 @@ export function useComandaForm(
 
   const addItem = useCallback(
     async (input: NovoItemInput): Promise<boolean> => {
+      if (isLocked) return false;
       const catalogo = input.tipo === "PRODUTO" ? produtos : servicos;
       const ref = catalogo.find((c) => c.id === input.refId);
       if (!ref || input.quantidade < 1) return false;
@@ -298,18 +318,26 @@ export function useComandaForm(
       setErro(null);
       return true;
     },
-    [produtos, servicos, tipo, linkedAppointmentIds, resolveServicoPrice],
+    [produtos, servicos, tipo, linkedAppointmentIds, resolveServicoPrice, isLocked],
   );
 
-  const removeItem = useCallback((id: string) => {
-    setItens((prev) => prev.filter((i) => i.id !== id));
-  }, []);
+  const removeItem = useCallback(
+    (id: string) => {
+      if (isLocked) return;
+      setItens((prev) => prev.filter((i) => i.id !== id));
+    },
+    [isLocked],
+  );
 
   const totalInCents = useMemo(() => comandaTotalInCents(itens), [itens]);
 
   // ─── Submissão ──────────────────────────────────────────────────────────────
   /** Valida e monta o draft; em caso de erro, define `erro` e retorna null. */
   const buildDraft = useCallback((): ComandaDraft | null => {
+    if (isLocked) {
+      setErro("Reabra a comanda para editar.");
+      return null;
+    }
     if (!branchId) {
       setErro("Selecione a filial.");
       return null;
@@ -334,6 +362,7 @@ export function useComandaForm(
         observacoes: observacoes.trim(),
         branchId: branchId || null,
         employeeId: employeeId || null,
+        formaPagamento: formaPagamento || null,
       };
     }
 
@@ -352,6 +381,7 @@ export function useComandaForm(
       observacoes: observacoes.trim(),
       branchId: branchId || null,
       employeeId: employeeId || null,
+      formaPagamento: formaPagamento || null,
     };
   }, [
     tipo,
@@ -362,8 +392,10 @@ export function useComandaForm(
     observacoes,
     branchId,
     employeeId,
+    formaPagamento,
     appointments,
     toSnapshot,
+    isLocked,
   ]);
 
   return {
@@ -377,12 +409,15 @@ export function useComandaForm(
     setEmployeeId,
     observacoes,
     setObservacoes,
+    formaPagamento,
+    setFormaPagamento,
     itens,
     linkedAppointmentIds,
     erro,
     totalInCents,
     isLoadingCatalog,
     hasComposicao,
+    isLocked,
     // opções
     agendamentoOptions,
     linkedOptions,

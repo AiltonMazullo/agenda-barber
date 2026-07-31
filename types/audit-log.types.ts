@@ -4,7 +4,7 @@
  * várias entradas com o mesmo `entityId` formam o histórico daquela entidade.
  */
 
-export type AuditEntityType = "AGENDAMENTO" | "BLOQUEIO" | "ASSINATURA";
+export type AuditEntityType = "AGENDAMENTO" | "BLOQUEIO" | "ASSINATURA" | "COMANDA";
 
 export interface AuditLog {
   id: string;

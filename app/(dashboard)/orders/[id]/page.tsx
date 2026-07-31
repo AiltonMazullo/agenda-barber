@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Loading, PageHeader, StatusBadge } from "@/components/shared";
@@ -27,7 +27,8 @@ export default function EditarComandaPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { barbershop } = useAuth();
-  const { comandas, isLoading, update } = useComandas(barbershop?.id);
+  const { comandas, isLoading, update, setStatus } = useComandas(barbershop?.id);
+  const [reopening, setReopening] = useState(false);
 
   const comanda = useMemo(
     () => comandas.find((c) => c.id === params.id) ?? null,
@@ -37,6 +38,12 @@ export default function EditarComandaPage() {
   async function handleSubmit(draft: ComandaDraft) {
     const atualizada = await update(params.id, draft);
     if (atualizada) router.push("/orders");
+  }
+
+  async function handleReopen() {
+    setReopening(true);
+    await setStatus(params.id, "ABERTA");
+    setReopening(false);
   }
 
   if (isLoading) {
@@ -82,6 +89,8 @@ export default function EditarComandaPage() {
         comanda={comanda}
         submitLabel="Salvar alterações"
         onSubmit={handleSubmit}
+        onReopen={handleReopen}
+        reopening={reopening}
       />
     </div>
   );

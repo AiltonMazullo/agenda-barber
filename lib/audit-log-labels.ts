@@ -13,6 +13,9 @@ export const ACTION_LABEL: Record<string, string> = {
   DELETE: "Exclusão",
   CONFIRM: "Confirmação",
   COMPLETE: "Conclusão",
+  CLOSE: "Fechamento",
+  REOPEN: "Reabertura",
+  STATUS_CHANGE: "Mudança de status",
 };
 
 export const FIELD_LABEL: Record<string, string> = {
@@ -26,6 +29,7 @@ export const FIELD_LABEL: Record<string, string> = {
   "startAt/endAt": "Início/Fim do bloqueio",
   nextInvoiceValueInCents: "Valor da próxima fatura",
   "priceOverrideInCents/billingDay": "Valor/Dia de cobrança",
+  "itens/agendamentos": "Itens/Agendamentos",
 };
 
 export const VALUE_LABEL: Record<string, string> = {
@@ -34,6 +38,9 @@ export const VALUE_LABEL: Record<string, string> = {
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
   NO_SHOW: "Não compareceu",
+  ABERTA: "Aberta",
+  FECHADA: "Fechada",
+  CANCELADA: "Cancelada",
 };
 
 export function translateAction(action: string): string {
