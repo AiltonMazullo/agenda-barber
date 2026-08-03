@@ -7,7 +7,7 @@ import { FinancialEntryForm } from "@/components/financial/FinancialEntryForm";
 
 export default function AdicionarDespesaPage() {
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground max-w-2xl">
+    <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
         title="Adicionar despesa"
         subtitle="Formulário de lançamento de despesa com categoria, forma de pagamento, conta e vencimento"
