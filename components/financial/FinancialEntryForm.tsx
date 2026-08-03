@@ -141,16 +141,21 @@ export function FinancialEntryForm({
           placeholder="Selecione"
           options={parentCategories.map((c) => ({ value: c.id, label: c.name }))}
         />
-        {subCategories.length > 0 && (
-          <SelectField
-            id="subCategory"
-            label="Subcategoria"
-            value={subCategoryId}
-            onChange={setSubCategoryId}
-            placeholder="Nenhuma"
-            options={subCategories.map((c) => ({ value: c.id, label: c.name }))}
-          />
-        )}
+        <SelectField
+          id="subCategory"
+          label="Subcategoria"
+          value={subCategoryId}
+          onChange={setSubCategoryId}
+          placeholder={
+            !parentCategoryId
+              ? "Selecione uma categoria"
+              : subCategories.length > 0
+                ? "Nenhuma"
+                : "Sem subcategorias cadastradas"
+          }
+          disabled={!parentCategoryId || subCategories.length === 0}
+          options={subCategories.map((c) => ({ value: c.id, label: c.name }))}
+        />
         <SelectField
           id="branch"
           label="Filial"
