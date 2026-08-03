@@ -63,6 +63,7 @@ export interface CreateBarbershopFisicaPayload {
   phone: string;
   personType: "FISICA";
   cpf: string;
+  category?: string | null;
   cep: string;
   street: string;
   neighborhood: string;
@@ -79,6 +80,7 @@ export interface CreateBarbershopJuridicaPayload {
   phone: string;
   personType: "JURIDICA";
   cnpj: string;
+  category?: string | null;
   cep: string;
   street: string;
   neighborhood: string;

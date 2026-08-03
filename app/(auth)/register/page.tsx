@@ -29,6 +29,13 @@ import type {
   PersonType,
 } from "@/types/barbershop.types";
 
+const CATEGORY_OPTIONS = [
+  { value: "BARBEARIA", label: "Barbearia" },
+  { value: "SALAO", label: "Salão de Beleza" },
+  { value: "MANICURE", label: "Manicure" },
+  { value: "SPA", label: "Spa" },
+] as const;
+
 function toSlug(name: string): string {
   return name
     .toLowerCase()
@@ -57,6 +64,7 @@ interface FormState {
   personType: PersonType;
   cpf: string;
   cnpj: string;
+  category: string;
 }
 
 const INITIAL: FormState = {
@@ -74,6 +82,7 @@ const INITIAL: FormState = {
   personType: "FISICA",
   cpf: "",
   cnpj: "",
+  category: "",
 };
 
 export default function RegisterPage() {
@@ -162,6 +171,7 @@ export default function RegisterPage() {
         uf: form.uf.trim().toUpperCase(),
         number: form.number.trim(),
         address: form.street.trim(),
+        category: form.category || null,
       };
       const payload =
         form.personType === "FISICA"
@@ -266,6 +276,33 @@ export default function RegisterPage() {
           inputMode="numeric"
           maxLength={15}
         />
+
+        {/* Categoria */}
+        <div className="space-y-1.5">
+          <span className="text-muted-foreground text-xs font-normal">
+            Categoria
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {CATEGORY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => update("category", opt.value)}
+                className={cn(
+                  "h-11 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
+                  form.category === opt.value
+                    ? "bg-brand/15 border-brand/60 text-brand"
+                    : "border-border bg-black text-muted-foreground hover:border-brand/30",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-text-faint">
+            Usada no filtro de categoria da vitrine pública de busca de salões.
+          </p>
+        </div>
 
         {/* Endereço */}
         <AuthInput
