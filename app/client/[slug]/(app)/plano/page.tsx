@@ -199,12 +199,10 @@ function PlanCard({
               {plan.planServices.map((ps) => (
                 <div
                   key={ps.id}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-base px-3 py-1.5"
+                  className="rounded-md border border-border-subtle bg-surface-base px-3 py-1.5 space-y-1"
                 >
-                  <span className="text-xs text-foreground truncate flex-1">
-                    {ps.service.name}
-                  </span>
-                  <span className="shrink-0 rounded-md border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-green-500 whitespace-nowrap">
+                  <p className="text-xs text-foreground truncate">{ps.service.name}</p>
+                  <span className="inline-flex items-center rounded-md border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-green-500">
                     {formatDiscountLabel(ps.discountPercent, ps.monthlyLimit)}
                   </span>
                 </div>
