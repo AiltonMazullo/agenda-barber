@@ -5,12 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Crown,
-  Users,
-  Scissors,
-  Package,
   Calendar,
-  Lock,
-  Repeat2,
+  Clock,
   AlertCircle,
   Star,
   Flame,
@@ -89,20 +85,6 @@ function PlanCard({
         </div>
       )}
 
-      {plan.availableSlots != null && plan.availableSlots > 0 && (
-        <div className="mx-5 mt-4 -mb-1 rounded-lg bg-orange-500/10 border border-orange-500/30 px-3 py-2 flex items-center gap-2">
-          <Flame className="size-4 text-orange-500 shrink-0" />
-          <div>
-            <p className="text-xs font-extrabold text-orange-500 uppercase tracking-wide">
-              Restam {plan.availableSlots} {plan.availableSlots === 1 ? "vaga" : "vagas"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Garanta já o seu e não fique de fora
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="p-5 flex flex-col flex-1 gap-4">
         {/* Header */}
         <div className="flex items-start gap-3">
@@ -110,7 +92,7 @@ function PlanCard({
             className="size-10 rounded-xl grid place-items-center shrink-0"
             style={{ backgroundColor: `${accentColor}22` }}
           >
-            <Crown className="size-5" style={{ color: accentColor }} />
+            <Star className="size-5 fill-current" style={{ color: accentColor }} />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-foreground text-base leading-tight">
@@ -125,28 +107,23 @@ function PlanCard({
           </div>
         </div>
 
+        {/* Vagas restantes */}
+        {plan.availableSlots != null && plan.availableSlots > 0 && (
+          <div className="rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 flex items-center gap-2">
+            <Flame className="size-4 text-green-500 shrink-0" />
+            <div>
+              <p className="text-xs font-extrabold text-green-500 uppercase tracking-wide">
+                Restam {plan.availableSlots} {plan.availableSlots === 1 ? "plano" : "planos"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Garanta já o seu e não fique de fora.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Metrics */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
-            <Repeat2 className="size-3.5 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[10px] text-muted-foreground">Uso a cada</p>
-              <p className="text-xs font-semibold text-foreground">
-                {plan.serviceFrequencyDays}d
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
-            <Lock className="size-3.5 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[10px] text-muted-foreground">Fidelidade</p>
-              <p className="text-xs font-semibold text-foreground">
-                {plan.subscriptionLockDays}d
-              </p>
-            </div>
-          </div>
-
           <div className="rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
             <Calendar className="size-3.5 text-muted-foreground shrink-0" />
             <div>
@@ -157,7 +134,7 @@ function PlanCard({
             </div>
           </div>
 
-          <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
+          <div className="rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
             <Calendar className="size-3.5 text-muted-foreground shrink-0" />
             <div>
               <p className="text-[10px] text-muted-foreground">Dias livres</p>
@@ -181,24 +158,25 @@ function PlanCard({
 
           {plan.serviceFrequencyDays > 0 && (
             <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
-              <Repeat2 className="size-3.5 text-muted-foreground shrink-0" />
-              <p className="text-xs font-semibold text-foreground">
-                Agenda liberada com {plan.serviceFrequencyDays}{" "}
-                {plan.serviceFrequencyDays === 1 ? "dia" : "dias"} de antecedência
+              <Clock className="size-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-foreground">
+                Agenda liberada com{" "}
+                <span className="font-bold">
+                  {plan.serviceFrequencyDays}{" "}
+                  {plan.serviceFrequencyDays === 1 ? "dia" : "dias"}
+                </span>{" "}
+                de antecedência
               </p>
             </div>
           )}
         </div>
 
-        {/* Services */}
-        {plan.planServices.length > 0 && (
+        {/* Serviços / Produtos */}
+        {(plan.planServices.length > 0 || plan.planProducts.length > 0) && (
           <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Scissors className="size-3 text-muted-foreground" />
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Serviços
-              </p>
-            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Serviços / Produtos
+            </p>
             <div className="space-y-1">
               {plan.planServices.map((ps) => {
                 const svcUsage = usage.find((u) => u.serviceId === ps.serviceId);
@@ -210,7 +188,7 @@ function PlanCard({
                     <span className="text-xs text-foreground truncate flex-1">
                       {ps.service.name}
                     </span>
-                    <span className="text-xs font-semibold text-green-500 whitespace-nowrap">
+                    <span className="shrink-0 rounded-md border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-green-500 whitespace-nowrap">
                       {formatDiscountLabel(
                         ps.discountPercent,
                         ps.monthlyLimit,
@@ -220,42 +198,6 @@ function PlanCard({
                   </div>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {/* Employees */}
-        {plan.planEmployees.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Users className="size-3 text-muted-foreground" />
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Profissionais
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {plan.planEmployees.map((pe) => (
-                <span
-                  key={pe.id}
-                  className="inline-flex items-center rounded-full border border-border-subtle bg-surface-base px-2.5 py-0.5 text-xs text-foreground"
-                >
-                  {pe.employee.appName || pe.employee.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Products */}
-        {plan.planProducts.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Package className="size-3 text-muted-foreground" />
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Produtos
-              </p>
-            </div>
-            <div className="space-y-1">
               {plan.planProducts.map((pp) => (
                 <div
                   key={pp.id}
@@ -264,7 +206,7 @@ function PlanCard({
                   <span className="text-xs text-foreground truncate flex-1">
                     {pp.product.name}
                   </span>
-                  <span className="text-xs font-semibold text-brand whitespace-nowrap">
+                  <span className="shrink-0 rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand whitespace-nowrap">
                     {formatCents(pp.priceInCents)}
                   </span>
                 </div>

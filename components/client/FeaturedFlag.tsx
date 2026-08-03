@@ -1,4 +1,4 @@
-import { Flame, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
 interface FeaturedFlagProps {
   label: string;
@@ -23,7 +23,9 @@ export function FeaturedFlag({ label, variant = "corner" }: FeaturedFlagProps) {
 
   return (
     <span className="pointer-events-none absolute -top-2.5 left-4 z-10 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30 ring-1 ring-white/20">
-      <Flame className="size-2.5" />
+      <span aria-hidden className="text-xs leading-none">
+        🔥
+      </span>
       {label}
     </span>
   );
