@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared";
 import { toast } from "sonner";
+import { apiAssetUrl } from "@/lib/api";
 import { maskBRLInput, parseBRL, formatBRL } from "@/utils/format";
 import { plansService } from "@/services/plans.service";
 import type { CreatePlanPayload, Plan } from "@/types/plan.types";
@@ -1068,12 +1069,14 @@ export function DialogNovoPlano({
             <div className="space-y-2">
               {plan?.contractUrl && (
                 <a
-                  href={plan.contractUrl}
+                  href={apiAssetUrl(plan.contractUrl) ?? plan.contractUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-brand hover:underline"
+                  download
+                  className="inline-flex items-center gap-1.5 text-xs text-brand hover:underline"
                 >
-                  Ver contrato atual
+                  <Download className="size-3.5" />
+                  Baixar contrato atual
                 </a>
               )}
               <div className="flex gap-2">
