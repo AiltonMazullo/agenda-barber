@@ -516,11 +516,15 @@ export function DialogNovoPlano({
                     min={1}
                     value={availableQuantity}
                     onChange={(e) => setAvailableQuantity(e.target.value)}
-                    placeholder="Ilimitado"
+                    placeholder="0 (sem vagas)"
                     className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
                   />
                 </Field>
               </div>
+              <p className="text-[11px] text-text-faint -mt-1">
+                Deixar em branco = 0 vagas: o plano fica indisponível para novas contratações até
+                você definir uma quantidade.
+              </p>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Cor (hex)">

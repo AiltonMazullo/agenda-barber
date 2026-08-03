@@ -419,7 +419,7 @@ function SortablePlanRow({
           {formatBRL(plan.priceInCents / 100)}
           {plan.availableQuantity != null
             ? ` · ${plan.availableQuantity} vagas`
-            : " · Vagas ilimitadas"}
+            : " · 0 vagas (defina uma quantidade para liberar contratações)"}
         </p>
       </TableCell>
       <TableCell className="px-4 py-3">

@@ -60,7 +60,10 @@ export function priceServiceUnderSubscription(
 /**
  * Rótulo de desconto exibido no card de plano do cliente.
  * - `discountPercent === 100` → "Incluso".
- * - `monthlyLimit` definido e `discountPercent > 0` → "N% OFF para usar mais vezes".
+ * - `monthlyLimit` definido e `discountPercent > 0` → "N% OFF para usar mais vezes
+ *   (M grátis/mês)" — M é a quantidade grátis/mês configurada no plano; o desconto só
+ *   se aplica ao uso que exceder essa cota (ver `DialogNovoPlano`: "Qtd. grátis no mês
+ *   e desconto (%) aplicado a partir do uso que exceder essa quantidade").
  * - Caso contrário → "N% off".
  */
 export function formatDiscountLabel(
@@ -69,7 +72,7 @@ export function formatDiscountLabel(
 ): string {
   if (discountPercent >= 100) return "Incluso";
   if (monthlyLimit != null && discountPercent > 0) {
-    return `${discountPercent}% OFF para usar mais vezes`;
+    return `${discountPercent}% OFF para usar mais vezes (${monthlyLimit} grátis/mês)`;
   }
   return `${discountPercent}% off`;
 }
