@@ -33,7 +33,6 @@ import { formatBRL } from "@/utils/format";
 import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
 import type { Plan } from "@/types/plan.types";
 import type {
-  ServiceUsage,
   SubscribePixAuthorizationResult,
   SubscriptionPaymentMethod,
 } from "@/types/subscription.types";
@@ -49,7 +48,6 @@ interface PlanCardProps {
   isCurrentPlan: boolean;
   hasOtherActivePlan: boolean;
   subscribing: boolean;
-  usage?: ServiceUsage[];
   onSubscribe: () => void;
   onCancel: () => void;
 }
@@ -59,7 +57,6 @@ function PlanCard({
   isCurrentPlan,
   hasOtherActivePlan,
   subscribing,
-  usage = [],
   onSubscribe,
   onCancel,
 }: PlanCardProps) {
@@ -72,6 +69,13 @@ function PlanCard({
 
   const availableWeekdaysLabel =
     plan.availableWeekdays.length > 0 ? formatWeekdays(plan.availableWeekdays) : "Todos os dias";
+
+  // `availableQuantity` vazio → sem limite p/ novas contratações, não exibe
+  // nada no card. Preenchido → mostra quantos ainda restam (já descontadas
+  // as assinaturas ativas, calculado em `PlansService.list`); ao chegar em 0
+  // exibe "Esgotado" e bloqueia a contratação (backend também recusa, ver
+  // `SubscriptionsService.subscribe`).
+  const isSoldOut = plan.availableSlots === 0;
 
   return (
     <div className="relative rounded-xl border border-border-subtle bg-surface-raised overflow-hidden flex flex-col">
@@ -108,15 +112,29 @@ function PlanCard({
         </div>
 
         {/* Vagas restantes */}
-        {plan.availableSlots != null && plan.availableSlots > 0 && (
-          <div className="rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 flex items-center gap-2">
-            <Flame className="size-4 text-green-500 shrink-0" />
+        {plan.availableSlots != null && (
+          <div
+            className={`rounded-lg px-3 py-2 flex items-center gap-2 ${
+              isSoldOut
+                ? "bg-danger/10 border border-danger/30"
+                : "bg-green-500/10 border border-green-500/30"
+            }`}
+          >
+            <Flame className={`size-4 shrink-0 ${isSoldOut ? "text-danger-foreground" : "text-green-500"}`} />
             <div>
-              <p className="text-xs font-extrabold text-green-500 uppercase tracking-wide">
-                Restam {plan.availableSlots} {plan.availableSlots === 1 ? "plano" : "planos"}
+              <p
+                className={`text-xs font-extrabold uppercase tracking-wide ${
+                  isSoldOut ? "text-danger-foreground" : "text-green-500"
+                }`}
+              >
+                {isSoldOut
+                  ? "Restam 0 planos"
+                  : `Restam ${plan.availableSlots} ${plan.availableSlots === 1 ? "plano" : "planos"}`}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Garanta já o seu e não fique de fora.
+                {isSoldOut
+                  ? "Todas as vagas foram preenchidas."
+                  : "Garanta já o seu e não fique de fora."}
               </p>
             </div>
           </div>
@@ -178,26 +196,19 @@ function PlanCard({
               Serviços / Produtos
             </p>
             <div className="space-y-1">
-              {plan.planServices.map((ps) => {
-                const svcUsage = usage.find((u) => u.serviceId === ps.serviceId);
-                return (
-                  <div
-                    key={ps.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-base px-3 py-1.5"
-                  >
-                    <span className="text-xs text-foreground truncate flex-1">
-                      {ps.service.name}
-                    </span>
-                    <span className="shrink-0 rounded-md border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-green-500 whitespace-nowrap">
-                      {formatDiscountLabel(
-                        ps.discountPercent,
-                        ps.monthlyLimit,
-                        svcUsage?.used,
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
+              {plan.planServices.map((ps) => (
+                <div
+                  key={ps.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-base px-3 py-1.5"
+                >
+                  <span className="text-xs text-foreground truncate flex-1">
+                    {ps.service.name}
+                  </span>
+                  <span className="shrink-0 rounded-md border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-green-500 whitespace-nowrap">
+                    {formatDiscountLabel(ps.discountPercent, ps.monthlyLimit)}
+                  </span>
+                </div>
+              ))}
               {plan.planProducts.map((pp) => (
                 <div
                   key={pp.id}
@@ -239,15 +250,21 @@ function PlanCard({
             <button
               type="button"
               onClick={onSubscribe}
-              disabled={subscribing}
-              className="w-full h-10 rounded-lg text-sm font-bold transition-opacity hover:opacity-90 text-white disabled:opacity-60"
-              style={{ backgroundColor: accentColor }}
+              disabled={subscribing || isSoldOut}
+              className={`w-full h-10 rounded-lg text-sm font-bold transition-opacity hover:opacity-90 disabled:cursor-not-allowed ${
+                isSoldOut
+                  ? "bg-surface-elevated text-muted-foreground disabled:opacity-100"
+                  : "text-white disabled:opacity-60"
+              }`}
+              style={isSoldOut ? undefined : { backgroundColor: accentColor }}
             >
-              {subscribing
-                ? "Assinando…"
-                : hasOtherActivePlan
-                  ? "Trocar para este plano"
-                  : "Assinar plano"}
+              {isSoldOut
+                ? "Esgotado"
+                : subscribing
+                  ? "Assinando…"
+                  : hasOtherActivePlan
+                    ? "Trocar para este plano"
+                    : "Assinar plano"}
             </button>
           )}
         </div>
@@ -407,7 +424,6 @@ export default function PlanoClientePage() {
                 isCurrentPlan={isCurrentPlan}
                 hasOtherActivePlan={hasOtherActivePlan}
                 subscribing={subscribingId === plan.id}
-                usage={isCurrentPlan ? mySubscription?.usage : undefined}
                 onSubscribe={() =>
                   hasOtherActivePlan ? setSwitchTarget(plan) : openPaymentDialog(plan)
                 }

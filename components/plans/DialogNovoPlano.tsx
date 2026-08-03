@@ -442,6 +442,22 @@ export function DialogNovoPlano({
       });
       if (result) {
         await syncCategories(result.id);
+        // Criação: o upload de contrato só pode acontecer depois que o plano
+        // existe (planId), mas o arquivo já foi escolhido no formulário —
+        // sobe automaticamente aqui pra "anexar contrato na criação do
+        // plano" não depender de reabrir o plano em edição.
+        if (!plan && contractFile && barbershopId) {
+          try {
+            await plansService.uploadContract(barbershopId, result.id, contractFile);
+            toast.success("Plano criado e contrato anexado.");
+          } catch (err) {
+            toast.error(
+              err instanceof Error
+                ? `Plano criado, mas falha ao anexar contrato: ${err.message}`
+                : "Plano criado, mas falha ao anexar contrato.",
+            );
+          }
+        }
         onOpenChange(false);
       }
     } finally {
@@ -1043,27 +1059,31 @@ export function DialogNovoPlano({
             </div>
           </Section>
 
-          {/* ── contrato (só após o plano existir) ── */}
-          {plan && (
-            <Section label="Contrato">
-              <div className="space-y-2">
-                {plan.contractUrl && (
-                  <a
-                    href={plan.contractUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-brand hover:underline"
-                  >
-                    Ver contrato atual
-                  </a>
-                )}
-                <div className="flex gap-2">
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
-                    className="flex-1 text-xs text-muted-foreground file:mr-2 file:h-8 file:px-3 file:rounded-md file:border-0 file:bg-surface-elevated file:text-foreground"
-                  />
+          {/* ── contrato ── */}
+          <Section label="Contrato">
+            <p className="text-xs text-text-faint -mt-1">
+              Link do contrato disparado junto com o link de checkout no processo de
+              assinatura.
+            </p>
+            <div className="space-y-2">
+              {plan?.contractUrl && (
+                <a
+                  href={plan.contractUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-brand hover:underline"
+                >
+                  Ver contrato atual
+                </a>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
+                  className="flex-1 text-xs text-muted-foreground file:mr-2 file:h-8 file:px-3 file:rounded-md file:border-0 file:bg-surface-elevated file:text-foreground"
+                />
+                {plan && (
                   <button
                     type="button"
                     onClick={handleUploadContract}
@@ -1072,10 +1092,17 @@ export function DialogNovoPlano({
                   >
                     {uploadingContract ? "Enviando…" : "Adicionar contrato"}
                   </button>
-                </div>
+                )}
               </div>
-            </Section>
-          )}
+              {!plan && (
+                <p className="text-[11px] text-text-faint">
+                  {contractFile
+                    ? `"${contractFile.name}" será anexado ao criar o plano.`
+                    : "Selecione o PDF do contrato — será anexado automaticamente ao criar o plano."}
+                </p>
+              )}
+            </div>
+          </Section>
         </div>
 
         {/* footer fixo */}
