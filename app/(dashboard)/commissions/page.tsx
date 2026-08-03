@@ -388,7 +388,7 @@ export default function ComissoesPage() {
         <EmptyState message="Nenhuma comissão a apurar neste período." />
       ) : (
         <div className="rounded-xl border border-border bg-surface-raised overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1200px] text-sm">
             <thead>
               <tr className="border-b border-border-subtle text-left text-xs uppercase text-muted-foreground">
                 <th className="px-4 py-3">
