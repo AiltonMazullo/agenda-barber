@@ -78,7 +78,10 @@ export function FinancialEntryForm({
     setSubCategoryId("");
   }
 
-  const valid = description && value && dueDate;
+  // Recorrência precisa de um número de ocorrências pra ser gerada de uma vez
+  // só (igual ao parcelamento) — sem isso o backend não tem como materializar
+  // a série inteira na criação (ver FinancialEntriesService.create).
+  const valid = description && value && dueDate && (!repeatEntry || recurrenceCount);
 
   async function handleSubmit() {
     if (!valid || !dueDate) return;
@@ -248,14 +251,14 @@ export function FinancialEntryForm({
               />
               <Field className="w-40">
                 <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                  Número de recorrências
+                  Número de recorrências *
                 </FieldLabel>
                 <Input
                   type="number"
                   min={1}
                   value={recurrenceCount}
                   onChange={(e) => setRecurrenceCount(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Sem limite"
+                  placeholder="Ex.: 12"
                   className="bg-surface-base border-border text-foreground"
                 />
               </Field>

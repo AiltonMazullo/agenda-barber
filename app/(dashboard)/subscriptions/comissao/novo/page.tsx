@@ -18,6 +18,17 @@ import { formatBRL } from "@/utils/format";
 
 type Step = 1 | 2 | 3;
 
+/** O date-picker devolve meia-noite local do dia escolhido. Sem isso,
+ *  "período final = 31/07" vira 31/07 00:00 — excluindo o próprio dia 31 dos
+ *  dados puxados e deixando a fronteira com o próximo mês colada em vez de
+ *  coberta. Empurra para o último instante do dia local antes de mandar pro
+ *  backend. */
+function endOfLocalDay(date: Date): Date {
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
 export default function NovoCalculoComissaoPage() {
   const router = useRouter();
   const { barbershop } = useAuth();
@@ -73,7 +84,7 @@ export default function NovoCalculoComissaoPage() {
       .suggest(barbershop.id, {
         branchId,
         periodStart: periodStart.toISOString(),
-        periodEnd: periodEnd.toISOString(),
+        periodEnd: endOfLocalDay(periodEnd).toISOString(),
       })
       .then((data) => {
         if (cancelled) return;
@@ -112,7 +123,7 @@ export default function NovoCalculoComissaoPage() {
     const created = await create({
       branchId,
       periodStart: periodStart.toISOString(),
-      periodEnd: periodEnd.toISOString(),
+      periodEnd: endOfLocalDay(periodEnd).toISOString(),
       totalServicesByCategory,
       servicesByEmployee,
       subscriptionRevenueInCents: Math.round(
