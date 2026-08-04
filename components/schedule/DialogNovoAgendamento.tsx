@@ -143,7 +143,12 @@ export function DialogNovoAgendamento({
   // Reset ao abrir
   useEffect(() => {
     if (!open) return;
-    setHora(defaultHoraParaData(defaultDate, prefilledHora ?? "09:00"));
+    // Horário vindo de um clique direto num slot da agenda é respeitado tal
+    // qual (inclusive retroativo); só aplica o horário padrão/"próximo
+    // disponível" quando o modal é aberto sem um slot pré-selecionado.
+    setHora(
+      prefilledHora ?? defaultHoraParaData(defaultDate, "09:00"),
+    );
     setData(defaultDate);
     const s0 = servicos[0];
     setRows([

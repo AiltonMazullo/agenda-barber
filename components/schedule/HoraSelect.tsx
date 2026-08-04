@@ -66,18 +66,17 @@ export function HoraSelect({
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-surface-raised border-border text-foreground max-h-60 overflow-y-auto">
         {slots.map((s) => {
+          // Horários passados não são desabilitados: a recepção pode
+          // registrar agendamentos retroativos (ex.: atendimento walk-in).
           const passou = hoje && timeToMin(s) <= nowMin;
           return (
             <DropdownMenuItem
               key={s}
-              disabled={passou}
-              onClick={() => {
-                if (!passou) onChange(s);
-              }}
+              onClick={() => onChange(s)}
               className={cn(
                 "text-xs cursor-pointer hover:bg-surface-elevated",
                 value === s && "bg-brand/10 text-brand font-bold",
-                passou && "opacity-40 cursor-not-allowed",
+                passou && "opacity-60",
               )}
             >
               {s}

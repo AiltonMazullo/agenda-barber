@@ -716,7 +716,7 @@ function TabEmpresa() {
                 )}
               </div>
               <p className="text-[11px] text-text-faint">
-                JPG, PNG ou WebP · até 2 MB por imagem · máximo de 3 imagens
+                JPG, PNG ou WebP · 1200 x 400 px · até 2 MB por imagem · máximo de 3 imagens
               </p>
               {bannerUrls.length === 0 ? (
                 <p className="text-[11px] text-text-faint">
@@ -1246,7 +1246,8 @@ function DialogFilial({
         ? {
             branchId,
             bankAccountId: state.bankAccountId || null,
-            feePercent: Number(state.feePercent.replace(",", ".")) || 0,
+            // A taxa é definida em Financeiro → Formas de pagamento, não editável por aqui.
+            feePercent: current?.feePercent ?? 0,
             receiptDeadlineDays:
               method.timing === "APRAZO"
                 ? parseInt(state.receiptDeadlineDays, 10) || 0
@@ -1495,6 +1496,15 @@ function DialogFilial({
 
           <div className="space-y-1.5">
             <FormLabel>Formas de pagamento e taxas</FormLabel>
+            {paymentMethods.length > 0 && (
+              <p className="text-[11px] text-text-faint">
+                Selecione quais esta filial utiliza. As taxas são definidas em{" "}
+                <span className="font-semibold text-muted-foreground">
+                  Financeiro → Formas de pagamento
+                </span>
+                .
+              </p>
+            )}
             {paymentMethods.length === 0 ? (
               <p className="text-[11px] text-text-faint rounded-md border border-border-subtle bg-surface-base p-3">
                 Nenhuma forma de pagamento cadastrada. Cadastre em{" "}
@@ -1533,12 +1543,9 @@ function DialogFilial({
                         <div className="flex items-center gap-1 shrink-0">
                           <Input
                             value={state?.feePercent ?? "0"}
-                            onChange={(e) =>
-                              updatePaymentSetting(method.id, {
-                                feePercent: e.target.value,
-                              })
-                            }
-                            disabled={!on}
+                            disabled
+                            readOnly
+                            title="Taxa definida em Financeiro → Formas de pagamento"
                             inputMode="decimal"
                             placeholder="0"
                             className="h-8 w-20 bg-surface-raised border-border text-white text-right disabled:opacity-50"
