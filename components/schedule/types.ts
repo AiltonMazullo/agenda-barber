@@ -9,6 +9,9 @@ export const SLOT_OPTIONS = [10, 20, 30] as const;
 export const START_HOUR = 8;
 export const END_HOUR = 20;
 
+/** Id sentinela para `AgendamentoVM.profissionalId` de agendamentos "sem preferência" (`employeeId: null`) — não corresponde a nenhum `ProfissionalVM` real. */
+export const SEM_PREFERENCIA_ID = "sem-prof";
+
 /** View-model de serviço (cor em hex, preço em reais). */
 export interface ServicoVM {
   id: string;

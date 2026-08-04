@@ -14,13 +14,14 @@ import {
 } from "@/components/schedule/helpers";
 import { apiAssetUrl } from "@/lib/api";
 import { subscriptionsService } from "@/services/subscriptions.service";
-import type {
-  AgendamentoVM,
-  AssinanteSituacao,
-  NovoAgendamentoInput,
-  ProfissionalVM,
-  QuickClientInput,
-  ServicoVM,
+import {
+  SEM_PREFERENCIA_ID,
+  type AgendamentoVM,
+  type AssinanteSituacao,
+  type NovoAgendamentoInput,
+  type ProfissionalVM,
+  type QuickClientInput,
+  type ServicoVM,
 } from "@/components/schedule/types";
 import type { Appointment } from "@/types/appointment.types";
 import type { Client } from "@/types/client.types";
@@ -260,7 +261,10 @@ export function useSchedule(
       }));
 
       const profId =
-        ov.profissionalId ?? primary.employeeId ?? primary.employee?.id ?? "sem-prof";
+        ov.profissionalId ??
+        primary.employeeId ??
+        primary.employee?.id ??
+        SEM_PREFERENCIA_ID;
       const profNome =
         employeeNameById.get(profId) ??
         primary.employee?.appName ??

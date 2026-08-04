@@ -37,6 +37,7 @@ export function ProfissionalColuna({
   onSlotClick,
   indisponibilidades,
   startHour = START_HOUR,
+  disabled = false,
 }: {
   profissional: ProfissionalVM;
   agendamentos: AgendamentoVM[];
@@ -62,10 +63,17 @@ export function ProfissionalColuna({
   indisponibilidades: Indisponibilidade[];
   /** Início da grade, em horas — ver §5.1 (range dinâmico por profissionais do dia). */
   startHour?: number;
+  /**
+   * Coluna somente leitura (usada pela pseudo-coluna "Sem preferência"): não
+   * aceita drop nem criação de bloqueio, já que não há um `Employee` real
+   * por trás para persistir essas ações no backend.
+   */
+  disabled?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${profissional.id}`,
     data: { profissionalId: profissional.id },
+    disabled,
   });
 
   const bloqueioStart = useRef<number | null>(null);
@@ -76,7 +84,7 @@ export function ProfissionalColuna({
 
   const handleGridPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!modoBloquear) return;
+      if (!modoBloquear || disabled) return;
       const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
       const y = e.clientY - rect.top;
       const slotIdx = Math.floor(y / slotHeightPx);
@@ -85,7 +93,7 @@ export function ProfissionalColuna({
       setBloqueioPreview({ inicio: minInicio, fim: minInicio + slotSize });
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [modoBloquear, slotHeightPx, slotSize, startHour],
+    [modoBloquear, disabled, slotHeightPx, slotSize, startHour],
   );
 
   const handleGridPointerMove = useCallback(

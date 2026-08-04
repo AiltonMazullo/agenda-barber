@@ -77,6 +77,7 @@ import {
   SLOT_OPTIONS,
   START_HOUR,
   END_HOUR,
+  SEM_PREFERENCIA_ID,
 } from "@/components/schedule";
 import type {
   AgendamentoVM,
@@ -85,11 +86,21 @@ import type {
   Indisponibilidade,
   NovoAgendamentoInput,
   NovoBloqueioInput,
+  ProfissionalVM,
   SlotSize,
   ViewMode,
 } from "@/components/schedule";
 import type { UpdatableAppointmentStatus } from "@/types/appointment.types";
 import { Loading, DatePickerField } from "@/components/shared";
+
+/** Pseudo-profissional só para dar uma coluna própria aos agendamentos "sem preferência" na grade — não corresponde a um Employee real. */
+const PROFISSIONAL_SEM_PREFERENCIA: ProfissionalVM = {
+  id: SEM_PREFERENCIA_ID,
+  nome: "Sem preferência",
+  avatar: "?",
+  ativo: true,
+  branchId: null,
+};
 
 export default function SchedulePage() {
   const { barbershop } = useAuth();
@@ -282,9 +293,21 @@ export default function SchedulePage() {
     [profissionais, filtroProf],
   );
 
+  // Agendamentos "sem preferência" (employeeId null) não pertencem a nenhum
+  // profissional cadastrado — ganham uma pseudo-coluna própria na grade
+  // (somente leitura: não aceita drop nem criação de bloqueio, ver
+  // `ProfissionalColuna`) pra não sumirem da agenda.
+  const colunasVisiveis = useMemo<ProfissionalVM[]>(() => {
+    if (filtroProf === SEM_PREFERENCIA_ID) return [PROFISSIONAL_SEM_PREFERENCIA];
+    if (filtroProf === "todos")
+      return [...profissionaisVisiveis, PROFISSIONAL_SEM_PREFERENCIA];
+    return profissionaisVisiveis;
+  }, [profissionaisVisiveis, filtroProf]);
+
   const agPorProfissional = useMemo(() => {
     const map: Record<string, AgendamentoVM[]> = {};
     profissionais.forEach((p) => (map[p.id] = []));
+    map[SEM_PREFERENCIA_ID] = [];
     agendamentos.forEach((ag) => {
       // Cancelados (e faltas) aparecem apenas na visualização em lista.
       if (ag.status === "CANCELLED" || ag.status === "NO_SHOW") return;
@@ -326,9 +349,9 @@ export default function SchedulePage() {
   const monthDates = useMemo(() => buildMonthDates(selectedDate), [selectedDate]);
 
   const agendamentosMes = useMemo(() => {
-    const idsVisiveis = new Set(profissionaisVisiveis.map((p) => p.id));
+    const idsVisiveis = new Set(colunasVisiveis.map((p) => p.id));
     return agendamentosTodos.filter((a) => idsVisiveis.has(a.profissionalId));
-  }, [agendamentosTodos, profissionaisVisiveis]);
+  }, [agendamentosTodos, colunasVisiveis]);
 
   const agendamentoAtivo = useMemo(
     () => agendamentos.find((a) => a.id === activeId) ?? null,
@@ -513,7 +536,10 @@ export default function SchedulePage() {
 
   const handleSlotClick = useCallback((profId: string, inicioMin: number) => {
     setPrefilledHora(minToTime(inicioMin));
-    setPrefilledProfId(profId);
+    // "sem-prof" é só o id da pseudo-coluna — não existe Employee com esse
+    // id, então não pode ir pro form (o select simplesmente fica sem
+    // preferência selecionada, que é o resultado desejado).
+    setPrefilledProfId(profId === SEM_PREFERENCIA_ID ? undefined : profId);
     setDialogNovo(true);
   }, []);
 
@@ -831,7 +857,9 @@ export default function SchedulePage() {
                   <span className="max-w-[90px] truncate text-xs">
                     {filtroProf === "todos"
                       ? "Todos"
-                      : profById.get(filtroProf)?.nome}
+                      : filtroProf === SEM_PREFERENCIA_ID
+                        ? PROFISSIONAL_SEM_PREFERENCIA.nome
+                        : profById.get(filtroProf)?.nome}
                   </span>
                   <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
@@ -858,6 +886,15 @@ export default function SchedulePage() {
                     {p.avatar} {p.nome}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuItem
+                  onClick={() => setFiltroProf(SEM_PREFERENCIA_ID)}
+                  className={cn(
+                    "text-xs hover:bg-surface-elevated cursor-pointer",
+                    filtroProf === SEM_PREFERENCIA_ID && "text-brand",
+                  )}
+                >
+                  {PROFISSIONAL_SEM_PREFERENCIA.avatar} {PROFISSIONAL_SEM_PREFERENCIA.nome}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -1125,7 +1162,7 @@ export default function SchedulePage() {
                 />
                 <div className="w-px bg-surface-elevated shrink-0" />
                 <div className="flex flex-1 divide-x divide-border-subtle">
-                  {profissionaisVisiveis.map((prof) => (
+                  {colunasVisiveis.map((prof) => (
                     <div
                       key={prof.id}
                       className="relative flex flex-col flex-1 min-w-[140px]"
@@ -1158,6 +1195,7 @@ export default function SchedulePage() {
                         onSlotClick={handleSlotClick}
                         indisponibilidades={indisponibilidades}
                         startHour={gridStartHour}
+                        disabled={prof.id === SEM_PREFERENCIA_ID}
                       />
                     </div>
                   ))}

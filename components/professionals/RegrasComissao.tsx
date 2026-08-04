@@ -66,7 +66,9 @@ export function RegrasComissao({
 
   function categoryLabel(categoryId: string): string {
     if (!categoryId) return "Todas as categorias";
-    return categories.find((c) => c.id === categoryId)?.name ?? categoryId;
+    // Categoria pode ter sido excluída depois que a regra foi criada — nesse
+    // caso não faz sentido mostrar o id interno (cuid) pro usuário.
+    return categories.find((c) => c.id === categoryId)?.name ?? "Categoria removida";
   }
 
   return (
@@ -96,7 +98,7 @@ export function RegrasComissao({
               />
             </div>
             <div className="space-y-1.5 w-32">
-              <FieldLabel>Valor mínimo</FieldLabel>
+              <FieldLabel>Valor mínimo de venda</FieldLabel>
               <Input
                 value={money(draftMinSaleValue)}
                 onChange={(e) =>
@@ -128,7 +130,7 @@ export function RegrasComissao({
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-surface-base text-[10px] font-bold uppercase tracking-widest text-text-faint">
               <span>Categoria</span>
-              <span>Valor mínimo</span>
+              <span>Valor mínimo de venda</span>
               <span className="w-14 text-right">Comissão</span>
               <span className="w-8" />
             </div>
