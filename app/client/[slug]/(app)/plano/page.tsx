@@ -22,12 +22,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ClientProfileForm } from "@/components/client/ClientProfileForm";
 import { clientPlansService } from "@/services/client-plans.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useClientAuth } from "@/hooks/useClientAuth";
 import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { formatBRL } from "@/utils/format";
 import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
 import type { Plan } from "@/types/plan.types";
+import type { Client } from "@/types/client.types";
+
+/**
+ * Dados exigidos pela ASAAS para gerar a cobrança (cadastro do pagador,
+ * antifraude — ver `pre-approved-clients.service.ts`/`asaas.client.ts` no
+ * backend). Sem eles o checkout falha com erro de campos obrigatórios.
+ */
+function isProfileCompleteForCheckout(client: Client): boolean {
+  return Boolean(
+    client.cpf &&
+      client.phone &&
+      client.cep &&
+      client.street &&
+      client.number &&
+      client.neighborhood &&
+      client.city &&
+      client.uf,
+  );
+}
 
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -267,6 +288,7 @@ export default function PlanoClientePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { barbershop } = usePublicBarbershop();
+  const { client } = useClientAuth();
   const { mySubscription, subscribe, cancel, refresh } = useClientSubscription(barbershop?.id);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
@@ -411,52 +433,75 @@ export default function PlanoClientePage() {
         onOpenChange={(v) => !v && closePaymentDialog()}
       >
         <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar assinatura</DialogTitle>
-            <DialogDescription>
-              Assine &quot;{checkoutPlan?.name}&quot; com cobrança recorrente automática no cartão
-              de crédito, todo mês.
-            </DialogDescription>
-          </DialogHeader>
+          {client && !isProfileCompleteForCheckout(client) ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Complete seu cadastro</DialogTitle>
+                <DialogDescription>
+                  Para gerar a cobrança de &quot;{checkoutPlan?.name}&quot; precisamos de mais
+                  alguns dados: CPF, telefone e endereço completo.
+                </DialogDescription>
+              </DialogHeader>
+              <ClientProfileForm
+                client={client}
+                onCancel={closePaymentDialog}
+                onSaved={() => {
+                  /* `client` do contexto já é atualizado por `updateProfile` — ao
+                     salvar os campos que faltavam, este diálogo re-renderiza
+                     direto na etapa de confirmação abaixo. */
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirmar assinatura</DialogTitle>
+                <DialogDescription>
+                  Assine &quot;{checkoutPlan?.name}&quot; com cobrança recorrente automática no
+                  cartão de crédito, todo mês.
+                </DialogDescription>
+              </DialogHeader>
 
-          <div className="rounded-lg border border-border-subtle bg-surface-base p-3 flex items-center gap-3">
-            <CreditCard className="size-5 shrink-0 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Cartão de crédito</p>
-              <p className="text-xs text-muted-foreground">
-                Cobrança recorrente automática todo mês.
-              </p>
-            </div>
-          </div>
+              <div className="rounded-lg border border-border-subtle bg-surface-base p-3 flex items-center gap-3">
+                <CreditCard className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Cartão de crédito</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cobrança recorrente automática todo mês.
+                  </p>
+                </div>
+              </div>
 
-          {checkoutPlan?.contractUrl && (
-            <a
-              href={checkoutPlan.contractUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-medium text-brand hover:underline"
-            >
-              Ver contrato
-            </a>
+              {checkoutPlan?.contractUrl && (
+                <a
+                  href={checkoutPlan.contractUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-brand hover:underline"
+                >
+                  Ver contrato
+                </a>
+              )}
+
+              <DialogFooter>
+                <button
+                  type="button"
+                  onClick={closePaymentDialog}
+                  className="h-10 px-4 rounded-lg text-sm font-semibold border border-border-subtle hover:bg-surface-base transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCheckout}
+                  disabled={subscribingId === checkoutPlan?.id}
+                  className="h-10 px-4 rounded-lg text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+                >
+                  {subscribingId === checkoutPlan?.id ? "Processando…" : "Continuar"}
+                </button>
+              </DialogFooter>
+            </>
           )}
-
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={closePaymentDialog}
-              className="h-10 px-4 rounded-lg text-sm font-semibold border border-border-subtle hover:bg-surface-base transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmCheckout}
-              disabled={subscribingId === checkoutPlan?.id}
-              className="h-10 px-4 rounded-lg text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
-            >
-              {subscribingId === checkoutPlan?.id ? "Processando…" : "Continuar"}
-            </button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
