@@ -37,9 +37,9 @@ export function DialogNovaAssinatura({
   const [search, setSearch] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [planId, setPlanId] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD" | "PIX_AUTOMATICO">(
-    "CREDIT_CARD",
-  );
+  const [paymentMethod, setPaymentMethod] = useState<
+    "CREDIT_CARD" | "PIX_AUTOMATICO" | "PIX_AVULSO"
+  >("CREDIT_CARD");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -186,12 +186,21 @@ export function DialogNovaAssinatura({
             id="paymentMethod"
             label="Forma de pagamento"
             value={paymentMethod}
-            onChange={(v) => setPaymentMethod(v as "CREDIT_CARD" | "PIX_AUTOMATICO")}
+            onChange={(v) =>
+              setPaymentMethod(v as "CREDIT_CARD" | "PIX_AUTOMATICO" | "PIX_AVULSO")
+            }
             options={[
               { value: "CREDIT_CARD", label: "Cartão de crédito" },
               { value: "PIX_AUTOMATICO", label: "Pix Automático" },
+              { value: "PIX_AVULSO", label: "Pix avulso" },
             ]}
           />
+          {paymentMethod === "PIX_AVULSO" && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              Gera uma cobrança Pix sem débito automático — o QR Code de cada mês fica disponível
+              na aba Financeiro do cliente.
+            </p>
+          )}
         </div>
 
         <div className="px-6 pb-6 pt-2 flex justify-end gap-2">

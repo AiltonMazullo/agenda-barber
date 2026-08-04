@@ -18,6 +18,7 @@ import {
   Inbox,
   StickyNote,
   Ban,
+  QrCode,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog, Loading, SelectField } from "@/components/shared";
 import { DialogEditarCliente } from "@/components/clients/DialogEditarCliente";
+import { PixQrCodePanel } from "@/components/subscription/PixQrCodePanel";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
@@ -95,6 +97,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const [comandasLoading, setComandasLoading] = useState(true);
   const [charges, setCharges] = useState<SubscriptionCharge[]>([]);
   const [chargesLoading, setChargesLoading] = useState(true);
+  const [pixChargeToShow, setPixChargeToShow] = useState<SubscriptionCharge | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<CancelReasonCode | "">("");
   const [cancelling, setCancelling] = useState(false);
@@ -481,6 +484,16 @@ export default function ClienteDetalhePage({ params }: PageProps) {
                     <span className="text-sm font-semibold text-foreground shrink-0">
                       {formatBRL(charge.amountInCents / 100)}
                     </span>
+                    {charge.status === "PENDING" && charge.pixPayload && (
+                      <button
+                        type="button"
+                        onClick={() => setPixChargeToShow(charge)}
+                        className="h-7 px-2.5 rounded-md text-xs font-semibold border border-border-subtle hover:bg-surface-elevated transition-colors flex items-center gap-1 shrink-0"
+                      >
+                        <QrCode className="size-3.5" />
+                        Ver Pix
+                      </button>
+                    )}
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
                         charge.status === "PAID"
@@ -599,6 +612,23 @@ export default function ClienteDetalhePage({ params }: PageProps) {
               {cancelling ? "Cancelando…" : "Confirmar cancelamento"}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pixChargeToShow !== null} onOpenChange={(v) => !v && setPixChargeToShow(null)}>
+        <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cobrança Pix — {pixChargeToShow?.subscription.plan.name}</DialogTitle>
+          </DialogHeader>
+          {pixChargeToShow?.pixPayload && (
+            <PixQrCodePanel
+              qrCode={{
+                payload: pixChargeToShow.pixPayload,
+                encodedImage: pixChargeToShow.pixEncodedImage,
+                expirationDate: pixChargeToShow.pixExpirationAt,
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -8,6 +8,7 @@ import type {
   SubscriptionCalendar,
   SubscriptionCharge,
   SubscriptionContractsResult,
+  SubscriptionPaymentMethod,
 } from "@/types/subscription.types";
 import type { CancelReasonCode } from "@/types/pre-cancelled-client.types";
 
@@ -22,7 +23,7 @@ export const subscriptionsService = {
   /** Recepção/dono cria a assinatura em nome de um cliente já cadastrado. */
   async createManual(
     barbershopId: string,
-    payload: { clientId: string; planId: string; paymentMethod?: "CREDIT_CARD" | "PIX_AUTOMATICO" },
+    payload: { clientId: string; planId: string; paymentMethod?: SubscriptionPaymentMethod },
   ): Promise<Subscription> {
     const { data } = await api.post<Subscription>(`${base(barbershopId)}/manual`, payload);
     return data;

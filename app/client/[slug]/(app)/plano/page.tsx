@@ -11,10 +11,6 @@ import {
   Star,
   Flame,
   CreditCard,
-  QrCode,
-  Copy,
-  ExternalLink,
-  Loader2,
 } from "lucide-react";
 import { Loading } from "@/components/shared/Loading";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -32,10 +28,6 @@ import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { formatBRL } from "@/utils/format";
 import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
 import type { Plan } from "@/types/plan.types";
-import type {
-  SubscribePixAuthorizationResult,
-  SubscriptionPaymentMethod,
-} from "@/types/subscription.types";
 
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -283,67 +275,28 @@ export default function PlanoClientePage() {
   const [switchTarget, setSwitchTarget] = useState<Plan | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Plan | null>(null);
 
-  // Fluxo de escolha de método de pagamento (cartão de crédito x Pix Automático).
+  // Fluxo de confirmação do plano antes de redirecionar pro checkout de cartão.
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<SubscriptionPaymentMethod>("CREDIT_CARD");
-  const [pixResult, setPixResult] = useState<SubscribePixAuthorizationResult | null>(null);
 
   const activePlanId = mySubscription?.subscription.planId ?? null;
 
   function openPaymentDialog(plan: Plan) {
     setCheckoutPlan(plan);
-    setSelectedMethod("CREDIT_CARD");
-    setPixResult(null);
   }
 
   function closePaymentDialog() {
     setCheckoutPlan(null);
-    setPixResult(null);
   }
 
   async function handleConfirmCheckout() {
     if (!checkoutPlan) return;
     setSubscribingId(checkoutPlan.id);
-    const result = await subscribe(checkoutPlan.id, selectedMethod);
+    await subscribe(checkoutPlan.id, "CREDIT_CARD");
     setSubscribingId(null);
-    if (result && typeof result === "object") {
-      // Pix Automático: mantém o diálogo aberto para exibir o QR/link e
-      // iniciar o polling de status (ver useEffect abaixo).
-      setPixResult(result);
-    }
-    // CREDIT_CARD com sucesso já redireciona (window.location.href) dentro do
-    // hook; se `result === false`, o erro já foi mostrado via toast e o
-    // diálogo permanece aberto para o cliente tentar de novo.
+    // Sucesso já redireciona (window.location.href) dentro do hook; se falhar,
+    // o erro já foi mostrado via toast e o diálogo permanece aberto para o
+    // cliente tentar de novo.
   }
-
-  // Polling do status da autorização Pix Automático — a cada 4s revalida
-  // `GET /subscriptions/me` até o webhook confirmar `AUTHORIZED` (ver
-  // WebhooksService no backend). Também revalida ao focar a aba de novo,
-  // para o caso comum de o cliente voltar do app do banco.
-  useEffect(() => {
-    if (!pixResult) return;
-
-    const isAuthorized =
-      mySubscription?.subscription.id === pixResult.subscription.id &&
-      mySubscription.subscription.paymentAuthorization?.status === "AUTHORIZED";
-
-    if (isAuthorized) {
-      toast.success("Pix Automático autorizado! Sua assinatura já está ativa.");
-      closePaymentDialog();
-      return;
-    }
-
-    const interval = setInterval(() => {
-      void refresh();
-    }, 4000);
-    const onFocus = () => void refresh();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pixResult, mySubscription]);
 
   // Retorno do checkout externo (gateway) — o pagamento é confirmado por
   // webhook, então aqui só avisamos e limpamos a URL; se o webhook ainda não
@@ -458,165 +411,54 @@ export default function PlanoClientePage() {
         onOpenChange={(v) => !v && closePaymentDialog()}
       >
         <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
-          {!pixResult ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>Como você quer pagar?</DialogTitle>
-                <DialogDescription>
-                  Escolha a forma de pagamento para assinar &quot;{checkoutPlan?.name}&quot;.
-                </DialogDescription>
-              </DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Confirmar assinatura</DialogTitle>
+            <DialogDescription>
+              Assine &quot;{checkoutPlan?.name}&quot; com cobrança recorrente automática no cartão
+              de crédito, todo mês.
+            </DialogDescription>
+          </DialogHeader>
 
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("CREDIT_CARD")}
-                  className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    selectedMethod === "CREDIT_CARD"
-                      ? "border-brand bg-brand/5"
-                      : "border-border-subtle hover:bg-surface-base"
-                  }`}
-                >
-                  <CreditCard className="size-5 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Cartão de crédito</p>
-                    <p className="text-xs text-muted-foreground">
-                      Cobrança recorrente automática todo mês.
-                    </p>
-                  </div>
-                </button>
+          <div className="rounded-lg border border-border-subtle bg-surface-base p-3 flex items-center gap-3">
+            <CreditCard className="size-5 shrink-0 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Cartão de crédito</p>
+              <p className="text-xs text-muted-foreground">
+                Cobrança recorrente automática todo mês.
+              </p>
+            </div>
+          </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("PIX_AUTOMATICO")}
-                  className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    selectedMethod === "PIX_AUTOMATICO"
-                      ? "border-brand bg-brand/5"
-                      : "border-border-subtle hover:bg-surface-base"
-                  }`}
-                >
-                  <QrCode className="size-5 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Pix Automático</p>
-                    <p className="text-xs text-muted-foreground">
-                      Autorize uma vez e suas mensalidades serão pagas automaticamente pela sua
-                      conta.
-                    </p>
-                  </div>
-                </button>
-              </div>
-
-              {checkoutPlan?.contractUrl && (
-                <a
-                  href={checkoutPlan.contractUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-brand hover:underline"
-                >
-                  Ver contrato
-                </a>
-              )}
-
-              <DialogFooter>
-                <button
-                  type="button"
-                  onClick={closePaymentDialog}
-                  className="h-10 px-4 rounded-lg text-sm font-semibold border border-border-subtle hover:bg-surface-base transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmCheckout}
-                  disabled={subscribingId === checkoutPlan?.id}
-                  className="h-10 px-4 rounded-lg text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
-                >
-                  {subscribingId === checkoutPlan?.id ? "Processando…" : "Continuar"}
-                </button>
-              </DialogFooter>
-            </>
-          ) : (
-            <PixAuthorizationStep result={pixResult} />
+          {checkoutPlan?.contractUrl && (
+            <a
+              href={checkoutPlan.contractUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-brand hover:underline"
+            >
+              Ver contrato
+            </a>
           )}
+
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={closePaymentDialog}
+              className="h-10 px-4 rounded-lg text-sm font-semibold border border-border-subtle hover:bg-surface-base transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmCheckout}
+              disabled={subscribingId === checkoutPlan?.id}
+              className="h-10 px-4 rounded-lg text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
+            >
+              {subscribingId === checkoutPlan?.id ? "Processando…" : "Continuar"}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-/**
- * Etapa de autorização do Pix Automático: exibe o link/código retornado pelo
- * backend (`PaymentAuthorization.authorizationUrl`).
- *
- * ATENÇÃO — o formato exato desse valor não está confirmado (é um "melhor
- * esforço" do client ASAAS, ver `asaas.client.ts`): pode ser uma URL de
- * redirecionamento para o app do banco, ou o payload "Pix copia e cola" de um
- * QR Code. Por isso mostramos as duas opções (link clicável quando parece
- * uma URL, e o valor bruto copiável) em vez de tentar renderizar uma imagem
- * de QR Code — não há biblioteca de geração de QR Code instalada neste
- * projeto (`qrcode.react`/`react-qr-code`), e desenhar uma a partir de um
- * valor de formato incerto arriscaria mostrar um código inválido. Revalidar
- * contra sandbox real e, se for de fato um payload de Pix, considerar
- * instalar `qrcode.react` para renderizar a imagem escaneável.
- */
-function PixAuthorizationStep({ result }: { result: SubscribePixAuthorizationResult }) {
-  const authorizationUrl = result.paymentAuthorization.authorizationUrl ?? "";
-  const looksLikeUrl = /^https?:\/\//i.test(authorizationUrl);
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(authorizationUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Não foi possível copiar. Copie manualmente o código abaixo.");
-    }
-  }
-
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Pix Automático</DialogTitle>
-        <DialogDescription>
-          Pix Automático — autorize uma vez e suas mensalidades serão pagas automaticamente pela
-          sua conta.
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="space-y-3">
-        {looksLikeUrl && (
-          <a
-            href={authorizationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors"
-          >
-            <ExternalLink className="size-4" />
-            Abrir no app do banco
-          </a>
-        )}
-
-        <div className="rounded-lg border border-border-subtle bg-surface-base p-3 space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {looksLikeUrl ? "Ou copie o link" : "Código de autorização"}
-          </p>
-          <p className="text-xs text-foreground break-all font-mono">{authorizationUrl}</p>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="w-full flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-semibold border border-border-subtle hover:bg-surface-raised transition-colors"
-          >
-            <Copy className="size-3.5" />
-            {copied ? "Copiado!" : "Copiar código"}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 justify-center py-2 text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          <p className="text-xs">Aguardando autorização no app do banco…</p>
-        </div>
-      </div>
-    </>
   );
 }

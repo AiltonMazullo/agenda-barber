@@ -16,7 +16,7 @@ export interface SubscriptionPlanSummary {
 
 export type SubscriptionBillingType = "GATEWAY" | "MANUAL";
 
-export type SubscriptionPaymentMethod = "CREDIT_CARD" | "PIX_AUTOMATICO";
+export type SubscriptionPaymentMethod = "CREDIT_CARD" | "PIX_AUTOMATICO" | "PIX_AVULSO";
 
 export type PaymentAuthorizationStatus = "PENDING" | "AUTHORIZED" | "CANCELLED";
 
@@ -83,6 +83,10 @@ export interface SubscriptionCharge {
   amountInCents: number;
   status: "PENDING" | "PAID" | "OVERDUE" | "FAILED";
   gatewayChargeId: string | null;
+  /** Preenchidos só para cobranças Pix avulso (`Subscription.paymentMethod === "PIX_AVULSO"`). */
+  pixPayload: string | null;
+  pixEncodedImage: string | null;
+  pixExpirationAt: string | null;
   createdAt: string;
   updatedAt: string;
   subscription: {
