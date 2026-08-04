@@ -88,7 +88,7 @@ export function DialogNovoCliente({
       number: "",
       complement: "",
       notes: "",
-      remindInSchedule: false,
+      remindInSchedule: true,
     },
   });
 

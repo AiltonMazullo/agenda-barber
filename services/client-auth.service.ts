@@ -62,7 +62,7 @@ function fallbackClient(
     birthDate: null,
     howMet: null,
     notes: null,
-    remindInSchedule: false,
+    remindInSchedule: true,
     photoUrl: null,
     isBlocked: false,
     cpf: null,

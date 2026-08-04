@@ -74,9 +74,9 @@ function ToggleRow({
         }`}
       >
         <span
-          className={`absolute top-0.5 size-5 rounded-full bg-white transition-transform ${
-            checked ? "translate-x-[22px]" : "translate-x-0.5"
-          }`}
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform duration-150"
+          style={{ transform: checked ? "translateX(22px)" : "translateX(0)" }}
         />
       </button>
     </div>
