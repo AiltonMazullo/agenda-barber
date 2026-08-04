@@ -47,11 +47,11 @@ export default function ContasAReceberPage() {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface-raised p-4">
-          <p className="text-xs text-muted-foreground">Total com taxas</p>
+          <p className="text-xs text-muted-foreground">Total projetado (líquido)</p>
           <p className="text-lg font-bold text-brand">
             {isLoadingBalance
               ? "—"
-              : formatBRL((balance.receivable.total + balance.totalFeesInCents) / 100)}
+              : formatBRL((balance.receivable.total - balance.totalFeesInCents) / 100)}
           </p>
         </div>
       </div>
