@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ClientProfileForm } from "@/components/client/ClientProfileForm";
+import { CompleteCheckoutProfileForm } from "@/components/client/CompleteCheckoutProfileForm";
 import { clientPlansService } from "@/services/client-plans.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
@@ -432,7 +432,13 @@ export default function PlanoClientePage() {
         open={checkoutPlan !== null}
         onOpenChange={(v) => !v && closePaymentDialog()}
       >
-        <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
+        <DialogContent
+          className={
+            client && !isProfileCompleteForCheckout(client)
+              ? "bg-surface-raised border border-border text-foreground sm:max-w-xl max-h-[85vh] overflow-y-auto"
+              : "bg-surface-raised border border-border text-foreground sm:max-w-md"
+          }
+        >
           {client && !isProfileCompleteForCheckout(client) ? (
             <>
               <DialogHeader>
@@ -442,7 +448,7 @@ export default function PlanoClientePage() {
                   alguns dados: CPF, telefone e endereço completo.
                 </DialogDescription>
               </DialogHeader>
-              <ClientProfileForm
+              <CompleteCheckoutProfileForm
                 client={client}
                 onCancel={closePaymentDialog}
                 onSaved={() => {
