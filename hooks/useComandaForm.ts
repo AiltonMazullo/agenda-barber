@@ -329,6 +329,58 @@ export function useComandaForm(
     [isLocked],
   );
 
+  /**
+   * Vincula um ou mais agendamentos e já adiciona o item de serviço
+   * correspondente a cada um — usado para pré-preencher a comanda aberta a
+   * partir do detalhe do agendamento (inclusive combos com vários serviços).
+   * Feito num único fluxo (em vez de `addLinkedAppointment` + `addItem` em
+   * sequência) porque `addItem` valida o vínculo contra `linkedAppointmentIds`
+   * lido do state, que ainda não reflete um `addLinkedAppointment` chamado no
+   * mesmo tick.
+   */
+  const seedAppointments = useCallback(
+    async (entries: { appointmentId: string; servicoId: string }[]) => {
+      if (isLocked || entries.length === 0) return;
+      setLinkedAppointmentIds((prev) => {
+        const merged = [...prev];
+        entries.forEach(({ appointmentId }) => {
+          if (!merged.includes(appointmentId)) merged.push(appointmentId);
+        });
+        return merged;
+      });
+      const seededItems = await Promise.all(
+        entries.map(async ({ appointmentId, servicoId }) => {
+          const ref = servicos.find((s) => s.id === servicoId);
+          if (!ref) return null;
+          const valorUnitarioInCents = await resolveServicoPrice({
+            tipo: "SERVICO",
+            refId: servicoId,
+            appointmentId,
+            quantidade: 1,
+            valorUnitarioInCents: ref.valorInCents,
+          });
+          const item: ComandaItem = {
+            id: crypto.randomUUID(),
+            tipo: "SERVICO",
+            refId: ref.id,
+            nome: ref.nome,
+            categoriaNome: ref.categoriaNome,
+            appointmentId,
+            quantidade: 1,
+            valorUnitarioInCents,
+          };
+          return item;
+        }),
+      );
+      setItens((prev) => [
+        ...prev,
+        ...seededItems.filter((i): i is ComandaItem => i !== null),
+      ]);
+      setErro(null);
+    },
+    [isLocked, servicos, resolveServicoPrice],
+  );
+
   const totalInCents = useMemo(() => comandaTotalInCents(itens), [itens]);
 
   // ─── Submissão ──────────────────────────────────────────────────────────────
@@ -437,6 +489,7 @@ export function useComandaForm(
     removeLinkedAppointment,
     addItem,
     removeItem,
+    seedAppointments,
     buildDraft,
   };
 }

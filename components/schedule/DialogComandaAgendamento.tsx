@@ -48,23 +48,22 @@ export function DialogComandaAgendamento({
   useEffect(() => {
     if (!open || !agendamento || form.isLoadingCatalog || seededRef.current) return;
     seededRef.current = true;
-    form.addLinkedAppointment(agendamento.id);
     // Pré-seleciona a filial do profissional do agendamento — o usuário
     // ainda pode trocar (obrigatório: ver ajustes/Módulo Caixa.md).
     const profissional = form.employees.find((e) => e.id === agendamento.profissionalId);
     if (profissional) form.setBranchId(profissional.branchId);
-    const svc = form.servicos.find((s) => s.id === agendamento.servicoId);
-    if (svc) {
-      form.addItem({
-        tipo: "SERVICO",
-        refId: svc.id,
-        appointmentId: agendamento.id,
-        quantidade: 1,
-        valorUnitarioInCents: svc.valorInCents,
-      });
-    }
+    // Um "combo" tem um Appointment (memberId) por serviço, na mesma ordem —
+    // vincula cada agendamento do grupo e já adiciona o item do serviço
+    // correspondente.
+    const memberIds =
+      agendamento.memberIds.length > 0 ? agendamento.memberIds : [agendamento.id];
+    const entries = agendamento.servicos.map((s, i) => ({
+      appointmentId: memberIds[i] ?? agendamento.id,
+      servicoId: s.id,
+    }));
+    void form.seedAppointments(entries);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, agendamento, form.isLoadingCatalog, form.servicos, form.employees]);
+  }, [open, agendamento, form.isLoadingCatalog, form.employees]);
 
   async function handleSubmit(kind: "salvar" | "fechar") {
     const draft = form.buildDraft();
