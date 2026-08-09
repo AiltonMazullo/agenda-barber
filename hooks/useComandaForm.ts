@@ -313,6 +313,7 @@ export function useComandaForm(
           appointmentId: tipo === "AVULSA" ? null : input.appointmentId,
           quantidade: input.quantidade,
           valorUnitarioInCents,
+          descontoInCents: 0,
         },
       ]);
       setErro(null);
@@ -368,6 +369,7 @@ export function useComandaForm(
             appointmentId,
             quantidade: 1,
             valorUnitarioInCents,
+            descontoInCents: 0,
           };
           return item;
         }),

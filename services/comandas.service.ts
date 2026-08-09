@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import type {
   Comanda,
   ComandaDraft,
-  ComandaFormaPagamento,
+  ComandaPagamento,
   ComandaStatus,
 } from "@/types/orders.types";
 
@@ -42,12 +42,11 @@ export const comandasService = {
     barbershopId: string,
     id: string,
     status: ComandaStatus,
-    cashRegisterId?: string,
-    formaPagamento?: ComandaFormaPagamento,
+    pagamentos?: Pick<ComandaPagamento, "cashRegisterId" | "formaPagamento" | "valorInCents">[],
   ): Promise<Comanda> {
     const { data } = await api.patch<Comanda>(
       `${base(barbershopId)}/${id}/status`,
-      { status, cashRegisterId, formaPagamento },
+      { status, pagamentos },
     );
     return data;
   },

@@ -6,7 +6,7 @@ import { comandasService } from "@/services/comandas.service";
 import type {
   Comanda,
   ComandaDraft,
-  ComandaFormaPagamento,
+  ComandaPagamento,
   ComandaStatus,
 } from "@/types/orders.types";
 
@@ -89,8 +89,7 @@ export function useComandas(
     async (
       id: string,
       status: ComandaStatus,
-      cashRegisterId?: string,
-      formaPagamento?: ComandaFormaPagamento,
+      pagamentos?: Pick<ComandaPagamento, "cashRegisterId" | "formaPagamento" | "valorInCents">[],
     ): Promise<Comanda | null> => {
       if (!barbershopId) return null;
       try {
@@ -98,8 +97,7 @@ export function useComandas(
           barbershopId,
           id,
           status,
-          cashRegisterId,
-          formaPagamento,
+          pagamentos,
         );
         toast.success(STATUS_TOAST[status]);
         await fetchComandas();

@@ -39,6 +39,8 @@ export interface ComandaItem {
   appointmentId: string | null;
   quantidade: number;
   valorUnitarioInCents: number;
+  /** Desconto aplicado ao item no fechamento (ver DialogFecharComanda). */
+  descontoInCents: number;
 }
 
 /** Forma de pagamento da comanda (enum legado, ver spec-financeiro). */
@@ -48,6 +50,17 @@ export type ComandaFormaPagamento =
   | "DEBITO"
   | "PIX"
   | "OUTRO";
+
+/**
+ * Uma forma de pagamento usada no fechamento — a comanda pode ser fechada
+ * com o pagamento dividido entre mais de uma (ver DialogFecharComanda).
+ */
+export interface ComandaPagamento {
+  id: string;
+  cashRegisterId: string;
+  formaPagamento: ComandaFormaPagamento;
+  valorInCents: number;
+}
 
 export interface Comanda {
   id: string;
@@ -64,9 +77,12 @@ export interface Comanda {
   branchId: string | null;
   /** Profissional responsável, em comandas de Consumo. */
   employeeId: string | null;
+  /** Resumo legado — só preenchido quando há exatamente 1 pagamento no fechamento. */
   formaPagamento: ComandaFormaPagamento | null;
-  /** Caixa aberto da filial no momento em que a comanda foi fechada. */
+  /** Caixa aberto da filial no momento em que a comanda foi fechada (resumo legado). */
   cashRegisterId: string | null;
+  /** Formas de pagamento usadas no fechamento — pode haver mais de uma (split). */
+  pagamentos: ComandaPagamento[];
   createdAt: string;
   updatedAt: string;
 }

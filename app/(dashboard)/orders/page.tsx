@@ -48,7 +48,7 @@ import { DialogFecharComanda } from "@/components/orders";
 import { useAuth } from "@/hooks/useAuth";
 import { useComandas } from "@/hooks/useComandas";
 import { usePagination } from "@/hooks/usePagination";
-import { comandaClienteLabel, comandaTotalInCents } from "@/utils/comanda";
+import { comandaClienteLabel, comandaToDraft, comandaTotalInCents } from "@/utils/comanda";
 import { exportToCsv } from "@/utils/csv-export";
 import { formatBRL, formatDate } from "@/utils/format";
 import type { Tone } from "@/types/common.types";
@@ -87,7 +87,7 @@ export default function ComandasPage() {
   const { barbershop } = useAuth();
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const { comandas, isLoading, setStatus, remove } = useComandas(
+  const { comandas, isLoading, update, setStatus, remove } = useComandas(
     barbershop?.id,
     { dateFrom: toISODate(dateFrom), dateTo: toISODate(dateTo) },
   );
@@ -423,9 +423,10 @@ export default function ComandasPage() {
         onOpenChange={(v) => !v && setFecharTarget(null)}
         barbershopId={barbershop?.id}
         comanda={fecharTarget}
-        onConfirm={(cashRegisterId, formaPagamento) => {
+        onConfirm={async ({ itens, pagamentos }) => {
           if (!fecharTarget) return;
-          return setStatus(fecharTarget.id, "FECHADA", cashRegisterId, formaPagamento);
+          await update(fecharTarget.id, { ...comandaToDraft(fecharTarget), itens });
+          return setStatus(fecharTarget.id, "FECHADA", pagamentos);
         }}
       />
     </div>

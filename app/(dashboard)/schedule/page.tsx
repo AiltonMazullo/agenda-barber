@@ -49,6 +49,7 @@ import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useEmployeeAvailability } from "@/hooks/useEmployeeAvailability";
 import { useComandas } from "@/hooks/useComandas";
 import { DialogFecharComanda } from "@/components/orders";
+import { comandaToDraft } from "@/utils/comanda";
 import type { Comanda } from "@/types/orders.types";
 import {
   AgendamentoCard,
@@ -109,6 +110,7 @@ export default function SchedulePage() {
   const {
     comandas,
     create: createComanda,
+    update: updateComanda,
     setStatus: setComandaStatus,
   } = useComandas(barbershop?.id);
 
@@ -1300,14 +1302,13 @@ export default function SchedulePage() {
           onOpenChange={(v) => !v && setFecharComandaTarget(null)}
           barbershopId={barbershop?.id}
           comanda={fecharComandaTarget}
-          onConfirm={(cashRegisterId, formaPagamento) => {
+          onConfirm={async ({ itens, pagamentos }) => {
             if (!fecharComandaTarget) return;
-            return setComandaStatus(
-              fecharComandaTarget.id,
-              "FECHADA",
-              cashRegisterId,
-              formaPagamento,
-            );
+            await updateComanda(fecharComandaTarget.id, {
+              ...comandaToDraft(fecharComandaTarget),
+              itens,
+            });
+            return setComandaStatus(fecharComandaTarget.id, "FECHADA", pagamentos);
           }}
         />
         <DialogNovoBloqueio

@@ -115,6 +115,7 @@ export function DialogNovaComanda({
         appointmentId: null,
         quantidade: input.quantidade,
         valorUnitarioInCents: input.valorUnitarioInCents,
+        descontoInCents: 0,
       },
     ]);
     return true;
