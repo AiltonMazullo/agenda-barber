@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useBranches } from "@/hooks/useBranches";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
+import { usePermissionsCatalog } from "@/hooks/usePermissionsCatalog";
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
 import { professionalConfigStore } from "@/lib/professional-config-store";
@@ -22,6 +23,7 @@ import {
   differentiatedCommissionToPayload,
   productCommissionRuleToPayload,
 } from "@/utils/employee-commission";
+import { resolveProfessionalAccessGroupId } from "@/utils/professional-permissions";
 
 const EMPTY_BASIC: ProfessionalBasic = {
   name: "",
@@ -41,7 +43,10 @@ export default function ProfessionalNovoPage() {
   const { barbershop } = useAuth();
   const { create, uploadAvatar } = useEmployees(barbershop?.id);
   const { branches } = useBranches(barbershop?.id);
-  const { groups } = useAccessGroups(barbershop?.id);
+  const { groups, create: createAccessGroup, update: updateAccessGroup } =
+    useAccessGroups(barbershop?.id);
+  const { catalog: permissionsCatalog, isLoading: permissionsCatalogLoading } =
+    usePermissionsCatalog(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { categories } = useCategories(barbershop?.id, "PRODUTO");
 
@@ -77,6 +82,17 @@ export default function ProfessionalNovoPage() {
       return;
     }
 
+    const accessGroupId = await resolveProfessionalAccessGroupId({
+      isProfissional: config.type === "profissional",
+      currentAccessGroupId: basic.accessGroupId,
+      professionalName: basic.appName.trim(),
+      permissions: config.permissions,
+      groups,
+      createGroup: createAccessGroup,
+      updateGroup: updateAccessGroup,
+    });
+    if (!accessGroupId) return;
+
     const payload: CreateEmployeePayload = {
       name: basic.name.trim(),
       appName: basic.appName.trim(),
@@ -90,7 +106,7 @@ export default function ProfessionalNovoPage() {
         ? new Date(`${basic.birthDate}T00:00:00`).toISOString()
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
-      accessGroupId: basic.accessGroupId,
+      accessGroupId,
       cep: branch.cep,
       street: branch.street,
       neighborhood: branch.neighborhood,
@@ -160,6 +176,8 @@ export default function ProfessionalNovoPage() {
       services={services}
       categories={categories}
       accessGroups={groups}
+      permissionsCatalog={permissionsCatalog}
+      permissionsCatalogLoading={permissionsCatalogLoading}
       initialConfig={defaultProfessionalConfig()}
       onSave={handleSave}
       onBack={() => router.push("/professionals")}

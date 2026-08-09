@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { Service } from "@/types/service.types";
 import type { ProfessionalConfig } from "@/types/professional-config.types";
-import type { AccessGroup } from "@/types/access-group.types";
+import type { AccessGroup, PermissionCatalogModule } from "@/types/access-group.types";
 import type { ProfessionalBasic } from "./types";
 import { StatusBar } from "./StatusBar";
 import { IdentificacaoTipo } from "./IdentificacaoTipo";
 import { MidiaDocumentos } from "./MidiaDocumentos";
 import { AreaProfissional } from "./AreaProfissional";
 import { AccessGroupSelect } from "./AccessGroupSelect";
+import { PermissoesProfissional } from "./PermissoesProfissional";
 import { ServicosComissao } from "./ServicosComissao";
 import { HorariosAtendimento } from "./HorariosAtendimento";
 import { Intervalos } from "./Intervalos";
@@ -25,6 +26,8 @@ export function ProfessionalForm({
   services,
   categories,
   accessGroups,
+  permissionsCatalog,
+  permissionsCatalogLoading,
   initialConfig,
   onSave,
   onBack,
@@ -40,6 +43,9 @@ export function ProfessionalForm({
   services: Service[];
   categories: Category[];
   accessGroups: AccessGroup[];
+  /** Catálogo de permissões — usado pelo checklist do profissional com agenda. */
+  permissionsCatalog: PermissionCatalogModule[];
+  permissionsCatalogLoading: boolean;
   initialConfig: ProfessionalConfig;
   onSave: (basic: ProfessionalBasic, config: ProfessionalConfig) => Promise<void>;
   onBack: () => void;
@@ -75,8 +81,12 @@ export function ProfessionalForm({
     if (!basic.email.trim()) return toast.error("Informe o e-mail.");
     if (basic.phone.replace(/\D/g, "").length < 10)
       return toast.error("Telefone inválido.");
-    if (!basic.accessGroupId)
+    if (isProfissional) {
+      if (config.permissions.length === 0)
+        return toast.error("Selecione ao menos uma permissão.");
+    } else if (!basic.accessGroupId) {
       return toast.error("Selecione um grupo de acesso.");
+    }
     if (!isEditing && basic.password.length < 6)
       return toast.error("A senha de acesso deve ter pelo menos 6 caracteres.");
     if (isEditing && basic.password.length > 0 && basic.password.length < 6)
@@ -161,11 +171,20 @@ export function ProfessionalForm({
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <AccessGroupSelect
-            accessGroupId={basic.accessGroupId}
-            accessGroups={accessGroups}
-            onChange={(accessGroupId) => updateBasic({ accessGroupId })}
-          />
+          {isProfissional ? (
+            <PermissoesProfissional
+              catalog={permissionsCatalog}
+              catalogLoading={permissionsCatalogLoading}
+              selectedKeys={config.permissions}
+              onChange={(permissions) => updateConfig({ permissions })}
+            />
+          ) : (
+            <AccessGroupSelect
+              accessGroupId={basic.accessGroupId}
+              accessGroups={accessGroups}
+              onChange={(accessGroupId) => updateBasic({ accessGroupId })}
+            />
+          )}
           {isProfissional && (
             <ServicosComissao
               services={config.services}

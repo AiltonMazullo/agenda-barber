@@ -11,6 +11,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
+import { usePermissionsCatalog } from "@/hooks/usePermissionsCatalog";
 import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
 import { apiAssetUrl } from "@/lib/api";
 import { employeesService } from "@/services/employees.service";
@@ -33,6 +34,7 @@ import {
   productCommissionRuleFromBackend,
   productCommissionRuleToPayload,
 } from "@/utils/employee-commission";
+import { resolveProfessionalAccessGroupId } from "@/utils/professional-permissions";
 
 export default function ProfessionalEditPage() {
   const params = useParams<{ id: string }>();
@@ -44,7 +46,10 @@ export default function ProfessionalEditPage() {
     useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { categories } = useCategories(barbershop?.id, "PRODUTO");
-  const { groups } = useAccessGroups(barbershop?.id);
+  const { groups, create: createAccessGroup, update: updateAccessGroup } =
+    useAccessGroups(barbershop?.id);
+  const { catalog: permissionsCatalog, isLoading: permissionsCatalogLoading } =
+    usePermissionsCatalog(barbershop?.id);
   const { config, loaded, save } = useProfessionalConfig(barbershop?.id, id);
 
   const [backendSchedules, setBackendSchedules] = useState<EmployeeSchedule[]>([]);
@@ -162,10 +167,25 @@ export default function ProfessionalEditPage() {
     timeOff: backendTimeOff.map((t) => ({ id: t.id, start: t.startDate, end: t.endDate })),
     productCommission: productCommissionRuleFromBackend(backendProductCommission),
     differentiated: differentiatedCommissionFromBackend(backendDifferentiated),
+    // Fonte de verdade é sempre o AccessGroup real do funcionário, nunca o
+    // localStorage — evita mostrar o checklist desatualizado em relação ao
+    // que de fato vale no login.
+    permissions: groups.find((g) => g.id === employee?.accessGroupId)?.permissions ?? [],
   };
 
   async function handleSave(basic: ProfessionalBasic, cfg: ProfessionalConfig) {
     if (!employee || !barbershop) return;
+
+    const accessGroupId = await resolveProfessionalAccessGroupId({
+      isProfissional: cfg.type === "profissional",
+      currentAccessGroupId: basic.accessGroupId,
+      professionalName: basic.appName.trim(),
+      permissions: cfg.permissions,
+      groups,
+      createGroup: createAccessGroup,
+      updateGroup: updateAccessGroup,
+    });
+    if (!accessGroupId) return;
 
     const payload: UpdateEmployeePayload = {
       name: basic.name.trim(),
@@ -178,7 +198,7 @@ export default function ProfessionalEditPage() {
         ? new Date(`${basic.birthDate}T00:00:00`).toISOString()
         : undefined,
       hasBranchAccess: basic.hasBranchAccess,
-      accessGroupId: basic.accessGroupId,
+      accessGroupId,
       attendancePeriodDays: cfg.attendancePeriodDays,
       defaultBonusInCents: cfg.defaultBonusInCents,
       defaultValeInCents: cfg.defaultValeInCents,
@@ -269,6 +289,8 @@ export default function ProfessionalEditPage() {
       services={services}
       categories={categories}
       accessGroups={groups}
+      permissionsCatalog={permissionsCatalog}
+      permissionsCatalogLoading={permissionsCatalogLoading}
       initialConfig={effectiveConfig}
       isEditing
       onSave={handleSave}

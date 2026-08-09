@@ -72,6 +72,14 @@ export interface ProfessionalConfig {
   timeOff: TimeOff[];
   productCommission: ProductCommissionRule;
   differentiated: DifferentiatedCommission;
+  /**
+   * Permissões do profissional (tipo "com agenda"), como `key`s do catálogo
+   * de permissões — ver `PermissoesProfissional`. A fonte de verdade real é
+   * sempre o `AccessGroup` pessoal do profissional (`Employee.accessGroupId`);
+   * este campo só existe pra alimentar o checklist na tela, é recalculado a
+   * partir do grupo real a cada carregamento (nunca vem só do localStorage).
+   */
+  permissions: string[];
 }
 
 export function defaultWorkingHours(): WorkingHour[] {
@@ -102,5 +110,6 @@ export function defaultProfessionalConfig(): ProfessionalConfig {
     timeOff: [],
     productCommission: [],
     differentiated: { additionalPercent: 0, subscriberPercent: 0 },
+    permissions: [],
   };
 }

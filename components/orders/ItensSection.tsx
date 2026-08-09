@@ -265,11 +265,31 @@ export function ItensSection({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-foreground">
-                      {formatBRL(
-                        (item.quantidade * item.valorUnitarioInCents) / 100,
-                      )}
-                    </p>
+                    {item.descontoInCents > 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground line-through">
+                          {formatBRL(
+                            (item.quantidade * item.valorUnitarioInCents) / 100,
+                          )}
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {formatBRL(
+                            (item.quantidade * item.valorUnitarioInCents -
+                              item.descontoInCents) /
+                              100,
+                          )}
+                        </p>
+                        <p className="text-xs font-semibold text-success">
+                          Desconto de {formatBRL(item.descontoInCents / 100)}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">
+                        {formatBRL(
+                          (item.quantidade * item.valorUnitarioInCents) / 100,
+                        )}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {item.quantidade}x{" "}
                       {formatBRL(item.valorUnitarioInCents / 100)}

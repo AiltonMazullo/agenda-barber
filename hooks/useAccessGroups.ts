@@ -43,12 +43,12 @@ export function useAccessGroups(barbershopId: string | undefined) {
   }, [barbershopId]);
 
   const create = useCallback(
-    async (payload: CreateAccessGroupPayload) => {
+    async (payload: CreateAccessGroupPayload, options?: { silent?: boolean }) => {
       if (!barbershopId) return null;
       try {
         const created = await accessGroupsService.create(barbershopId, payload);
         setGroups((prev) => [...prev, created]);
-        toast.success("Grupo de acesso criado.");
+        if (!options?.silent) toast.success("Grupo de acesso criado.");
         return created;
       } catch (err) {
         toast.error(
@@ -61,7 +61,11 @@ export function useAccessGroups(barbershopId: string | undefined) {
   );
 
   const update = useCallback(
-    async (id: string, payload: UpdateAccessGroupPayload) => {
+    async (
+      id: string,
+      payload: UpdateAccessGroupPayload,
+      options?: { silent?: boolean },
+    ) => {
       if (!barbershopId) return null;
       try {
         const updated = await accessGroupsService.update(
@@ -70,7 +74,7 @@ export function useAccessGroups(barbershopId: string | undefined) {
           payload,
         );
         setGroups((prev) => prev.map((g) => (g.id === id ? updated : g)));
-        toast.success("Grupo de acesso atualizado.");
+        if (!options?.silent) toast.success("Grupo de acesso atualizado.");
         return updated;
       } catch (err) {
         toast.error(

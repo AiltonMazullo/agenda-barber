@@ -25,9 +25,12 @@ import type {
 
 export default function ControleAcessoPage() {
   const { barbershop } = useAuth();
-  const { groups, isLoading, create, update, remove } = useAccessGroups(
+  const { groups: allGroups, isLoading, create, update, remove } = useAccessGroups(
     barbershop?.id,
   );
+  // Grupos pessoais de profissional (gerados automaticamente a partir do
+  // checklist de permissões do profissional) não aparecem aqui.
+  const groups = allGroups.filter((g) => !g.isManaged);
   const { catalog, isLoading: catalogLoading } = usePermissionsCatalog(
     barbershop?.id,
   );

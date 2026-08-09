@@ -4,6 +4,7 @@ export { IdentificacaoTipo } from "./IdentificacaoTipo";
 export { MidiaDocumentos } from "./MidiaDocumentos";
 export { AreaProfissional } from "./AreaProfissional";
 export { AccessGroupSelect } from "./AccessGroupSelect";
+export { PermissoesProfissional } from "./PermissoesProfissional";
 export { ServicosComissao } from "./ServicosComissao";
 export { HorariosAtendimento } from "./HorariosAtendimento";
 export { Intervalos } from "./Intervalos";

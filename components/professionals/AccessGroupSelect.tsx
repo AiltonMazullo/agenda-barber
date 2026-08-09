@@ -13,6 +13,11 @@ export function AccessGroupSelect({
   accessGroups: AccessGroup[];
   onChange: (accessGroupId: string) => void;
 }) {
+  // Grupos pessoais de profissional (gerados a partir do checklist de
+  // PermissoesProfissional) não aparecem aqui — esse seletor é só pros
+  // grupos compartilhados cadastrados em Controle de Acesso.
+  const selectableGroups = accessGroups.filter((g) => !g.isManaged);
+
   return (
     <SectionShell
       title="Grupo de acesso"
@@ -24,10 +29,10 @@ export function AccessGroupSelect({
           id="prof-access-group"
           value={accessGroupId}
           placeholder="Selecionar…"
-          options={accessGroups.map((g) => ({ value: g.id, label: g.name }))}
+          options={selectableGroups.map((g) => ({ value: g.id, label: g.name }))}
           onChange={onChange}
         />
-        {accessGroups.length === 0 && (
+        {selectableGroups.length === 0 && (
           <p className="text-[11px] text-muted-foreground">
             Nenhum grupo de acesso cadastrado. Crie um em Controle de Acesso.
           </p>
