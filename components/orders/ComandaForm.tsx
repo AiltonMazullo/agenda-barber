@@ -9,12 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog, Loading } from "@/components/shared";
 import { useComandaForm } from "@/hooks/useComandaForm";
 import { formatBRL } from "@/utils/format";
-import { COMANDA_FORMA_PAGAMENTO_OPTIONS } from "@/utils/comanda";
+import { COMANDA_FORMA_PAGAMENTO_LABELS } from "@/utils/comanda";
 import { TipoSection } from "./TipoSection";
 import { AgendamentosSection } from "./AgendamentosSection";
 import { ItensSection } from "./ItensSection";
 import { FormSection } from "./FormSection";
-import { LabeledSelect } from "./FormField";
 import type { Comanda, ComandaDraft, ComandaTipo } from "@/types/orders.types";
 
 export interface ComandaFormProps {
@@ -99,17 +98,33 @@ export function ComandaForm({
         <FormSection
           icon={<Wallet />}
           title="Forma de pagamento"
-          subtitle="Forma de pagamento registrada no último fechamento — pode ser alterada antes de fechar novamente"
+          subtitle={
+            comanda.pagamentos.length > 0
+              ? "Formas de pagamento usadas no fechamento desta comanda"
+              : "Definida ao fechar a comanda"
+          }
         >
-          <div className="md:max-w-xs">
-            <LabeledSelect
-              label="Forma de pagamento"
-              placeholder="Definida ao fechar a comanda"
-              value={form.formaPagamento}
-              onValueChange={(v) => form.setFormaPagamento(v as typeof form.formaPagamento)}
-              options={COMANDA_FORMA_PAGAMENTO_OPTIONS}
-            />
-          </div>
+          {comanda.pagamentos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Esta comanda ainda não foi fechada — nenhuma forma de pagamento registrada.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {comanda.pagamentos.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded-md border border-border bg-surface-base px-3 py-2.5 text-sm"
+                >
+                  <span className="font-medium text-foreground">
+                    {COMANDA_FORMA_PAGAMENTO_LABELS[p.formaPagamento]}
+                  </span>
+                  <span className="font-semibold text-foreground">
+                    {formatBRL(p.valorInCents / 100)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </FormSection>
       )}
 
