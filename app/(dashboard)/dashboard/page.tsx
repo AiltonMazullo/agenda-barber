@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -74,22 +74,9 @@ export default function DashboardPage() {
 
   const today = new Date();
 
-  // ─── Filtro de filiais (#1): inicia na filial principal/matriz ──────────────
-  // "Matriz" = filial de recebimentos (isReceivingBranch) ou a primeira filial.
-  const principalBranchId = useMemo(() => {
-    const receiving = branches.find((b) => b.isReceivingBranch);
-    return receiving?.id ?? branches[0]?.id ?? "todas";
-  }, [branches]);
-
+  // ─── Filtro de filiais: inicia em "todas" e só muda por ação do usuário ────
   const [branchFilter, setBranchFilter] = useState("todas");
   const [period, setPeriod] = useState("30");
-  const branchInited = useRef(false);
-
-  useEffect(() => {
-    if (branchInited.current || branches.length === 0) return;
-    branchInited.current = true;
-    setBranchFilter(principalBranchId);
-  }, [branches, principalBranchId]);
 
   const { balance: financialBalance, isLoading: loadingFinancial } = useFinancialBalance(
     barbershop?.id,

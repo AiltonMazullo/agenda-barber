@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { financialEntriesService } from "@/services/financial-entries.service";
 import type { FinancialBalance } from "@/types/financial-entry.types";
@@ -26,18 +26,25 @@ export function useFinancialBalance(
   const [balance, setBalance] = useState<FinancialBalance>(EMPTY_BALANCE);
   const [isLoading, setIsLoading] = useState(true);
   const filtersKey = JSON.stringify(filters);
+  // Guarda a request mais recente: se o dashboard troca o filtro de filial logo
+  // após o load inicial (ex.: "todas" -> filial principal), duas chamadas ficam
+  // em voo ao mesmo tempo. Sem isso, a resposta mais antiga podia chegar depois
+  // e sobrescrever o resultado certo com um valor desatualizado.
+  const requestIdRef = useRef(0);
 
   const fetchBalance = useCallback(async () => {
     if (!barbershopId) return;
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     try {
       const data = await financialEntriesService.getBalance(barbershopId, filters);
+      if (requestIdRef.current !== requestId) return;
       setBalance(data);
     } catch (err) {
+      if (requestIdRef.current !== requestId) return;
       toast.error(err instanceof Error ? err.message : "Falha ao carregar balanço.");
     } finally {
-      setIsLoading(false);
-       
+      if (requestIdRef.current === requestId) setIsLoading(false);
     }
   }, [barbershopId, filtersKey]);
 
