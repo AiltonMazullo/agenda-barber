@@ -64,23 +64,48 @@ export default function DashboardPage() {
     barbershop?.id,
   );
   const { branches } = useBranches(barbershop?.id);
-  const { summary: subscriptionsSummary, isLoading: loadingSubscriptions } = useSubscriptions(
-    barbershop?.id,
-  );
+  const {
+    subscriptions,
+    summary: subscriptionsSummary,
+    isLoading: loadingSubscriptions,
+  } = useSubscriptions(barbershop?.id);
   const { comandas, isLoading: loadingComandas } = useComandas(barbershop?.id);
   const { products, isLoading: loadingProducts } = useProducts(barbershop?.id, {
     withStock: true,
   });
 
-  const today = new Date();
+  // Estável durante o ciclo de vida do componente — usado como filtro
+  // (dueDateTo/janela de período) em vários hooks abaixo. Se fosse recriado a
+  // cada render, o `dueDateTo` mudaria por milissegundos a cada render e
+  // entraria em loop de refetch no useFinancialBalance (a chave de filtros
+  // nunca fica estável).
+  const today = useMemo(() => new Date(), []);
 
   // ─── Filtro de filiais: inicia em "todas" e só muda por ação do usuário ────
   const [branchFilter, setBranchFilter] = useState("todas");
   const [period, setPeriod] = useState("30");
 
+  /**
+   * Janela do filtro de período (7/30/90 dias), retroativa a partir de hoje.
+   * Só se aplica a métricas de janela histórica (financeiro, ranking,
+   * assinantes novos) — cards de estado atual (Comandas Abertas, Estoque
+   * Crítico, Profissionais) e cards já datados por natureza (Agenda Hoje,
+   * Aniversariantes da Semana) não fazem sentido filtrados por período.
+   */
+  const periodStart = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - Number(period));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [today, period]);
+
   const { balance: financialBalance, isLoading: loadingFinancial } = useFinancialBalance(
     barbershop?.id,
-    { branchId: branchFilter === "todas" ? undefined : branchFilter },
+    {
+      branchId: branchFilter === "todas" ? undefined : branchFilter,
+      dueDateFrom: periodStart.toISOString(),
+      dueDateTo: today.toISOString(),
+    },
   );
 
   // ─── Filtro de filial aplicado a cada fonte de dado que carrega branchId ───
@@ -137,8 +162,7 @@ export default function DashboardPage() {
         )
         .slice(0, 6),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredAppointments]);
+  }, [filteredAppointments, today]);
 
   /** Aniversariantes da semana vigente (segunda a domingo). */
   const birthdaysThisWeek = useMemo(
@@ -151,11 +175,17 @@ export default function DashboardPage() {
     [filteredComandas],
   );
 
-  /** Top 3 profissionais por volume de agendamentos (mesma lógica de /reports/taxa-ocupacao). */
+  /**
+   * Top 3 profissionais por volume de agendamentos no período selecionado
+   * (mesma lógica de agrupamento de /reports/taxa-ocupacao, com a janela de
+   * período do dashboard aplicada por cima).
+   */
   const professionalRanking = useMemo(() => {
     const map = new Map<string, { nome: string; total: number }>();
     for (const a of filteredAppointments) {
       if (!a.employee) continue;
+      const scheduledAt = toWallClockDate(a.scheduledAt);
+      if (scheduledAt < periodStart || scheduledAt > today) continue;
       const entry = map.get(a.employee.id) ?? { nome: a.employee.name, total: 0 };
       entry.total += 1;
       map.set(a.employee.id, entry);
@@ -163,7 +193,13 @@ export default function DashboardPage() {
     return Array.from(map.values())
       .sort((a, b) => b.total - a.total)
       .slice(0, 3);
-  }, [filteredAppointments]);
+  }, [filteredAppointments, periodStart, today]);
+
+  /** Assinaturas criadas dentro da janela de período selecionada. */
+  const newSubscriptionsInPeriod = useMemo(
+    () => subscriptions.filter((s) => new Date(s.createdAt) >= periodStart).length,
+    [subscriptions, periodStart],
+  );
 
   /**
    * Produtos com estoque baixo ou crítico (mesma regra de /inventory), usando
@@ -376,7 +412,7 @@ export default function DashboardPage() {
             />
             <MiniStat
               label="Novos no período"
-              value={loadingSubscriptions ? "…" : String(subscriptionsSummary.newThisMonth)}
+              value={loadingSubscriptions ? "…" : String(newSubscriptionsInPeriod)}
               tone="warning"
             />
             <MiniStat
