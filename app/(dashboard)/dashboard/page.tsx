@@ -26,7 +26,7 @@ import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useComandas } from "@/hooks/useComandas";
 import { useFinancialBalance } from "@/hooks/useFinancialBalance";
 import { useProducts } from "@/hooks/useProducts";
-import { deriveStatus } from "@/components/inventory";
+import { deriveStockStatus } from "@/components/inventory";
 import { isBirthdayInCurrentWeek } from "@/utils/birthday";
 import { toWallClockDate, formatBRL } from "@/utils/format";
 import {
@@ -83,11 +83,40 @@ export default function DashboardPage() {
     { branchId: branchFilter === "todas" ? undefined : branchFilter },
   );
 
+  // ─── Filtro de filial aplicado a cada fonte de dado que carrega branchId ───
+  // Client e Subscription não têm `branchId` no modelo do backend (só o dono
+  // pertence a uma filial indiretamente via Employee) — por isso Clientes
+  // Totais, Aniversariantes e o card de Assinaturas continuam sempre
+  // considerando a barbearia inteira, filial nenhuma isola esses dados.
+  const filteredAppointments = useMemo(
+    () =>
+      branchFilter === "todas"
+        ? appointments
+        : appointments.filter((a) => a.branchId === branchFilter),
+    [appointments, branchFilter],
+  );
+
+  const filteredEmployees = useMemo(
+    () =>
+      branchFilter === "todas"
+        ? employees
+        : employees.filter((e) => e.branchId === branchFilter),
+    [employees, branchFilter],
+  );
+
+  const filteredComandas = useMemo(
+    () =>
+      branchFilter === "todas"
+        ? comandas
+        : comandas.filter((c) => c.branchId === branchFilter),
+    [comandas, branchFilter],
+  );
+
   const stats = useMemo(() => {
-    const todayAppts = appointments.filter((a) =>
+    const todayAppts = filteredAppointments.filter((a) =>
       isSameDay(toWallClockDate(a.scheduledAt), today),
     );
-    const future = appointments.filter(
+    const future = filteredAppointments.filter(
       (a) => toWallClockDate(a.scheduledAt) >= today && a.status !== "CANCELLED",
     );
     // O backend não expõe a origem do agendamento (online x recepção); todo o
@@ -109,7 +138,7 @@ export default function DashboardPage() {
         .slice(0, 6),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointments]);
+  }, [filteredAppointments]);
 
   /** Aniversariantes da semana vigente (segunda a domingo). */
   const birthdaysThisWeek = useMemo(
@@ -118,14 +147,14 @@ export default function DashboardPage() {
   );
 
   const openComandasCount = useMemo(
-    () => comandas.filter((c) => c.status === "ABERTA").length,
-    [comandas],
+    () => filteredComandas.filter((c) => c.status === "ABERTA").length,
+    [filteredComandas],
   );
 
   /** Top 3 profissionais por volume de agendamentos (mesma lógica de /reports/taxa-ocupacao). */
   const professionalRanking = useMemo(() => {
     const map = new Map<string, { nome: string; total: number }>();
-    for (const a of appointments) {
+    for (const a of filteredAppointments) {
       if (!a.employee) continue;
       const entry = map.get(a.employee.id) ?? { nome: a.employee.name, total: 0 };
       entry.total += 1;
@@ -134,16 +163,35 @@ export default function DashboardPage() {
     return Array.from(map.values())
       .sort((a, b) => b.total - a.total)
       .slice(0, 3);
-  }, [appointments]);
+  }, [filteredAppointments]);
 
-  /** Produtos com estoque baixo ou crítico (mesma regra de /inventory). */
+  /**
+   * Produtos com estoque baixo ou crítico (mesma regra de /inventory), usando
+   * o estoque agregado de todas as filiais quando "todas" está selecionado, ou
+   * só o estoque da filial escolhida (via `stockPerBranch`) caso contrário —
+   * um produto sem registro de estoque na filial conta como 0/0 ("vazio"),
+   * não entra na lista.
+   */
   const criticalStockProducts = useMemo(
     () =>
-      products.filter((p) => {
-        const status = deriveStatus(p);
-        return status === "baixo" || status === "critico";
-      }),
-    [products],
+      products
+        .map((p) => {
+          if (branchFilter === "todas") {
+            return { id: p.id, name: p.name, current: p.totalCurrent, min: p.totalMin };
+          }
+          const branchStock = p.stockPerBranch.find((s) => s.branchId === branchFilter);
+          return {
+            id: p.id,
+            name: p.name,
+            current: branchStock?.currentStock ?? 0,
+            min: branchStock?.minStock ?? 0,
+          };
+        })
+        .filter((p) => {
+          const status = deriveStockStatus(p.current, p.min);
+          return status === "baixo" || status === "critico";
+        }),
+    [products, branchFilter],
   );
 
   return (
@@ -166,7 +214,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <SummaryCard
           label="Profissionais"
-          value={loadingEmployees ? "…" : String(employees.length)}
+          value={loadingEmployees ? "…" : String(filteredEmployees.length)}
           icon={<Users className="size-4" />}
           tone="brand"
         />
@@ -446,7 +494,7 @@ export default function DashboardPage() {
                     {p.name}
                   </p>
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {p.totalCurrent} / min. {p.totalMin}
+                    {p.current} / min. {p.min}
                   </span>
                 </div>
               ))}
