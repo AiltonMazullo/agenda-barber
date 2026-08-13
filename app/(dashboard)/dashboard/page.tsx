@@ -14,6 +14,7 @@ import {
   TrendingUp,
   CheckCircle2,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { PageHeader, SummaryCard, StatusBadge, Loading } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,8 +23,12 @@ import { useClients } from "@/hooks/useClients";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useBranches } from "@/hooks/useBranches";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useComandas } from "@/hooks/useComandas";
+import { useFinancialBalance } from "@/hooks/useFinancialBalance";
+import { useProducts } from "@/hooks/useProducts";
+import { deriveStatus } from "@/components/inventory";
 import { isBirthdayInCurrentWeek } from "@/utils/birthday";
-import { toWallClockDate } from "@/utils/format";
+import { toWallClockDate, formatBRL } from "@/utils/format";
 import {
   SectionCard,
   MiniStat,
@@ -62,6 +67,10 @@ export default function DashboardPage() {
   const { summary: subscriptionsSummary, isLoading: loadingSubscriptions } = useSubscriptions(
     barbershop?.id,
   );
+  const { comandas, isLoading: loadingComandas } = useComandas(barbershop?.id);
+  const { products, isLoading: loadingProducts } = useProducts(barbershop?.id, {
+    withStock: true,
+  });
 
   const today = new Date();
 
@@ -81,6 +90,11 @@ export default function DashboardPage() {
     branchInited.current = true;
     setBranchFilter(principalBranchId);
   }, [branches, principalBranchId]);
+
+  const { balance: financialBalance, isLoading: loadingFinancial } = useFinancialBalance(
+    barbershop?.id,
+    { branchId: branchFilter === "todas" ? undefined : branchFilter },
+  );
 
   const stats = useMemo(() => {
     const todayAppts = appointments.filter((a) =>
@@ -116,6 +130,35 @@ export default function DashboardPage() {
     [clients],
   );
 
+  const openComandasCount = useMemo(
+    () => comandas.filter((c) => c.status === "ABERTA").length,
+    [comandas],
+  );
+
+  /** Top 3 profissionais por volume de agendamentos (mesma lógica de /reports/taxa-ocupacao). */
+  const professionalRanking = useMemo(() => {
+    const map = new Map<string, { nome: string; total: number }>();
+    for (const a of appointments) {
+      if (!a.employee) continue;
+      const entry = map.get(a.employee.id) ?? { nome: a.employee.name, total: 0 };
+      entry.total += 1;
+      map.set(a.employee.id, entry);
+    }
+    return Array.from(map.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 3);
+  }, [appointments]);
+
+  /** Produtos com estoque baixo ou crítico (mesma regra de /inventory). */
+  const criticalStockProducts = useMemo(
+    () =>
+      products.filter((p) => {
+        const status = deriveStatus(p);
+        return status === "baixo" || status === "critico";
+      }),
+    [products],
+  );
+
   return (
     <div className="space-y-6 p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
@@ -148,7 +191,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           label="Comandas Abertas"
-          value="0"
+          value={loadingComandas ? "…" : String(openComandasCount)}
           icon={<ClipboardList className="size-4" />}
           tone="brand"
         />
@@ -163,7 +206,10 @@ export default function DashboardPage() {
         <ClickableCard href="/reports/taxa-ocupacao">
           <SummaryCard
             label="Taxa Ocupação"
-            value="0%"
+            // O backend não expõe capacidade/carga horária por profissional,
+            // então o percentual não pode ser calculado (mesma limitação
+            // documentada em /reports/taxa-ocupacao). "0%" era enganoso.
+            value="—"
             icon={<Target className="size-4" />}
             tone="brand"
           />
@@ -203,29 +249,71 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/*
+          Mesmos campos de `useFinancialBalance` usados em /financial
+          (payable/receivable/balance calculados em
+          financial-entries.service.ts#getBalance), só que consolidados em
+          um único card por lado em vez de detalhar vencido/a vencer/pago:
+          - Faturado      = receivable.total (tudo que foi lançado a receber)
+          - Recebido      = receivable.received (idêntico ao card "Recebido" de /financial)
+          - A Receber     = receivable.total - receivable.received (= notReceived + upcoming)
+          - Contas a Pagar= payable.total - payable.paid (= overdue + upcoming, ainda não pago)
+          - Saldo Atual   = balance.balance (idêntico ao card "Balanço" de /financial)
+        */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <SummaryCard label="Faturado" value="R$ 0,00" />
+          <SummaryCard
+            label="Faturado"
+            value={
+              loadingFinancial
+                ? "…"
+                : formatBRL(financialBalance.receivable.total / 100)
+            }
+          />
           <SummaryCard
             label="Recebido"
-            value="R$ 0,00"
+            value={
+              loadingFinancial
+                ? "…"
+                : formatBRL(financialBalance.receivable.received / 100)
+            }
             tone="success"
             emphasized
           />
           <SummaryCard
             label="A Receber"
-            value="R$ 0,00"
+            value={
+              loadingFinancial
+                ? "…"
+                : formatBRL(
+                    (financialBalance.receivable.total -
+                      financialBalance.receivable.received) /
+                      100,
+                  )
+            }
             tone="warning"
             emphasized
           />
           <SummaryCard
             label="Contas a Pagar"
-            value="R$ 0,00"
+            value={
+              loadingFinancial
+                ? "…"
+                : formatBRL(
+                    (financialBalance.payable.total -
+                      financialBalance.payable.paid) /
+                      100,
+                  )
+            }
             tone="danger"
             emphasized
           />
           <SummaryCard
             label="Saldo Atual"
-            value="R$ 0,00"
+            value={
+              loadingFinancial
+                ? "…"
+                : formatBRL(financialBalance.balance / 100)
+            }
             tone="warning"
             emphasized
           />
@@ -246,7 +334,11 @@ export default function DashboardPage() {
               value={loadingSubscriptions ? "…" : String(subscriptionsSummary.activeCount)}
               tone="success"
             />
-            <MiniStat label="Inadimplentes" value="0" tone="danger" />
+            <MiniStat
+              label="Inadimplentes"
+              value={loadingSubscriptions ? "…" : String(subscriptionsSummary.overdueCount)}
+              tone="danger"
+            />
             <MiniStat
               label="Novos no período"
               value={loadingSubscriptions ? "…" : String(subscriptionsSummary.newThisMonth)}
@@ -312,9 +404,32 @@ export default function DashboardPage() {
           actionLabel="Ver comissões"
           actionHref="/commissions"
         >
-          <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
-            <p className="text-sm">Sem dados no período.</p>
-          </div>
+          {isLoading ? (
+            <Loading />
+          ) : professionalRanking.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
+              <p className="text-sm">Sem dados no período.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {professionalRanking.map((p, i) => (
+                <div
+                  key={p.nome}
+                  className="flex items-center gap-3 px-3 py-2 rounded-md bg-surface-base border border-border-subtle"
+                >
+                  <span className="size-6 rounded-full bg-brand/10 text-brand text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <p className="flex-1 min-w-0 text-sm font-semibold text-foreground truncate">
+                    {p.nome}
+                  </p>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {p.total} agend.
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard
@@ -323,12 +438,38 @@ export default function DashboardPage() {
           actionLabel="Ver estoque"
           actionHref="/inventory"
         >
-          <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
-            <div className="flex items-center gap-2 text-success-foreground/80">
-              <CheckCircle2 className="size-4" />
-              <p className="text-sm">Nenhum alerta de estoque.</p>
+          {loadingProducts ? (
+            <Loading />
+          ) : criticalStockProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-25 text-muted-foreground">
+              <div className="flex items-center gap-2 text-success-foreground/80">
+                <CheckCircle2 className="size-4" />
+                <p className="text-sm">Nenhum alerta de estoque.</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              {criticalStockProducts.slice(0, 5).map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 px-3 py-2 rounded-md bg-surface-base border border-border-subtle"
+                >
+                  <AlertTriangle className="size-3.5 text-danger-foreground shrink-0" />
+                  <p className="flex-1 min-w-0 text-sm font-semibold text-foreground truncate">
+                    {p.name}
+                  </p>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {p.totalCurrent} / min. {p.totalMin}
+                  </span>
+                </div>
+              ))}
+              {criticalStockProducts.length > 5 && (
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  +{criticalStockProducts.length - 5} outro(s) com estoque baixo.
+                </p>
+              )}
+            </div>
+          )}
         </SectionCard>
       </div>
     </div>
