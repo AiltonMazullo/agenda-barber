@@ -111,6 +111,7 @@ export function DialogNovoAgendamento({
   const { barbershop } = useAuth();
   const [clientId, setClientId] = useState("");
   const [buscaCliente, setBuscaCliente] = useState("");
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
   const [showQuickClient, setShowQuickClient] = useState(false);
   const [creatingClient, setCreatingClient] = useState(false);
 
@@ -179,6 +180,9 @@ export function DialogNovoAgendamento({
     setPlanoForma("DINHEIRO");
     setStatus("PENDING");
     setBranchId(defaultBranchId ?? "");
+    setClientId("");
+    setBuscaCliente("");
+    setClientDropdownOpen(false);
   }, [open, prefilledHora, prefilledProfId, defaultDate, servicos, defaultBranchId]);
 
   // Prefill CPF do plano com o CPF do cliente selecionado
@@ -186,11 +190,12 @@ export function DialogNovoAgendamento({
     setPlanoCpf(cliente?.cpf ? maskCpf(cliente.cpf) : "");
   }, [cliente]);
 
-  // Sugestões de cliente: só aparecem enquanto o usuário digita, no máximo 5
-  // por vez (busca por nome, e-mail, telefone ou CPF).
+  // Sugestões de cliente: aparecem já no primeiro clique (os 5 primeiros
+  // cadastrados) e vão refinando conforme o usuário digita — sempre no
+  // máximo 5 por vez (busca por nome, e-mail, telefone ou CPF).
   const clientesFiltrados = useMemo(() => {
     const q = buscaCliente.trim().toLowerCase();
-    if (!q) return [];
+    if (!q) return clients.slice(0, 5);
     const digits = buscaCliente.replace(/\D/g, "");
     const base = clients.filter(
       (c) =>
@@ -495,16 +500,25 @@ export function DialogNovoAgendamento({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-text-faint" />
                 <Input
                   value={buscaCliente}
-                  onChange={(e) => setBuscaCliente(e.target.value)}
-                  placeholder={
-                    cliente
-                      ? cliente.name
-                      : "Buscar por nome, e-mail, telefone ou CPF"
+                  onChange={(e) => {
+                    setBuscaCliente(e.target.value);
+                    // Editar o texto depois de já ter um cliente selecionado
+                    // reabre a busca — a seleção anterior só é confirmada de
+                    // novo se o usuário clicar em um resultado.
+                    if (clientId) setClientId("");
+                  }}
+                  onFocus={() => setClientDropdownOpen(true)}
+                  onBlur={() =>
+                    // Delay pra deixar o clique num item da lista disparar
+                    // antes do dropdown fechar (blur do input acontece antes
+                    // do click do botão).
+                    setTimeout(() => setClientDropdownOpen(false), 150)
                   }
+                  placeholder="Buscar por nome, e-mail, telefone ou CPF"
                   className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 pl-9"
                 />
               </div>
-              {buscaCliente.trim().length > 0 && (
+              {clientDropdownOpen && (
                 <div className="max-h-40 overflow-y-auto schedule-scroll rounded-md border border-border-subtle divide-y divide-border-subtle">
                   {clientesFiltrados.length === 0 ? (
                     <p className="text-xs text-text-faint text-center py-4">
@@ -517,7 +531,8 @@ export function DialogNovoAgendamento({
                         type="button"
                         onClick={() => {
                           setClientId(c.id);
-                          setBuscaCliente("");
+                          setBuscaCliente(c.name);
+                          setClientDropdownOpen(false);
                         }}
                         className={cn(
                           "w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors",
@@ -547,6 +562,30 @@ export function DialogNovoAgendamento({
                       </button>
                     ))
                   )}
+                </div>
+              )}
+
+              {/* Cliente confirmado — deixa claro o que foi selecionado. */}
+              {cliente && !clientDropdownOpen && (
+                <div className="flex items-center gap-2 rounded-md border border-brand/30 bg-brand/5 px-3 py-2">
+                  <Check className="size-3.5 text-brand shrink-0" />
+                  <p className="text-[11px] text-muted-foreground truncate flex-1">
+                    <span className="text-foreground font-semibold">
+                      {cliente.name}
+                    </span>
+                    {cliente.phone && ` · ${formatPhone(cliente.phone)}`}
+                    {cliente.cpf && ` · ${maskCpf(cliente.cpf)}`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClientId("");
+                      setBuscaCliente("");
+                    }}
+                    className="text-[11px] font-bold text-brand hover:text-brand-hover transition-colors shrink-0"
+                  >
+                    Trocar
+                  </button>
                 </div>
               )}
             </div>
