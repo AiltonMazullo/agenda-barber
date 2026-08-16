@@ -1248,6 +1248,7 @@ export default function SchedulePage() {
           agendamentos={agendamentos}
           bloqueios={bloqueios}
           clients={clients}
+          clientActivePlans={clientActivePlans}
           defaultDate={selectedDate}
           prefilledHora={prefilledHora}
           prefilledProfId={prefilledProfId}

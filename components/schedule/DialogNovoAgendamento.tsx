@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Search, Check, UserPlus, CalendarCheck } from "lucide-react";
+import {
+  X,
+  Search,
+  Check,
+  UserPlus,
+  CalendarCheck,
+  BadgeCheck,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +36,9 @@ import {
   timeToMin,
   isSameDay,
 } from "./helpers";
-import { maskCpf } from "@/utils/format";
+import { maskCpf, formatPhone } from "@/utils/format";
+import { useAuth } from "@/hooks/useAuth";
+import { subscriptionsService } from "@/services/subscriptions.service";
 import type {
   AgendamentoVM,
   BloqueioHorario,
@@ -42,6 +51,7 @@ import type {
 import type { Client } from "@/types/client.types";
 import type { AppointmentStatus } from "@/types/appointment.types";
 import type { Branch } from "@/types/branch.types";
+import type { ServicePricing } from "@/types/subscription.types";
 import { STATUS_ROTULO, STATUS_COR } from "./status";
 
 function startOfDay(d: Date): Date {
@@ -69,6 +79,7 @@ export function DialogNovoAgendamento({
   agendamentos,
   bloqueios,
   clients,
+  clientActivePlans,
   defaultDate,
   prefilledHora,
   prefilledProfId,
@@ -90,11 +101,14 @@ export function DialogNovoAgendamento({
   /** Bloqueios de horário do dia atualmente carregado na agenda. */
   bloqueios: BloqueioHorario[];
   clients: Client[];
+  /** Nomes dos planos ativos por cliente — indicador "Cliente possui plano X ativo" abaixo da seleção. */
+  clientActivePlans: Map<string, string[]>;
   defaultDate: Date;
   prefilledHora?: string;
   prefilledProfId?: string;
   submitting?: boolean;
 }) {
+  const { barbershop } = useAuth();
   const [clientId, setClientId] = useState("");
   const [buscaCliente, setBuscaCliente] = useState("");
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -172,17 +186,90 @@ export function DialogNovoAgendamento({
     setPlanoCpf(cliente?.cpf ? maskCpf(cliente.cpf) : "");
   }, [cliente]);
 
+  // Sugestões de cliente: só aparecem enquanto o usuário digita, no máximo 5
+  // por vez (busca por nome, e-mail, telefone ou CPF).
   const clientesFiltrados = useMemo(() => {
     const q = buscaCliente.trim().toLowerCase();
-    const base = q
-      ? clients.filter(
-          (c) =>
-            c.name.toLowerCase().includes(q) ||
-            c.email.toLowerCase().includes(q),
-        )
-      : clients;
-    return base.slice(0, 50);
+    if (!q) return [];
+    const digits = buscaCliente.replace(/\D/g, "");
+    const base = clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        (digits.length >= 3 && (c.phone ?? "").includes(digits)) ||
+        (digits.length >= 3 && (c.cpf ?? "").includes(digits)),
+    );
+    return base.slice(0, 5);
   }, [clients, buscaCliente]);
+
+  const planosAtivos = clientId ? (clientActivePlans.get(clientId) ?? []) : [];
+
+  // ── Preço/duração dinâmicos ──
+  // O preço e a duração do serviço nunca são digitados manualmente: vêm do
+  // cadastro do serviço, aplicando o desconto/gratuidade do plano ativo do
+  // cliente selecionado (mesma regra de `getServicePricing` usada no fluxo
+  // do cliente e na comanda).
+  const [pricingByService, setPricingByService] = useState<
+    Map<string, ServicePricing>
+  >(new Map());
+
+  const servicoIdsAtuais = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.servicoId).filter(Boolean))).join(
+        ",",
+      ),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (!clientId || !barbershop?.id || !servicoIdsAtuais) {
+      setPricingByService(new Map());
+      return;
+    }
+    let active = true;
+    const servicoIds = servicoIdsAtuais.split(",");
+    Promise.all(
+      servicoIds.map((id) =>
+        subscriptionsService
+          .getServicePricing(barbershop.id, clientId, id)
+          .then((p) => [id, p] as const)
+          .catch(() => [id, { covered: false as const }] as const),
+      ),
+    ).then((entries) => {
+      if (!active) return;
+      setPricingByService(new Map(entries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [clientId, barbershop?.id, servicoIdsAtuais]);
+
+  // Reaplica o valor vigente (base ou de plano) sempre que a precificação ou
+  // o cadastro dos serviços mudar — mantém `rows` como fonte única de
+  // verdade sem permitir edição manual.
+  useEffect(() => {
+    setRows((prev) => {
+      let changed = false;
+      const next = prev.map((r) => {
+        const servico = servicoMap.get(r.servicoId);
+        const baseValor = servico?.preco ?? r.valor;
+        const baseDuracao = servico?.tempoPadrao ?? r.duracao;
+        const pricing = pricingByService.get(r.servicoId);
+        const valor =
+          pricing && pricing.covered
+            ? pricing.free
+              ? 0
+              : pricing.priceInCents / 100
+            : baseValor;
+        if (valor !== r.valor || baseDuracao !== r.duracao) {
+          changed = true;
+          return { ...r, valor, duracao: baseDuracao };
+        }
+        return r;
+      });
+      return changed ? next : prev;
+    });
+  }, [pricingByService, servicoMap]);
 
   async function handleCreateClient(input: QuickClientInput) {
     setCreatingClient(true);
@@ -410,63 +497,87 @@ export function DialogNovoAgendamento({
                   value={buscaCliente}
                   onChange={(e) => setBuscaCliente(e.target.value)}
                   placeholder={
-                    cliente ? cliente.name : "Buscar cliente por nome ou e-mail"
+                    cliente
+                      ? cliente.name
+                      : "Buscar por nome, e-mail, telefone ou CPF"
                   }
                   className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 pl-9"
                 />
               </div>
-              <div className="max-h-40 overflow-y-auto schedule-scroll rounded-md border border-border-subtle divide-y divide-border-subtle">
-                {clientesFiltrados.length === 0 ? (
-                  <p className="text-xs text-text-faint text-center py-4">
-                    {clients.length === 0
-                      ? "Nenhum cliente cadastrado."
-                      : "Nenhum cliente encontrado."}
-                  </p>
-                ) : (
-                  clientesFiltrados.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setClientId(c.id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors",
-                        clientId === c.id
-                          ? "bg-brand/10"
-                          : "hover:bg-surface-elevated",
-                      )}
-                    >
-                      <div className="min-w-0">
+              {buscaCliente.trim().length > 0 && (
+                <div className="max-h-40 overflow-y-auto schedule-scroll rounded-md border border-border-subtle divide-y divide-border-subtle">
+                  {clientesFiltrados.length === 0 ? (
+                    <p className="text-xs text-text-faint text-center py-4">
+                      Nenhum cliente encontrado.
+                    </p>
+                  ) : (
+                    clientesFiltrados.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setClientId(c.id);
+                          setBuscaCliente("");
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors",
+                          clientId === c.id
+                            ? "bg-brand/10"
+                            : "hover:bg-surface-elevated",
+                        )}
+                      >
                         <p className="text-sm text-foreground truncate">
                           {c.name}
+                          {c.phone && (
+                            <span className="text-text-faint">
+                              {" "}
+                              - {formatPhone(c.phone)}
+                            </span>
+                          )}
+                          {c.cpf && (
+                            <span className="text-text-faint">
+                              {" "}
+                              - {maskCpf(c.cpf)}
+                            </span>
+                          )}
                         </p>
-                        <p className="text-[11px] text-text-faint truncate">
-                          {c.email}
-                        </p>
-                      </div>
-                      {clientId === c.id && (
-                        <Check className="size-3.5 text-brand shrink-0" />
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
+                        {clientId === c.id && (
+                          <Check className="size-3.5 text-brand shrink-0" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Plano (quando há cliente selecionado) ── */}
-            {clientId && (
-              <PlanoAtivacao
-                ativar={ativarPlano}
-                onAtivarChange={setAtivarPlano}
-                dataInicio={planoDataInicio}
-                onDataInicioChange={setPlanoDataInicio}
-                formaPagamento={planoForma}
-                onFormaPagamentoChange={setPlanoForma}
-                vencimento={planoVencimento}
-                onVencimentoChange={setPlanoVencimento}
-                cpf={planoCpf}
-                onCpfChange={setPlanoCpf}
-              />
-            )}
+            {clientId &&
+              (planosAtivos.length > 0 ? (
+                <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+                  <BadgeCheck className="size-3.5 text-emerald-400 shrink-0" />
+                  <p className="text-[11px] text-muted-foreground">
+                    ✓ Cliente possui plano{" "}
+                    <span className="text-emerald-400 font-semibold">
+                      {planosAtivos.join(" + ")}
+                    </span>{" "}
+                    ativo.
+                  </p>
+                </div>
+              ) : (
+                <PlanoAtivacao
+                  ativar={ativarPlano}
+                  onAtivarChange={setAtivarPlano}
+                  dataInicio={planoDataInicio}
+                  onDataInicioChange={setPlanoDataInicio}
+                  formaPagamento={planoForma}
+                  onFormaPagamentoChange={setPlanoForma}
+                  vencimento={planoVencimento}
+                  onVencimentoChange={setPlanoVencimento}
+                  cpf={planoCpf}
+                  onCpfChange={setPlanoCpf}
+                />
+              ))}
 
             {/* ── Serviços (múltiplos) ── */}
             <ServicoSelector
@@ -474,6 +585,8 @@ export function DialogNovoAgendamento({
               onChange={setRows}
               servicos={servicos}
               profissionais={profissionais}
+              editablePricing={false}
+              pricingByService={pricingByService}
             />
 
             {/* ── Data / Horário ── */}

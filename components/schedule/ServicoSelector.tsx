@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2, Timer, DollarSign } from "lucide-react";
+import { Plus, Trash2, Timer, DollarSign, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared";
 import { maskBRLInput, parseBRL } from "@/utils/format";
@@ -9,9 +9,19 @@ import type {
   ServicoSelecionado,
   ServicoVM,
 } from "./types";
+import type { ServicePricing } from "@/types/subscription.types";
 
 function formatBRL(v: number): string {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Rótulo curto do benefício de plano aplicado ao serviço, se houver. */
+function pricingBadge(
+  pricing: ServicePricing | undefined,
+): { label: string } | null {
+  if (!pricing || !pricing.covered) return null;
+  if (pricing.free) return { label: "Incluso no plano" };
+  return { label: `${pricing.discountPercent}% off (plano)` };
 }
 
 export function ServicoSelector({
@@ -19,11 +29,23 @@ export function ServicoSelector({
   onChange,
   servicos,
   profissionais,
+  editablePricing = true,
+  pricingByService,
 }: {
   value: ServicoSelecionado[];
   onChange: (rows: ServicoSelecionado[]) => void;
   servicos: ServicoVM[];
   profissionais: ProfissionalVM[];
+  /**
+   * Quando `false` (agendamento novo, criado pela recepção), Duração/Valor
+   * deixam de ser campos editáveis: vêm sempre do cadastro do serviço,
+   * aplicando automaticamente o desconto/gratuidade do plano ativo do
+   * cliente (ver `getServicePricing` no backend). Default `true` preserva o
+   * comportamento existente (edição manual) em outros usos do componente.
+   */
+  editablePricing?: boolean;
+  /** Preço vigente por serviço (considerando plano do cliente), quando `editablePricing` é `false`. */
+  pricingByService?: Map<string, ServicePricing>;
 }) {
   const servicoOptions = servicos.map((s) => ({ value: s.id, label: s.nome }));
   const profOptions = [
@@ -81,83 +103,109 @@ export function ServicoSelector({
       </div>
 
       <div className="space-y-2.5">
-        {value.map((row, i) => (
-          <div
-            key={i}
-            className="rounded-lg border border-border-subtle bg-surface-base p-3 space-y-2.5"
-          >
-            <div className="grid grid-cols-2 gap-2.5">
-              <SelectField
-                id={`servico-${i}`}
-                label="Serviço"
-                value={row.servicoId}
-                options={servicoOptions}
-                onChange={(v) => changeService(i, v)}
-                placeholder="Selecione"
-              />
-              <SelectField
-                id={`prof-${i}`}
-                label="Profissional"
-                value={row.profissionalId ?? ""}
-                options={profOptions}
-                onChange={(v) =>
-                  updateRow(i, { profissionalId: v || undefined })
-                }
-              />
-            </div>
+        {value.map((row, i) => {
+          const badge = !editablePricing
+            ? pricingBadge(pricingByService?.get(row.servicoId))
+            : null;
+          return (
+            <div
+              key={i}
+              className="rounded-lg border border-border-subtle bg-surface-base p-3 space-y-2.5"
+            >
+              <div className="grid grid-cols-2 gap-2.5">
+                <SelectField
+                  id={`servico-${i}`}
+                  label="Serviço"
+                  value={row.servicoId}
+                  options={servicoOptions}
+                  onChange={(v) => changeService(i, v)}
+                  placeholder="Selecione"
+                />
+                <SelectField
+                  id={`prof-${i}`}
+                  label="Profissional"
+                  value={row.profissionalId ?? ""}
+                  options={profOptions}
+                  onChange={(v) =>
+                    updateRow(i, { profissionalId: v || undefined })
+                  }
+                />
+              </div>
 
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-end">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                  <Timer className="size-3" />
-                  Duração (min)
-                </label>
-                <Input
-                  value={String(row.duracao)}
-                  onChange={(e) =>
-                    updateRow(i, {
-                      duracao: parseInt(
-                        e.target.value.replace(/\D/g, "") || "0",
-                        10,
-                      ),
-                    })
-                  }
-                  inputMode="numeric"
-                  className="bg-surface-raised border-border text-foreground h-9"
-                />
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-end">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                    <Timer className="size-3" />
+                    Duração (min)
+                  </label>
+                  {editablePricing ? (
+                    <Input
+                      value={String(row.duracao)}
+                      onChange={(e) =>
+                        updateRow(i, {
+                          duracao: parseInt(
+                            e.target.value.replace(/\D/g, "") || "0",
+                            10,
+                          ),
+                        })
+                      }
+                      inputMode="numeric"
+                      className="bg-surface-raised border-border text-foreground h-9"
+                    />
+                  ) : (
+                    <div className="h-9 px-3 rounded-md border border-border-subtle bg-surface-elevated/60 text-foreground text-sm flex items-center">
+                      {row.duracao} min
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="size-3" />
+                    Valor
+                  </label>
+                  {editablePricing ? (
+                    <Input
+                      value={
+                        row.valor
+                          ? maskBRLInput(String(Math.round(row.valor * 100)))
+                          : ""
+                      }
+                      onChange={(e) =>
+                        updateRow(i, {
+                          valor: parseBRL(maskBRLInput(e.target.value)),
+                        })
+                      }
+                      placeholder="R$ 0,00"
+                      inputMode="numeric"
+                      className="bg-surface-raised border-border text-foreground h-9"
+                    />
+                  ) : (
+                    <div className="h-9 px-3 rounded-md border border-border-subtle bg-surface-elevated/60 text-foreground text-sm flex items-center">
+                      {row.valor > 0 ? formatBRL(row.valor) : "Grátis"}
+                    </div>
+                  )}
+                </div>
+                {value.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeRow(i)}
+                    aria-label="Remover serviço"
+                    className="size-9 rounded-md grid place-items-center text-danger-foreground border border-danger/30 bg-danger/10 hover:bg-danger/20 transition-colors"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                  <DollarSign className="size-3" />
-                  Valor
-                </label>
-                <Input
-                  value={
-                    row.valor
-                      ? maskBRLInput(String(Math.round(row.valor * 100)))
-                      : ""
-                  }
-                  onChange={(e) =>
-                    updateRow(i, { valor: parseBRL(maskBRLInput(e.target.value)) })
-                  }
-                  placeholder="R$ 0,00"
-                  inputMode="numeric"
-                  className="bg-surface-raised border-border text-foreground h-9"
-                />
-              </div>
-              {value.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeRow(i)}
-                  aria-label="Remover serviço"
-                  className="size-9 rounded-md grid place-items-center text-danger-foreground border border-danger/30 bg-danger/10 hover:bg-danger/20 transition-colors"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+
+              {badge && (
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold">
+                  <Sparkles className="size-3" />
+                  {badge.label}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Totais */}
