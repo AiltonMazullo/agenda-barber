@@ -31,6 +31,7 @@ import { FormSection } from "./FormSection";
 import { LabeledInput, LabeledSelect } from "./FormField";
 import { useCashRegisters } from "@/hooks/useCashRegisters";
 import { useEmployees } from "@/hooks/useEmployees";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import {
   formatBRLFromCents,
   formatDate,
@@ -69,6 +70,22 @@ function somaDesconto(itens: ComandaItem[]): number {
 
 function itemSufixo(id: string): string {
   return id.slice(-7).toUpperCase();
+}
+
+/**
+ * Mapeia o nome livre de uma `PaymentMethodConfig` (ex.: "Pix Itaú", "Cartão
+ * de Crédito") para o enum legado `ComandaFormaPagamento` ainda usado no
+ * fechamento (spec-revisao-cliente-4.md §4.3 — migrar de vez pra
+ * `paymentMethodId` é um passo maior, com impacto de dado em
+ * `ComandaPagamento`, fora de escopo aqui). Best-effort por palavra-chave.
+ */
+function inferFormaPagamento(nome: string): ComandaFormaPagamento {
+  const n = nome.toLowerCase();
+  if (n.includes("dinheiro")) return "DINHEIRO";
+  if (n.includes("débito") || n.includes("debito")) return "DEBITO";
+  if (n.includes("crédito") || n.includes("credito")) return "CREDITO";
+  if (n.includes("pix")) return "PIX";
+  return "OUTRO";
 }
 
 interface PagamentoRow {
@@ -241,6 +258,7 @@ export function DialogFecharComanda({
 }) {
   const { registers } = useCashRegisters(barbershopId);
   const { employees } = useEmployees(barbershopId);
+  const { methods: paymentMethods } = usePaymentMethods(barbershopId);
   const [itens, setItens] = useState<ComandaItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -252,6 +270,28 @@ export function DialogFecharComanda({
       ),
     [registers, comanda?.branchId],
   );
+
+  // Formas de pagamento habilitadas para a filial da comanda
+  // (spec-revisao-cliente-4.md §4.3) — antes a lista era sempre fixa
+  // (Dinheiro/Crédito/Débito/Pix/Outro), ignorando a configuração de
+  // "Formas de pagamento" por filial em Configurações. Sem nenhuma
+  // configurada pra essa filial, cai de volta na lista fixa (não bloqueia o
+  // fechamento de quem ainda não configurou o módulo novo).
+  const formaPagamentoOptions: SelectOption[] = useMemo(() => {
+    if (!comanda?.branchId) return COMANDA_FORMA_PAGAMENTO_OPTIONS;
+    const nomesAtivos = paymentMethods
+      .filter(
+        (m) =>
+          m.status === "ACTIVE" &&
+          m.branchConfigs.some((bc) => bc.branchId === comanda.branchId),
+      )
+      .map((m) => m.name);
+    if (nomesAtivos.length === 0) return COMANDA_FORMA_PAGAMENTO_OPTIONS;
+    const valores = Array.from(new Set(nomesAtivos.map(inferFormaPagamento)));
+    return COMANDA_FORMA_PAGAMENTO_OPTIONS.filter((o) =>
+      valores.includes(o.value as ComandaFormaPagamento),
+    );
+  }, [paymentMethods, comanda?.branchId]);
 
   // Clona os itens da comanda para edição local dos descontos.
   useEffect(() => {
@@ -612,7 +652,7 @@ export function DialogFecharComanda({
                             formaPagamento: v as ComandaFormaPagamento,
                           })
                         }
-                        options={COMANDA_FORMA_PAGAMENTO_OPTIONS}
+                        options={formaPagamentoOptions}
                       />
                       <div className="flex items-end">
                         <Button

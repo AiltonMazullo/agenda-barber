@@ -477,6 +477,8 @@ export function useComandaForm(
     linkedOptions,
     availableToLinkOptions,
     clienteOptions,
+    /** Lista crua de clientes — usada pela busca com autocomplete (spec-revisao-cliente-4.md §4.4). */
+    clients,
     branchOptions,
     employeeOptions,
     /** Lista crua de profissionais, para derivar a filial de um agendamento. */

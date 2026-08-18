@@ -3,8 +3,10 @@
 import { Receipt } from "lucide-react";
 import { FormSection } from "./FormSection";
 import { LabeledSelect } from "./FormField";
+import { ClienteSearchField } from "./ClienteSearchField";
 import type { SelectOption } from "@/types/common.types";
 import type { ComandaTipo } from "@/types/orders.types";
+import type { Client } from "@/types/client.types";
 
 const TIPO_OPTIONS: SelectOption<string>[] = [
   { value: "AGENDAMENTO", label: "Agendamento" },
@@ -20,7 +22,8 @@ interface TipoSectionProps {
   branchOptions: SelectOption<string>[];
   clienteId: string;
   onClienteIdChange: (value: string) => void;
-  clienteOptions: SelectOption<string>[];
+  /** Lista crua de clientes, usada pela busca com autocomplete (spec-revisao-cliente-4.md §4.4). */
+  clients: Client[];
   employeeId: string;
   onEmployeeIdChange: (value: string) => void;
   employeeOptions: SelectOption<string>[];
@@ -40,7 +43,7 @@ export function TipoSection({
   branchOptions,
   clienteId,
   onClienteIdChange,
-  clienteOptions,
+  clients,
   employeeId,
   onEmployeeIdChange,
   employeeOptions,
@@ -77,17 +80,11 @@ export function TipoSection({
 
         {isAvulsa && (
           <>
-            <LabeledSelect
-              label="Cliente"
+            <ClienteSearchField
               required
-              placeholder={
-                clienteOptions.length === 0
-                  ? "Nenhum cliente cadastrado"
-                  : "Selecionar cliente"
-              }
+              clients={clients}
               value={clienteId}
               onValueChange={onClienteIdChange}
-              options={clienteOptions}
             />
 
             <LabeledSelect

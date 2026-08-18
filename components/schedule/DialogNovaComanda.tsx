@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
-import { ItensSection, LabeledSelect } from "@/components/orders";
+import { ClienteSearchField, ItensSection, LabeledSelect } from "@/components/orders";
 import type { CatalogoOption, NovoItemInput } from "@/hooks/useComandaForm";
 import type { ProfissionalVM } from "./types";
 import type { Client } from "@/types/client.types";
@@ -66,11 +66,6 @@ export function DialogNovaComanda({
     setProfissionalId("");
     setItens([]);
   }, [open]);
-
-  const clienteOptions = useMemo<SelectOption<string>[]>(
-    () => clients.map((c) => ({ value: c.id, label: c.name })),
-    [clients],
-  );
 
   const filialOptions = useMemo<SelectOption<string>[]>(
     () => branches.map((b) => ({ value: b.id, label: b.name })),
@@ -179,15 +174,11 @@ export function DialogNovaComanda({
 
         <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto schedule-scroll">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <LabeledSelect
-              label="Cliente"
+            <ClienteSearchField
               required
-              placeholder={
-                clients.length === 0 ? "Nenhum cliente cadastrado" : "Selecionar cliente"
-              }
+              clients={clients}
               value={clienteId}
               onValueChange={setClienteId}
-              options={clienteOptions}
             />
             <LabeledSelect
               label="Filial"

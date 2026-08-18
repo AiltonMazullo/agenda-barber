@@ -88,7 +88,7 @@ export function ComandaForm({
         branchOptions={form.branchOptions}
         clienteId={form.clienteId}
         onClienteIdChange={form.setClienteId}
-        clienteOptions={form.clienteOptions}
+        clients={form.clients}
         employeeId={form.employeeId}
         onEmployeeIdChange={form.setEmployeeId}
         employeeOptions={form.employeeOptions}
