@@ -166,13 +166,16 @@ export function DialogNovoAgendamento({
       prefilledHora ?? defaultHoraParaData(defaultDate, "09:00"),
     );
     setData(defaultDate);
-    const s0 = servicos[0];
+    // Abre em branco — o usuário escolhe e aplica um serviço explicitamente
+    // (spec-revisao-cliente-4.md §2.1: antes vinha pré-selecionado com o
+    // primeiro serviço do catálogo, dando a impressão de "lembrar" o último
+    // agendamento quando coincidia com o mais usado).
     setRows([
       {
-        servicoId: s0?.id ?? "",
+        servicoId: "",
         profissionalId: prefilledProfId,
-        duracao: s0?.tempoPadrao ?? 30,
-        valor: s0?.preco ?? 0,
+        duracao: 30,
+        valor: 0,
       },
     ]);
     setAssinaturaDialogOpen(false);
@@ -607,6 +610,7 @@ export function DialogNovoAgendamento({
               servicos={servicos}
               profissionais={profissionais}
               editablePricing={false}
+              editableDuration
               pricingByService={pricingByService}
             />
 

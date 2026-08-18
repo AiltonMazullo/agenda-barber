@@ -31,6 +31,7 @@ export function ServicoSelector({
   profissionais,
   editablePricing = true,
   pricingByService,
+  editableDuration,
 }: {
   value: ServicoSelecionado[];
   onChange: (rows: ServicoSelecionado[]) => void;
@@ -46,6 +47,12 @@ export function ServicoSelector({
   editablePricing?: boolean;
   /** Preço vigente por serviço (considerando plano do cliente), quando `editablePricing` é `false`. */
   pricingByService?: Map<string, ServicePricing>;
+  /**
+   * Independente de `editablePricing` — permite editar a duração mesmo
+   * quando o valor continua travado no preço do plano/catálogo
+   * (spec-revisao-cliente-4.md §2.1). Default segue `editablePricing`.
+   */
+  editableDuration?: boolean;
 }) {
   const servicoOptions = servicos.map((s) => ({ value: s.id, label: s.nome }));
   const profOptions = [
@@ -138,7 +145,7 @@ export function ServicoSelector({
                     <Timer className="size-3" />
                     Duração (min)
                   </label>
-                  {editablePricing ? (
+                  {(editableDuration ?? editablePricing) ? (
                     <Input
                       value={String(row.duracao)}
                       onChange={(e) =>
