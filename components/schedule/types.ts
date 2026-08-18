@@ -88,18 +88,6 @@ export interface ServicoSelecionado {
   valor: number;
 }
 
-/** Dados de ativação de plano (coletados na confirmação do agendamento). */
-export interface PlanoAtivacaoInput {
-  /** Dia de início da vigência. */
-  dataInicio: Date;
-  /** Forma de pagamento (ex.: "DINHEIRO", "PIX", ...). */
-  formaPagamento: string;
-  /** Dia do mês de vencimento (1–31). */
-  vencimento: number;
-  /** CPF do cliente (obrigatório para ativar). */
-  cpf: string;
-}
-
 /** Dados para criar um novo agendamento (saída do dialog). */
 export interface NovoAgendamentoInput {
   clientId: string;
@@ -114,8 +102,6 @@ export interface NovoAgendamentoInput {
   origem: Origem;
   /** Situação escolhida pelo dono ao cadastrar (default "PENDING"/Agendado). */
   status?: AppointmentStatus;
-  /** Presente apenas quando o usuário optou por ativar um plano. */
-  planoAtivacao?: PlanoAtivacaoInput;
 }
 
 /** Dados para criação rápida de cliente (mini-form do dialog). */

@@ -23,6 +23,8 @@ interface DialogNovaAssinaturaProps {
   barbershopId: string;
   plans: Plan[];
   onCreated: () => void;
+  /** Pré-seleciona o cliente (ex.: chamado a partir do dialog de agendamento — §5.1). */
+  initialClientId?: string;
 }
 
 export function DialogNovaAssinatura({
@@ -31,6 +33,7 @@ export function DialogNovaAssinatura({
   barbershopId,
   plans,
   onCreated,
+  initialClientId,
 }: DialogNovaAssinaturaProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
@@ -41,20 +44,26 @@ export function DialogNovaAssinatura({
     "CREDIT_CARD" | "PIX_AUTOMATICO" | "PIX_AVULSO"
   >("CREDIT_CARD");
   const [saving, setSaving] = useState(false);
+  // Cartão de crédito não cria a Subscription na hora — só quando o gateway
+  // confirmar o checkout (webhook). Enquanto isso, mostra o link pra copiar
+  // e enviar manualmente (spec-revisao-cliente-4.md §5.1 — envio automático
+  // por WhatsApp fica pra uma próxima etapa).
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSearch("");
-    setSelectedClientId("");
+    setSelectedClientId(initialClientId ?? "");
     setPlanId("");
     setPaymentMethod("CREDIT_CARD");
+    setCheckoutUrl(null);
     setLoadingClients(true);
     clientsService
       .list(barbershopId)
       .then(setClients)
       .catch(() => toast.error("Falha ao carregar clientes."))
       .finally(() => setLoadingClients(false));
-  }, [open, barbershopId]);
+  }, [open, barbershopId, initialClientId]);
 
   const filteredClients = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -81,11 +90,18 @@ export function DialogNovaAssinatura({
     }
     setSaving(true);
     try {
-      await subscriptionsService.createManual(barbershopId, {
+      const result = await subscriptionsService.createManual(barbershopId, {
         clientId: selectedClientId,
         planId,
         paymentMethod,
       });
+      if ("checkoutUrl" in result && result.checkoutUrl) {
+        // Cartão de crédito: ainda não é uma assinatura ativa — mostra o
+        // link de checkout pra copiar/enviar, sem fechar o dialog.
+        setCheckoutUrl(result.checkoutUrl);
+        onCreated();
+        return;
+      }
       toast.success("Assinatura criada.");
       onCreated();
       onOpenChange(false);
@@ -93,6 +109,16 @@ export function DialogNovaAssinatura({
       toast.error(err instanceof Error ? err.message : "Falha ao criar assinatura.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCopyCheckoutUrl() {
+    if (!checkoutUrl) return;
+    try {
+      await navigator.clipboard.writeText(checkoutUrl);
+      toast.success("Link copiado.");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
     }
   }
 
@@ -112,6 +138,35 @@ export function DialogNovaAssinatura({
           </div>
         </DialogHeader>
 
+        {checkoutUrl ? (
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              A assinatura será ativada quando o cliente confirmar o pagamento no checkout.
+              Por enquanto, copie o link abaixo e envie manualmente (envio automático por
+              WhatsApp ainda não está disponível).
+            </p>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-surface-base px-3 py-2">
+              <span className="text-xs text-foreground truncate flex-1">{checkoutUrl}</span>
+              <button
+                type="button"
+                onClick={handleCopyCheckoutUrl}
+                className="shrink-0 h-8 px-3 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors"
+              >
+                Copiar link
+              </button>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="h-10 px-4 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="px-6 py-5 space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
@@ -220,6 +275,8 @@ export function DialogNovaAssinatura({
             {saving ? "Criando…" : "Criar assinatura"}
           </button>
         </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -9,6 +9,8 @@ import {
   UserPlus,
   CalendarCheck,
   BadgeCheck,
+  AlertCircle,
+  CreditCard,
 } from "lucide-react";
 import {
   Dialog,
@@ -22,7 +24,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { DatePickerField, SelectField } from "@/components/shared";
 import { QuickClientForm } from "./QuickClientForm";
-import { PlanoAtivacao } from "./PlanoAtivacao";
+import { DialogNovaAssinatura } from "@/components/plans/DialogNovaAssinatura";
+import { usePlans } from "@/hooks/usePlans";
 import { ServicoSelector } from "./ServicoSelector";
 import {
   DialogHorarioSobreposto,
@@ -131,14 +134,12 @@ export function DialogNovoAgendamento({
     [profissionaisTodos, branchId],
   );
 
-  // Plano (UI local — ativado após confirmação)
-  const [ativarPlano, setAtivarPlano] = useState(false);
-  const [planoDataInicio, setPlanoDataInicio] = useState<Date | undefined>(
-    new Date(),
-  );
-  const [planoForma, setPlanoForma] = useState("DINHEIRO");
-  const [planoVencimento, setPlanoVencimento] = useState("");
-  const [planoCpf, setPlanoCpf] = useState("");
+  // Ativação de plano (spec-revisao-cliente-4.md §5.1): antes coletava dados
+  // soltos (data início/vencimento/CPF) que nunca chegavam ao backend — a
+  // "ativação" não fazia nada. Agora abre o mesmo fluxo real de assinatura
+  // (DialogNovaAssinatura), que já sabe gerar o link de checkout.
+  const { plans } = usePlans(barbershop?.id);
+  const [assinaturaDialogOpen, setAssinaturaDialogOpen] = useState(false);
 
   // Sobreposição
   const [sobrepostoOpen, setSobrepostoOpen] = useState(false);
@@ -174,21 +175,13 @@ export function DialogNovoAgendamento({
         valor: s0?.preco ?? 0,
       },
     ]);
-    setAtivarPlano(false);
-    setPlanoVencimento("");
-    setPlanoDataInicio(new Date());
-    setPlanoForma("DINHEIRO");
+    setAssinaturaDialogOpen(false);
     setStatus("PENDING");
     setBranchId(defaultBranchId ?? "");
     setClientId("");
     setBuscaCliente("");
     setClientDropdownOpen(false);
   }, [open, prefilledHora, prefilledProfId, defaultDate, servicos, defaultBranchId]);
-
-  // Prefill CPF do plano com o CPF do cliente selecionado
-  useEffect(() => {
-    setPlanoCpf(cliente?.cpf ? maskCpf(cliente.cpf) : "");
-  }, [cliente]);
 
   // Sugestões de cliente: aparecem já no primeiro clique (os 5 primeiros
   // cadastrados) e vão refinando conforme o usuário digita — sempre no
@@ -375,10 +368,6 @@ export function DialogNovoAgendamento({
     // um agendamento em horário retroativo (ex.: atendimento walk-in já
     // realizado) — ver spec-revisao-cliente-1.md §5.2. Por isso não há
     // validação de "data/horário no passado" aqui.
-    if (ativarPlano && planoCpf.replace(/\D/g, "").length !== 11) {
-      toast.error("Informe o CPF do cliente para ativar o plano.");
-      return false;
-    }
     return true;
   }
 
@@ -392,15 +381,6 @@ export function DialogNovoAgendamento({
       observacao,
       status,
       origem: "recepcao", // definida automaticamente
-      planoAtivacao:
-        ativarPlano && planoDataInicio
-          ? {
-              dataInicio: planoDataInicio,
-              formaPagamento: planoForma,
-              vencimento: parseInt(planoVencimento || "0", 10),
-              cpf: planoCpf.replace(/\D/g, ""),
-            }
-          : undefined,
     });
     // Reset parcial
     setClientId("");
@@ -604,18 +584,20 @@ export function DialogNovoAgendamento({
                   </p>
                 </div>
               ) : (
-                <PlanoAtivacao
-                  ativar={ativarPlano}
-                  onAtivarChange={setAtivarPlano}
-                  dataInicio={planoDataInicio}
-                  onDataInicioChange={setPlanoDataInicio}
-                  formaPagamento={planoForma}
-                  onFormaPagamentoChange={setPlanoForma}
-                  vencimento={planoVencimento}
-                  onVencimentoChange={setPlanoVencimento}
-                  cpf={planoCpf}
-                  onCpfChange={setPlanoCpf}
-                />
+                <div className="flex items-center gap-2.5 rounded-lg border border-warning/30 bg-warning/5 p-3">
+                  <AlertCircle className="size-4 text-warning-foreground shrink-0" />
+                  <p className="text-xs text-muted-foreground flex-1">
+                    Este cliente não possui plano ativo.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setAssinaturaDialogOpen(true)}
+                    className="h-7 px-3 rounded-md text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 shrink-0"
+                  >
+                    <CreditCard className="size-3" />
+                    Ativar plano
+                  </button>
+                </div>
               ))}
 
             {/* ── Serviços (múltiplos) ── */}
@@ -734,6 +716,17 @@ export function DialogNovoAgendamento({
           doConfirm();
         }}
       />
+
+      {barbershop?.id && (
+        <DialogNovaAssinatura
+          open={assinaturaDialogOpen}
+          onOpenChange={setAssinaturaDialogOpen}
+          barbershopId={barbershop.id}
+          plans={plans}
+          initialClientId={clientId}
+          onCreated={() => {}}
+        />
+      )}
     </>
   );
 }

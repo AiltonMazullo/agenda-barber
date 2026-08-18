@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -34,15 +34,15 @@ export function ClienteSearchField({
     [clients, value],
   );
 
-  // Mantém o texto do input sincronizado com o cliente selecionado (ex.:
-  // quando o valor vem de fora, como reset de formulário).
-  useEffect(() => {
-    setBusca(cliente ? cliente.name : "");
-  }, [cliente?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Texto exibido: o que o usuário está digitando, ou (antes de digitar
+  // nada) o nome do cliente já selecionado — cobre o caso de `value` vir
+  // pré-preenchido de fora (ex.: aberto a partir de outro dialog) sem
+  // precisar de um efeito só pra sincronizar estado.
+  const displayValue = busca || cliente?.name || "";
 
   const clientesFiltrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    const digits = busca.replace(/\D/g, "");
+    const q = displayValue.trim().toLowerCase();
+    const digits = displayValue.replace(/\D/g, "");
     const base = q
       ? clients.filter(
           (c) =>
@@ -53,7 +53,7 @@ export function ClienteSearchField({
         )
       : clients;
     return base.slice(0, 50);
-  }, [clients, busca]);
+  }, [clients, displayValue]);
 
   return (
     <div className="space-y-1.5">
@@ -64,7 +64,7 @@ export function ClienteSearchField({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
         <Input
-          value={busca}
+          value={displayValue}
           onChange={(e) => {
             setBusca(e.target.value);
             if (value) onValueChange("");
