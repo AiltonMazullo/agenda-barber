@@ -105,6 +105,9 @@ export function DialogNovoPlano({
   const [maxSimultaneous, setMaxSimultaneous] = useState("1");
   const [lockDays, setLockDays] = useState("30");
   const [frequencyDays, setFrequencyDays] = useState("7");
+  // Janela de antecedência de agendamento (§5.6) — vazio = sem override,
+  // mantém o padrão configurado no profissional.
+  const [bookingWindowDays, setBookingWindowDays] = useState("");
 
   // serviços
   const [serviceRows, setServiceRows] = useState<ServiceRow[]>([]);
@@ -149,6 +152,9 @@ export function DialogNovoPlano({
     setMaxSimultaneous(String(plan?.maxSimultaneousServices ?? 1));
     setLockDays(String(plan?.subscriptionLockDays ?? 30));
     setFrequencyDays(String(plan?.serviceFrequencyDays ?? 7));
+    setBookingWindowDays(
+      plan?.bookingWindowDays != null ? String(plan.bookingWindowDays) : "",
+    );
     setServiceRows(
       plan?.planServices?.map((ps) => ({
         serviceId: ps.serviceId,
@@ -383,6 +389,14 @@ export function DialogNovoPlano({
       toast.error("Periodicidade deve ser 0 ou mais dias.");
       return;
     }
+    let bookingWindowDaysNum: number | null = null;
+    if (bookingWindowDays.trim() !== "") {
+      bookingWindowDaysNum = parseInt(bookingWindowDays, 10);
+      if (Number.isNaN(bookingWindowDaysNum) || bookingWindowDaysNum < 0) {
+        toast.error("Janela de agendamento deve ser 0 ou mais dias.");
+        return;
+      }
+    }
 
     // valida descontos e limites mensais
     for (const row of serviceRows) {
@@ -430,6 +444,7 @@ export function DialogNovoPlano({
         maxSimultaneousServices: maxSimultaneousNum,
         subscriptionLockDays: lockDaysNum,
         serviceFrequencyDays: frequencyDaysNum,
+        bookingWindowDays: bookingWindowDaysNum,
         services: serviceRows.map((r) => ({
           serviceId: r.serviceId,
           discountPercent: parseFloat(r.discountPercent.replace(",", ".")) || 0,
@@ -611,12 +626,25 @@ export function DialogNovoPlano({
                     className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
                   />
                 </Field>
+                <Field label="Janela de agendamento (dias)">
+                  <Input
+                    id="bookingWindowDays"
+                    type="number"
+                    min={0}
+                    placeholder="Padrão do profissional"
+                    value={bookingWindowDays}
+                    onChange={(e) => setBookingWindowDays(e.target.value)}
+                    className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+                  />
+                </Field>
               </div>
               <p className="text-[11px] text-text-faint -mt-1">
                 &quot;Serviços simultâneos&quot; define o intervalo mínimo entre usos: após o cliente usar
                 um serviço do plano, o próximo agendamento online de outro serviço do plano só
                 libera 30 min após o término do anterior — não é a quantidade de serviços no
-                mesmo agendamento (isso é o carrinho de serviços).
+                mesmo agendamento (isso é o carrinho de serviços). &quot;Janela de agendamento&quot;
+                substitui, para assinantes deste plano, quantos dias à frente o profissional
+                libera para agendar online — deixe em branco para manter o padrão do profissional.
               </p>
 
               <Field label="Dias de gratuidade">

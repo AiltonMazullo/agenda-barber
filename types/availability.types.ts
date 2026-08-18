@@ -13,4 +13,6 @@ export interface AvailabilityQuery {
   serviceIds: string[];
   /** "YYYY-MM-DD" */
   date: string;
+  /** Cliente logado, se houver — usado só para aplicar o override de janela de agendamento do plano (§5.6). */
+  clientId?: string;
 }

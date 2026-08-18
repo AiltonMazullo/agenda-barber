@@ -83,6 +83,7 @@ export const availabilityService = {
           employeeId: query.employeeId || undefined,
           serviceIds: query.serviceIds.join(","),
           date: query.date,
+          clientId: query.clientId || undefined,
         },
       },
     );

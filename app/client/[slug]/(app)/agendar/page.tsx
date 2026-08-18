@@ -292,6 +292,7 @@ export default function AgendarPage({ params }: PageProps) {
             employeeId: emp.id,
             serviceIds: selectedServices.map((s) => s.id),
             date: dateToISODate(date),
+            clientId: client?.id,
           }),
         })),
       ).then((results) => {
@@ -318,6 +319,7 @@ export default function AgendarPage({ params }: PageProps) {
           employeeId: selectedEmployee?.id,
           serviceIds: selectedServices.map((s) => s.id),
           date: dateToISODate(date),
+          clientId: client?.id,
         })
         .then((s) => {
           if (active) setAvailableSlots(s);
@@ -333,7 +335,16 @@ export default function AgendarPage({ params }: PageProps) {
     return () => {
       active = false;
     };
-  }, [step, barbershop, selectedServices, selectedEmployee, anyEmployee, date, branchEmployees]);
+  }, [
+    step,
+    barbershop,
+    selectedServices,
+    selectedEmployee,
+    anyEmployee,
+    date,
+    branchEmployees,
+    client?.id,
+  ]);
 
   // Salvaguarda: se a data é hoje, desabilita horários que já passaram.
   // Slots representam a hora de parede local ("09:00" = 09:00 no fuso do

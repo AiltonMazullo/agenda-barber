@@ -57,6 +57,8 @@ export interface Plan {
   subscriptionLockDays: number;
   maxSimultaneousServices: number;
   serviceFrequencyDays: number;
+  /** Janela de antecedência (dias) de agendamento online pra assinantes deste plano — substitui a do profissional. `null` = sem override (§5.6). */
+  bookingWindowDays: number | null;
   hidden: boolean;
   freeDays: number[];
   /** Dias da semana (0=Dom..6=Sáb) em que o plano pode ser usado para agendar. Vazio = todos os dias. */
@@ -100,6 +102,7 @@ export interface CreatePlanPayload {
   subscriptionLockDays?: number;
   maxSimultaneousServices?: number;
   serviceFrequencyDays?: number;
+  bookingWindowDays?: number | null;
   hidden?: boolean;
   freeDays?: number[];
   availableWeekdays?: number[];
