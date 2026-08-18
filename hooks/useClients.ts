@@ -14,6 +14,21 @@ export function useClients(barbershopId: string | undefined) {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refetch = useCallback(async () => {
+    if (!barbershopId) return;
+    setIsLoading(true);
+    try {
+      const data = await clientsService.list(barbershopId);
+      setClients(data);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao carregar clientes.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [barbershopId]);
+
   useEffect(() => {
     if (!barbershopId) {
       setIsLoading(false);
@@ -128,5 +143,5 @@ export function useClients(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  return { clients, isLoading, create, update, updateNotes, uploadPhoto, remove };
+  return { clients, isLoading, create, update, updateNotes, uploadPhoto, remove, refetch };
 }

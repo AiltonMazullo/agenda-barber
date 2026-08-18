@@ -6,6 +6,13 @@ import type {
 } from "@/types/client.types";
 import type { AppointmentWithProducts } from "@/types/appointment.types";
 
+export interface ClientImportResult {
+  total: number;
+  created: number;
+  skipped: number;
+  errors: { line: number; email: string; reason: string }[];
+}
+
 export const clientsService = {
   async list(barbershopId: string): Promise<Client[]> {
     const { data } = await api.get<Client[]>(
@@ -46,6 +53,21 @@ export const clientsService = {
 
   async remove(barbershopId: string, id: string): Promise<void> {
     await api.delete<void>(`/barbershops/${barbershopId}/clients/${id}`);
+  },
+
+  /** Importação em massa via CSV (spec-revisao-cliente-4.md §6.3). */
+  async importCsv(
+    barbershopId: string,
+    file: File,
+  ): Promise<ClientImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post<ClientImportResult>(
+      `/barbershops/${barbershopId}/clients/import`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return data;
   },
 
   async updateNotes(

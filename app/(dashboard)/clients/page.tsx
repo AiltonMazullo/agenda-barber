@@ -20,6 +20,7 @@ import {
   Cake,
   Download,
   Copy,
+  Upload,
 } from "lucide-react";
 import { exportToCsv } from "@/utils/csv-export";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,6 +51,7 @@ import {
   Can,
 } from "@/components/shared";
 import { DialogNovoCliente } from "@/components/clients/DialogNovoCliente";
+import { DialogImportarClientes } from "@/components/clients/DialogImportarClientes";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
@@ -283,7 +285,7 @@ function DialogEditarCliente({
 
 function ClientesContent() {
   const { barbershop } = useAuth();
-  const { clients, isLoading, create, update, uploadPhoto } = useClients(
+  const { clients, isLoading, create, update, uploadPhoto, refetch } = useClients(
     barbershop?.id,
   );
   const { appointments } = useAppointments(barbershop?.id);
@@ -299,6 +301,7 @@ function ClientesContent() {
   const [editDialog, setEditDialog] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [novoDialog, setNovoDialog] = useState(false);
+  const [importDialog, setImportDialog] = useState(false);
   const [toDeactivate, setToDeactivate] = useState<Client | null>(null);
 
   // Enriquece clientes com estatísticas de appointments
@@ -447,6 +450,16 @@ function ClientesContent() {
               Desativados
               {deactivatedIds.length > 0 ? ` (${deactivatedIds.length})` : ""}
             </Link>
+            <Can permission="cliente.cadastrar">
+              <button
+                type="button"
+                onClick={() => setImportDialog(true)}
+                className="h-9 px-4 rounded-md border border-border bg-surface-raised text-sm text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1.5"
+              >
+                <Upload className="size-3.5" />
+                Importar
+              </button>
+            </Can>
             <Can permission="cliente.cadastrar">
               <button
                 type="button"
@@ -717,6 +730,13 @@ function ClientesContent() {
         onOpenChange={setNovoDialog}
         onCreate={handleCreate}
         onUploadPhoto={uploadPhoto}
+      />
+
+      <DialogImportarClientes
+        open={importDialog}
+        onOpenChange={setImportDialog}
+        barbershopId={barbershop?.id}
+        onImported={() => void refetch()}
       />
 
       <ConfirmDialog
