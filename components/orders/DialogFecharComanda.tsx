@@ -29,9 +29,14 @@ import {
 } from "@/components/ui/table";
 import { FormSection } from "./FormSection";
 import { LabeledInput, LabeledSelect } from "./FormField";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useCashRegisters } from "@/hooks/useCashRegisters";
 import { useEmployees } from "@/hooks/useEmployees";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useProducts } from "@/hooks/useProducts";
+import { useServices } from "@/hooks/useServices";
+import { useCategories } from "@/hooks/useCategories";
+import { subscriptionsService } from "@/services/subscriptions.service";
 import {
   formatBRLFromCents,
   formatDate,
@@ -118,6 +123,130 @@ function ValorField({
         }`}
       >
         {formatBRLFromCents(valueInCents)}
+      </div>
+    </div>
+  );
+}
+
+interface CatalogoItemOption {
+  id: string;
+  nome: string;
+  categoriaId: string | null;
+  categoriaNome: string | null;
+  valorInCents: number;
+}
+
+/**
+ * Mini-form pra adicionar um produto/serviço direto no fechamento da
+ * comanda (spec-revisao-cliente-4.md §4.1) — antes só dava pra aplicar
+ * desconto em itens já lançados; adicionar exigia fechar o modal e voltar
+ * pra comanda aberta.
+ */
+function AdicionarItemForm({
+  isProduto,
+  vinculaAgendamento,
+  catalogo,
+  categorias,
+  agendamentos,
+  refId,
+  onRefIdChange,
+  appointmentId,
+  onAppointmentIdChange,
+  quantidade,
+  onQuantidadeChange,
+  valorText,
+  onValorTextChange,
+  onAdd,
+}: {
+  isProduto: boolean;
+  vinculaAgendamento: boolean;
+  catalogo: CatalogoItemOption[];
+  categorias: { id: string; name: string }[];
+  agendamentos: SelectOption<string>[];
+  refId: string;
+  onRefIdChange: (v: string) => void;
+  appointmentId: string;
+  onAppointmentIdChange: (v: string) => void;
+  quantidade: number;
+  onQuantidadeChange: (n: number) => void;
+  valorText: string;
+  onValorTextChange: (v: string) => void;
+  onAdd: () => void;
+}) {
+  const [categoriaId, setCategoriaId] = useState("__todas__");
+  const catalogoFiltrado =
+    categoriaId === "__todas__"
+      ? catalogo
+      : catalogo.filter((c) => c.categoriaId === categoriaId);
+  const podeAdicionar =
+    refId !== "" && (!vinculaAgendamento || appointmentId !== "") && (!isProduto || quantidade >= 1);
+
+  return (
+    <div className="mb-4 rounded-md border border-border-subtle bg-surface-base p-3">
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {vinculaAgendamento && (
+          <LabeledSelect
+            label="Agendamento"
+            required
+            placeholder={
+              agendamentos.length === 0 ? "Nenhum agendamento disponível" : "Selecione..."
+            }
+            value={appointmentId}
+            onValueChange={onAppointmentIdChange}
+            options={agendamentos}
+          />
+        )}
+        <LabeledSelect
+          label="Categoria"
+          value={categoriaId}
+          onValueChange={(v) => {
+            setCategoriaId(v);
+            onRefIdChange("");
+          }}
+          options={[
+            { value: "__todas__", label: "Todas" },
+            ...categorias.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
+        <LabeledSelect
+          label={isProduto ? "Produto" : "Serviço"}
+          required
+          placeholder={catalogoFiltrado.length === 0 ? "Nenhum cadastrado" : "Selecione..."}
+          value={refId}
+          onValueChange={onRefIdChange}
+          options={catalogoFiltrado.map((c) => ({
+            value: c.id,
+            label: `${c.nome} — ${formatBRLFromCents(c.valorInCents)}`,
+          }))}
+        />
+        {isProduto && (
+          <LabeledInput
+            label="Qtd."
+            required
+            type="number"
+            min={1}
+            value={quantidade}
+            onChange={(e) => onQuantidadeChange(Math.max(1, Number(e.target.value) || 1))}
+          />
+        )}
+        {isProduto && (
+          <LabeledInput
+            label="Valor"
+            inputMode="numeric"
+            placeholder="R$ 0,00"
+            value={valorText}
+            onChange={(e) => onValorTextChange(maskBRLInput(e.target.value))}
+          />
+        )}
+        <Button
+          type="button"
+          onClick={onAdd}
+          disabled={!podeAdicionar}
+          className="h-10 cursor-pointer bg-brand text-brand-foreground hover:bg-brand-hover disabled:cursor-not-allowed"
+        >
+          <Plus className="size-4" />
+          Adicionar
+        </Button>
       </div>
     </div>
   );
@@ -259,9 +388,23 @@ export function DialogFecharComanda({
   const { registers } = useCashRegisters(barbershopId);
   const { employees } = useEmployees(barbershopId);
   const { methods: paymentMethods } = usePaymentMethods(barbershopId);
+  // Catálogo pra permitir adicionar produtos/serviços direto no fechamento
+  // (spec-revisao-cliente-4.md §4.1) — antes só dava pra aplicar desconto
+  // nos itens já existentes; adicionar exigia fechar o modal e voltar pra
+  // comanda aberta.
+  const { products } = useProducts(barbershopId);
+  const { services } = useServices(barbershopId);
+  const { appointments } = useAppointments(barbershopId);
+  const { categories: categoriasProdutos } = useCategories(barbershopId, "PRODUTO");
+  const { categories: categoriasServicos } = useCategories(barbershopId, "SERVICO");
   const [itens, setItens] = useState<ComandaItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [addingItemTipo, setAddingItemTipo] = useState<ComandaItemTipo | null>(null);
+  const [novoRefId, setNovoRefId] = useState("");
+  const [novoAppointmentId, setNovoAppointmentId] = useState("");
+  const [novoQuantidade, setNovoQuantidade] = useState(1);
+  const [novoValorText, setNovoValorText] = useState("");
 
   const openRegisters = useMemo(
     () =>
@@ -350,6 +493,115 @@ export function DialogFecharComanda({
     const emp = employees.find((e) => e.id === comanda.employeeId);
     return emp ? (emp.appName || emp.name) : null;
   }, [comanda, employees]);
+
+  // Reseta o mini-form de "adicionar item" ao trocar de comanda/fechar.
+  useEffect(() => {
+    setAddingItemTipo(null);
+    setNovoRefId("");
+    setNovoAppointmentId("");
+    setNovoQuantidade(1);
+    setNovoValorText("");
+  }, [open, comanda?.id]);
+
+  const catalogoProdutos = useMemo(
+    () =>
+      products
+        .filter((p) => p.status === "ACTIVE")
+        .map((p) => ({
+          id: p.id,
+          nome: p.name,
+          categoriaId: p.category?.id ?? null,
+          categoriaNome: p.category?.name ?? null,
+          valorInCents: p.priceInCents,
+        })),
+    [products],
+  );
+  const catalogoServicos = useMemo(
+    () =>
+      services.map((s) => ({
+        id: s.id,
+        nome: s.name,
+        categoriaId: s.category?.id ?? null,
+        categoriaNome: s.category?.name ?? null,
+        valorInCents: s.priceInCents,
+      })),
+    [services],
+  );
+  const catalogoAtual = addingItemTipo === "PRODUTO" ? catalogoProdutos : catalogoServicos;
+  const categoriasAtual = addingItemTipo === "PRODUTO" ? categoriasProdutos : categoriasServicos;
+
+  const agendamentoOptions = useMemo<SelectOption<string>[]>(
+    () =>
+      (comanda?.agendamentos ?? []).map((a) => ({
+        value: a.appointmentId,
+        label: `${a.clienteNome} — ${a.servicoNome}`,
+      })),
+    [comanda],
+  );
+
+  function handleSelectNovoRef(id: string) {
+    setNovoRefId(id);
+    if (addingItemTipo === "PRODUTO") {
+      const found = catalogoProdutos.find((c) => c.id === id);
+      if (found) setNovoValorText(maskBRLInput(String(found.valorInCents)));
+    }
+  }
+
+  async function handleAddItem() {
+    if (!addingItemTipo || !novoRefId) return;
+    const ref = catalogoAtual.find((c) => c.id === novoRefId);
+    if (!ref) return;
+    const isProduto = addingItemTipo === "PRODUTO";
+    const vinculaAgendamento = comanda?.tipo === "AGENDAMENTO";
+    if (vinculaAgendamento && !novoAppointmentId) return;
+
+    let valorUnitarioInCents = isProduto
+      ? Math.round(parseBRL(novoValorText) * 100)
+      : ref.valorInCents;
+
+    // Serviço vinculado a agendamento: aplica o preço com desconto/gratuidade
+    // do plano do cliente, igual ao resto do sistema (único ponto de
+    // cobrança real de serviço é a Comanda) — mesma lógica de
+    // `useComandaForm.resolveServicoPrice`.
+    if (!isProduto && vinculaAgendamento && novoAppointmentId && barbershopId) {
+      const appointment = appointments.find((a) => a.id === novoAppointmentId);
+      if (appointment) {
+        try {
+          const pricing = await subscriptionsService.getServicePricing(
+            barbershopId,
+            appointment.clientId,
+            novoRefId,
+          );
+          if (pricing.covered) valorUnitarioInCents = pricing.priceInCents;
+        } catch {
+          // fallback: preço de catálogo já setado acima
+        }
+      }
+    }
+
+    setItens((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        tipo: addingItemTipo,
+        refId: ref.id,
+        nome: ref.nome,
+        categoriaNome: ref.categoriaNome,
+        appointmentId: vinculaAgendamento ? novoAppointmentId : null,
+        quantidade: isProduto ? novoQuantidade : 1,
+        valorUnitarioInCents,
+        descontoInCents: 0,
+      },
+    ]);
+    setNovoRefId("");
+    setNovoAppointmentId("");
+    setNovoQuantidade(1);
+    setNovoValorText("");
+  }
+
+  function handleRemoveItem(itemId: string) {
+    setItens((prev) => prev.filter((i) => i.id !== itemId));
+  }
 
   function updateItemDesconto(itemId: string, descontoInCents: number) {
     setItens((prev) =>
@@ -491,7 +743,40 @@ export function DialogFecharComanda({
             icon={<Package />}
             title="Produtos"
             subtitle="Produtos adicionados na comanda."
+            aside={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setAddingItemTipo((prev) => (prev === "PRODUTO" ? null : "PRODUTO"))
+                }
+                className="cursor-pointer gap-1.5"
+              >
+                <Plus className="size-3.5" />
+                Adicionar
+              </Button>
+            }
           >
+            {addingItemTipo === "PRODUTO" && (
+              <AdicionarItemForm
+                isProduto
+                vinculaAgendamento={comanda?.tipo === "AGENDAMENTO"}
+                catalogo={catalogoAtual}
+                categorias={categoriasAtual}
+                agendamentos={agendamentoOptions}
+                refId={novoRefId}
+                onRefIdChange={handleSelectNovoRef}
+                appointmentId={novoAppointmentId}
+                onAppointmentIdChange={setNovoAppointmentId}
+                quantidade={novoQuantidade}
+                onQuantidadeChange={setNovoQuantidade}
+                valorText={novoValorText}
+                onValorTextChange={setNovoValorText}
+                onAdd={() => void handleAddItem()}
+              />
+            )}
+
             {produtos.length === 0 ? (
               <div className="rounded-md border border-dashed border-border py-6 text-center">
                 <p className="text-sm font-medium text-muted-foreground">
@@ -507,6 +792,7 @@ export function DialogFecharComanda({
                       <TableHead>Produto</TableHead>
                       <TableHead>Quantidade</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -524,6 +810,18 @@ export function DialogFecharComanda({
                         <TableCell className="text-right font-semibold text-foreground">
                           {formatBRLFromCents(item.quantidade * item.valorUnitarioInCents)}
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(item.id)}
+                            aria-label={`Remover ${item.nome}`}
+                            className="cursor-pointer text-muted-foreground hover:bg-danger/10 hover:text-danger-foreground"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -538,7 +836,40 @@ export function DialogFecharComanda({
             icon={<Scissors />}
             title="Serviços"
             subtitle="Serviços adicionados na comanda."
+            aside={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setAddingItemTipo((prev) => (prev === "SERVICO" ? null : "SERVICO"))
+                }
+                className="cursor-pointer gap-1.5"
+              >
+                <Plus className="size-3.5" />
+                Adicionar
+              </Button>
+            }
           >
+            {addingItemTipo === "SERVICO" && (
+              <AdicionarItemForm
+                isProduto={false}
+                vinculaAgendamento={comanda?.tipo === "AGENDAMENTO"}
+                catalogo={catalogoAtual}
+                categorias={categoriasAtual}
+                agendamentos={agendamentoOptions}
+                refId={novoRefId}
+                onRefIdChange={handleSelectNovoRef}
+                appointmentId={novoAppointmentId}
+                onAppointmentIdChange={setNovoAppointmentId}
+                quantidade={novoQuantidade}
+                onQuantidadeChange={setNovoQuantidade}
+                valorText={novoValorText}
+                onValorTextChange={setNovoValorText}
+                onAdd={() => void handleAddItem()}
+              />
+            )}
+
             {servicos.length === 0 ? (
               <div className="rounded-md border border-dashed border-border py-6 text-center">
                 <p className="text-sm font-medium text-muted-foreground">
@@ -553,6 +884,7 @@ export function DialogFecharComanda({
                       <TableHead>Profissional</TableHead>
                       <TableHead>Serviço</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -566,6 +898,18 @@ export function DialogFecharComanda({
                         <TableCell className="text-foreground">{item.nome}</TableCell>
                         <TableCell className="text-right font-semibold text-foreground">
                           {formatBRLFromCents(item.quantidade * item.valorUnitarioInCents)}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(item.id)}
+                            aria-label={`Remover ${item.nome}`}
+                            className="cursor-pointer text-muted-foreground hover:bg-danger/10 hover:text-danger-foreground"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
