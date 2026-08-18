@@ -478,14 +478,18 @@ export default function SchedulePage() {
     setDialogDetalhe(true);
   }, []);
 
-  /** Comanda ainda aberta já vinculada ao agendamento selecionado, se houver. */
+  /**
+   * Comanda já vinculada ao agendamento selecionado — aberta OU fechada
+   * (spec-revisao-cliente-4.md §3.3: antes só considerava "ABERTA", então
+   * clicar num agendamento cuja comanda já tinha sido fechada criava um
+   * draft novo em vez de abrir a comanda real). Quando encontrada, o botão
+   * "Ver comanda" leva direto pra ela em vez de montar um novo rascunho.
+   */
   const comandaAbertaDoAgendamento = useMemo(() => {
     if (!agSelecionado) return null;
     return (
-      comandas.find(
-        (c) =>
-          c.status === "ABERTA" &&
-          c.agendamentos.some((a) => a.appointmentId === agSelecionado.id),
+      comandas.find((c) =>
+        c.agendamentos.some((a) => a.appointmentId === agSelecionado.id),
       ) ?? null
     );
   }, [comandas, agSelecionado]);
