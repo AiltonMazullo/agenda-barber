@@ -327,6 +327,7 @@ export function useSchedule(
       let first: Appointment | null = null;
 
       let i = 0;
+      let isFirstBatch = true;
       while (i < input.servicos.length) {
         const profissionalId = input.servicos[i].profissionalId;
         const batch = [];
@@ -346,7 +347,11 @@ export function useSchedule(
           serviceIds: batch.map((sv) => sv.servicoId),
           employeeId: profissionalId || undefined,
           scheduledAt: dt.toISOString(),
+          // Observação vai só no primeiro card do agendamento (mesmo padrão
+          // do backend, que grava só no primeiro item do grupo).
+          notes: isFirstBatch ? input.observacao || undefined : undefined,
         });
+        isFirstBatch = false;
         if (created) {
           // Enriquece localmente (employeeId/employee/client) pra o card
           // aparecer imediatamente na coluna correta do kanban.

@@ -311,8 +311,11 @@ export default function SchedulePage() {
     profissionais.forEach((p) => (map[p.id] = []));
     map[SEM_PREFERENCIA_ID] = [];
     agendamentos.forEach((ag) => {
-      // Cancelados (e faltas) aparecem apenas na visualização em lista.
-      if (ag.status === "CANCELLED" || ag.status === "NO_SHOW") return;
+      // Cancelados aparecem só na visualização em lista. Faltas (NO_SHOW)
+      // continuam na grade (spec-revisao-cliente-4.md §3.2) — só mudam de
+      // cor conforme a configuração de status; remover da agenda é ação
+      // manual do usuário (item "Remover" no dropdown do card).
+      if (ag.status === "CANCELLED") return;
       if (map[ag.profissionalId]) map[ag.profissionalId].push(ag);
     });
     return map;

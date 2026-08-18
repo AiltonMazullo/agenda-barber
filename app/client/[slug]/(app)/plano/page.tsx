@@ -50,8 +50,6 @@ function isProfileCompleteForCheckout(client: Client): boolean {
   );
 }
 
-const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
 function formatCents(cents: number): string {
   return formatBRL(cents / 100);
 }
@@ -75,10 +73,8 @@ function PlanCard({
 }: PlanCardProps) {
   const accentColor = plan.labelColor ?? "#f5b82e";
 
-  const freeDayLabels =
-    plan.freeDays.length > 0
-      ? plan.freeDays.map((d) => DAY_NAMES[d] ?? String(d)).join(", ")
-      : null;
+  // "Dias de gratuidade" (freeDays) é config interna do backoffice — não deve
+  // aparecer no app do cliente (spec-revisao-cliente-4.md §5.4).
 
   const availableWeekdaysLabel =
     plan.availableWeekdays.length > 0 ? formatWeekdays(plan.availableWeekdays) : "Todos os dias";
@@ -168,24 +164,12 @@ function PlanCard({
           <div className="rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
             <Calendar className="size-3.5 text-muted-foreground shrink-0" />
             <div>
-              <p className="text-[10px] text-muted-foreground">Dias livres</p>
+              <p className="text-[10px] text-muted-foreground">Permitido para</p>
               <p className="text-xs font-semibold text-foreground">
                 {availableWeekdaysLabel}
               </p>
             </div>
           </div>
-
-          {freeDayLabels && (
-            <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">
-              <Calendar className="size-3.5 text-muted-foreground shrink-0" />
-              <div>
-                <p className="text-[10px] text-muted-foreground">Dias de gratuidade</p>
-                <p className="text-xs font-semibold text-foreground">
-                  {freeDayLabels}
-                </p>
-              </div>
-            </div>
-          )}
 
           {plan.serviceFrequencyDays > 0 && (
             <div className="col-span-2 rounded-lg bg-surface-base border border-border-subtle px-3 py-2 flex items-center gap-2">

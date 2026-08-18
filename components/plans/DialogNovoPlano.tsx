@@ -647,7 +647,7 @@ export function DialogNovoPlano({
                 </div>
               </Field>
 
-              <Field label="Dias livres para agendar">
+              <Field label="Permitido para">
                 <div className="flex gap-1.5 flex-nowrap">
                   {WEEK_DAYS.map(({ value, short }) => {
                     const active = availableWeekdays.includes(value);

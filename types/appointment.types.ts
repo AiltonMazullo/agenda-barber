@@ -45,6 +45,8 @@ export interface AppointmentRaw {
   groupId: string | null;
   /** Sobrescreve a duração padrão do serviço (resize na agenda, ver §5.3). Null = usa `service.durationMin`. */
   durationOverrideMin: number | null;
+  /** Observação livre digitada na criação/edição (spec-revisao-cliente-4.md §2.3). */
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,6 +102,8 @@ export interface CreateAppointmentPayload {
   scheduledAt: string;
   /** Confirma a criação mesmo com o aviso de conflito de plano (§1.1). */
   force?: boolean;
+  /** Observação livre (spec-revisao-cliente-4.md §2.3). */
+  notes?: string;
 }
 
 /** Resposta de `POST /appointments` quando há um conflito não bloqueante (regra dos 30 min por plano). */

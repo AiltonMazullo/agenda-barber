@@ -47,6 +47,7 @@ import {
 import { DialogFecharComanda } from "@/components/orders";
 import { useAuth } from "@/hooks/useAuth";
 import { useComandas } from "@/hooks/useComandas";
+import { useEmployees } from "@/hooks/useEmployees";
 import { usePagination } from "@/hooks/usePagination";
 import { comandaClienteLabel, comandaToDraft, comandaTotalInCents } from "@/utils/comanda";
 import { exportToCsv } from "@/utils/csv-export";
@@ -85,6 +86,21 @@ function toISODate(d: Date | undefined): string | undefined {
 
 export default function ComandasPage() {
   const { barbershop } = useAuth();
+  const { employees } = useEmployees(barbershop?.id);
+
+  // Resolve o profissional da comanda (spec-revisao-cliente-4.md §4.2): em
+  // comandas de agendamento, os nomes vêm do snapshot de cada agendamento
+  // vinculado; em comandas avulsas, do `employeeId` da própria comanda.
+  const comandaProfissionalLabel = (comanda: Comanda): string => {
+    if (comanda.tipo === "AVULSA") {
+      const nome = employees.find((e) => e.id === comanda.employeeId)?.name;
+      return nome ?? "—";
+    }
+    const nomes = Array.from(
+      new Set(comanda.agendamentos.map((a) => a.profissionalNome).filter(Boolean)),
+    );
+    return nomes.length > 0 ? nomes.join(", ") : "—";
+  };
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const { comandas, isLoading, update, setStatus, remove } = useComandas(
@@ -281,6 +297,9 @@ export default function ComandasPage() {
                     <TableHead className="hidden sm:table-cell">
                       Itens
                     </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Profissional
+                    </TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-12 text-right">Ações</TableHead>
@@ -317,6 +336,9 @@ export default function ComandasPage() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">
                         {comanda.itens.length}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">
+                        {comandaProfissionalLabel(comanda)}
                       </TableCell>
                       <TableCell className="font-semibold text-foreground">
                         {formatBRL(comandaTotalInCents(comanda.itens) / 100)}

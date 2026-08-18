@@ -32,13 +32,16 @@ export function PlanoRegrasCard({ plan, usage }: PlanoRegrasCardProps) {
     },
   ];
 
-  if (plan.freeDays.length > 0) {
-    metrics.push({
-      icon: <CalendarOff className="size-3.5" />,
-      label: "Dias livres",
-      value: formatWeekdays(plan.freeDays),
-    });
-  }
+  // "Dias de gratuidade" (freeDays) é config interna do backoffice — não
+  // aparece no app do cliente (spec-revisao-cliente-4.md §5.4). O card mostra
+  // em vez disso os dias em que o plano vale ("Permitido para" — availableWeekdays,
+  // renomeado de "Dias livres", §5.5).
+  metrics.push({
+    icon: <CalendarOff className="size-3.5" />,
+    label: "Permitido para",
+    value:
+      plan.availableWeekdays.length > 0 ? formatWeekdays(plan.availableWeekdays) : "Todos os dias",
+  });
 
   return (
     <Card className="bg-surface-raised border border-border-subtle ring-0">
