@@ -1143,6 +1143,78 @@ function RelHistoricoTransacoesAssinaturas() {
   );
 }
 
+/**
+ * "Soma e divisão de assinaturas" (spec-revisao-cliente-4.md §6.1) —
+ * reconciliação por profissional: catálogo (bruto) = cobrado + desconto de
+ * plano, sempre 100%. Puxa os dados automaticamente (comandas fechadas do
+ * período), sem input manual.
+ */
+function RelAssinaturasSomaDivisao() {
+  const { barbershopId, rf, data, isLoading } = useReportPage(
+    reportsService.assinaturasSomaDivisao,
+  );
+  const totais = data?.totais;
+  const rows = data?.porProfissional ?? [];
+  return (
+    <div className="space-y-4">
+      <Filters barbershopId={barbershopId} fields={["period", "branch"]} rf={rf} />
+      {isLoading ? (
+        <LoadingState />
+      ) : (
+        <>
+          {totais && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-4">
+                <p className="text-xs text-muted-foreground">Valor de catálogo (100%)</p>
+                <p className="mt-1 text-lg font-bold text-foreground">
+                  {brl(totais.catalogoInCents)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-4">
+                <p className="text-xs text-muted-foreground">Cobrado do cliente</p>
+                <p className="mt-1 text-lg font-bold text-foreground">
+                  {brl(totais.cobradoInCents)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-subtle bg-surface-raised p-4">
+                <p className="text-xs text-muted-foreground">Coberto pelo plano/desconto</p>
+                <p className="mt-1 text-lg font-bold text-brand">
+                  {brl(totais.descontoPlanoInCents)}
+                </p>
+              </div>
+            </div>
+          )}
+          <ReportTable
+            columns={[
+              "Profissional",
+              "Serviços",
+              "Catálogo (100%)",
+              "Cobrado",
+              "Desconto de plano",
+              "Reconciliado",
+            ]}
+            rows={rows}
+            keyFn={(r) => r.profissionalId ?? r.profissional}
+            emptyMessage="Sem serviços de assinantes em comandas fechadas no período."
+            renderRow={(r) => [
+              r.profissional,
+              r.servicos,
+              brl(r.catalogoInCents),
+              brl(r.cobradoInCents),
+              <span key="d" className="text-brand font-semibold">
+                {brl(r.descontoPlanoInCents)}
+              </span>,
+              <StatusBadge key="ok" tone={r.percentReconciliado === 100 ? "success" : "neutral"}>
+                {r.percentReconciliado}%
+              </StatusBadge>,
+            ]}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Marketing de Experiência ───────────────────────────────────────────────
 
 function RelListaEsperaPlano() {
@@ -1423,6 +1495,12 @@ const REPORT_GROUPS: ReportGroup[] = [
         label: "Histórico de Transações",
         description: "Cobranças de assinatura no período, com status e valor.",
       },
+      {
+        key: "assinaturas_soma_divisao",
+        label: "Soma e divisão de assinaturas",
+        description:
+          "Reconciliação por profissional: valor de catálogo, cobrado do cliente e desconto de plano (sempre 100%).",
+      },
     ],
   },
   {
@@ -1513,6 +1591,8 @@ function renderSubReport(key: string): React.ReactNode {
       return <RelAlteracoesAssinaturas />;
     case "historico_transacoes_assinaturas":
       return <RelHistoricoTransacoesAssinaturas />;
+    case "assinaturas_soma_divisao":
+      return <RelAssinaturasSomaDivisao />;
     case "lista_espera_plano":
       return <RelListaEsperaPlano />;
     case "documentos_profissional":

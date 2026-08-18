@@ -263,6 +263,31 @@ export interface TransacaoAssinaturaRow {
   gatewayProvider: string | null;
 }
 
+/** Uma linha do relatório "Soma e divisão de assinaturas" (§6.1) — reconciliação por profissional. */
+export interface AssinaturaSomaDivisaoRow {
+  profissionalId: string | null;
+  profissional: string;
+  /** Preço cheio de catálogo (bruto, 100%). */
+  catalogoInCents: number;
+  /** O que o cliente efetivamente pagou (já com desconto de plano/manual). */
+  cobradoInCents: number;
+  /** Diferença coberta pelo plano/desconto — catalogoInCents = cobradoInCents + descontoPlanoInCents. */
+  descontoPlanoInCents: number;
+  servicos: number;
+  /** Sempre 100 — exposto pra validar visualmente a reconciliação. */
+  percentReconciliado: number;
+}
+
+export interface AssinaturaSomaDivisaoResult {
+  totais: {
+    catalogoInCents: number;
+    cobradoInCents: number;
+    descontoPlanoInCents: number;
+    servicos: number;
+  };
+  porProfissional: AssinaturaSomaDivisaoRow[];
+}
+
 export interface ListaEsperaPlanoRow {
   id: string;
   data: string;

@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import type {
   AgendamentoReportRow,
   AlteracaoAssinaturaRow,
+  AssinaturaSomaDivisaoResult,
   AniversarianteRow,
   CaptacaoRow,
   ClienteAusenteRow,
@@ -316,6 +317,17 @@ export const reportsService = {
   ): Promise<TransacaoAssinaturaRow[]> {
     const { data } = await api.get<TransacaoAssinaturaRow[]>(
       `${base(barbershopId)}/historico-transacoes-assinaturas`,
+      { params: params(filters) },
+    );
+    return data;
+  },
+
+  async assinaturasSomaDivisao(
+    barbershopId: string,
+    filters: ReportFilters,
+  ): Promise<AssinaturaSomaDivisaoResult> {
+    const { data } = await api.get<AssinaturaSomaDivisaoResult>(
+      `${base(barbershopId)}/assinaturas-soma-divisao`,
       { params: params(filters) },
     );
     return data;
