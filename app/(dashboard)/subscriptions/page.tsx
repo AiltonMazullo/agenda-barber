@@ -50,7 +50,6 @@ import {
   SummaryCard,
   EmptyState,
   DataTablePagination,
-  ConfirmDialog,
   Loading,
 } from "@/components/shared";
 import { DialogNovoPlano } from "@/components/plans/DialogNovoPlano";
@@ -66,7 +65,6 @@ import { useCategories } from "@/hooks/useCategories";
 import { usePagination } from "@/hooks/usePagination";
 import { plansService } from "@/services/plans.service";
 import type { CreatePlanPayload, Plan } from "@/types/plan.types";
-import type { Subscription } from "@/types/subscription.types";
 
 type Tab = "assinantes" | "planos";
 
@@ -97,13 +95,12 @@ function QuickLinksBar() {
 
 function AssinantesTab() {
   const { barbershop } = useAuth();
-  const { activeSubscriptions, summary, isLoading, cancel, refetch } = useSubscriptions(
+  const { activeSubscriptions, summary, isLoading, refetch } = useSubscriptions(
     barbershop?.id,
   );
 
   const { plans } = usePlans(barbershop?.id);
   const [search, setSearch] = useState("");
-  const [toCancel, setToCancel] = useState<Subscription | null>(null);
   const [novaAssinaturaOpen, setNovaAssinaturaOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -133,12 +130,6 @@ function AssinantesTab() {
   }, [activeSubscriptions, search, showOnlyOverdue, summary.overdueSubscriptionIds]);
 
   const pag = usePagination(filtered, 10);
-
-  function doCancel() {
-    if (!toCancel) return;
-    void cancel(toCancel.id);
-    setToCancel(null);
-  }
 
   return (
     <div className="space-y-5">
@@ -307,14 +298,13 @@ function AssinantesTab() {
                         {formatDate(s.startedAt)}
                       </TableCell>
                       <TableCell className="px-4 py-4">
-                        <button
-                          type="button"
-                          onClick={() => setToCancel(s)}
-                          title="Cancelar assinatura"
+                        <Link
+                          href={`/subscriptions/pre-cancelados/novo?subscriptionId=${s.id}`}
+                          title="Agendar cancelamento (fim do ciclo)"
                           className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
                         >
                           <UserMinus className="size-3" />
-                        </button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))
@@ -337,20 +327,6 @@ function AssinantesTab() {
           )}
         </CardContent>
       </Card>
-
-      <ConfirmDialog
-        open={toCancel !== null}
-        onOpenChange={(v) => !v && setToCancel(null)}
-        title="Cancelar assinatura?"
-        description={
-          toCancel
-            ? `A assinatura de "${toCancel.client.name}" ao plano "${toCancel.plan.name}" será cancelada.`
-            : undefined
-        }
-        confirmLabel="Cancelar assinatura"
-        tone="danger"
-        onConfirm={doCancel}
-      />
 
       {barbershop && (
         <DialogNovaAssinatura

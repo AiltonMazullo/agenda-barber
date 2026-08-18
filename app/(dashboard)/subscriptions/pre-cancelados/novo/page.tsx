@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { PageHeader, DatePickerField, SelectField } from "@/components/shared";
@@ -12,6 +12,7 @@ import { CANCEL_REASON_OPTIONS, type CancelReasonCode } from "@/types/pre-cancel
 
 export default function NovoPreCanceladoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { barbershop } = useAuth();
   const { activeSubscriptions } = useSubscriptions(barbershop?.id);
   const { create } = usePreCancelledClients(barbershop?.id);
@@ -20,6 +21,24 @@ export default function NovoPreCanceladoPage() {
   const [cancelDate, setCancelDate] = useState<Date | undefined>(new Date());
   const [reason, setReason] = useState<CancelReasonCode | "">("");
   const [saving, setSaving] = useState(false);
+
+  // Pré-seleciona a assinatura quando chega do botão "Cancelar assinatura"
+  // da lista de assinantes (spec-revisao-cliente-4.md §5.2 — o botão de lá
+  // agora aponta pra cá em vez de cancelar imediatamente) e sugere a data
+  // fim como o próximo vencimento da assinatura (fim do ciclo já pago).
+  useEffect(() => {
+    const fromQuery = searchParams.get("subscriptionId");
+    if (!fromQuery) return;
+    setSubscriptionId(fromQuery);
+    const sub = activeSubscriptions.find((s) => s.id === fromQuery);
+    if (sub?.billingDay) {
+      const today = new Date();
+      const next = new Date(today.getFullYear(), today.getMonth(), sub.billingDay);
+      if (next <= today) next.setMonth(next.getMonth() + 1);
+      setCancelDate(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, activeSubscriptions.length]);
 
   async function handleSubmit() {
     if (!subscriptionId || !cancelDate || !reason) return;
