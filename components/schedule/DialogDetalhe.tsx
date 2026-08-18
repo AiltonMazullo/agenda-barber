@@ -44,6 +44,7 @@ import { useWhatsappSettings } from "@/hooks/useWhatsappSettings";
 import { useClientRecentAppointments } from "@/hooks/useClientRecentAppointments";
 import { useClientDueRepurchases } from "@/hooks/useClientDueRepurchases";
 import { auditLogService } from "@/services/audit-log.service";
+import { subscriptionsService } from "@/services/subscriptions.service";
 import { buildWhatsappLink, renderWhatsappMessage } from "@/utils/whatsapp-template";
 import type {
   AgendamentoVM,
@@ -61,6 +62,7 @@ import type { AuditLog } from "@/types/audit-log.types";
 import type { Client } from "@/types/client.types";
 import type { Branch } from "@/types/branch.types";
 import type { Comanda } from "@/types/orders.types";
+import type { ServicePricing } from "@/types/subscription.types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
@@ -219,6 +221,37 @@ export function DialogDetalhe({
 
   const planosAtivos = clientId ? (clientActivePlans.get(clientId) ?? []) : [];
 
+  // Recalcula o valor com desconto de plano sempre que o dialog abre — o
+  // preço não é persistido no agendamento (spec-revisao-cliente-4.md §1.2),
+  // então precisa ser recalculado aqui do mesmo jeito que no dialog de
+  // criação, senão volta a exibir o preço cheio do catálogo.
+  const [pricingByService, setPricingByService] = useState<
+    Map<string, ServicePricing>
+  >(new Map());
+
+  useEffect(() => {
+    if (!open || !clientId || !barbershop?.id || !agendamento) {
+      setPricingByService(new Map());
+      return;
+    }
+    let active = true;
+    const servicoIds = Array.from(new Set(agendamento.servicos.map((s) => s.id)));
+    Promise.all(
+      servicoIds.map((id) =>
+        subscriptionsService
+          .getServicePricing(barbershop.id, clientId, id)
+          .then((p) => [id, p] as const)
+          .catch(() => [id, { covered: false as const }] as const),
+      ),
+    ).then((entries) => {
+      if (!active) return;
+      setPricingByService(new Map(entries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, clientId, barbershop?.id, agendamento]);
+
   // ── Reset ao abrir ──
   useEffect(() => {
     if (!open || !agendamento) return;
@@ -249,6 +282,21 @@ export function DialogDetalhe({
     setHistorico([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agendamento?.id]);
+
+  // Reaplica o valor com desconto de plano assim que `pricingByService`
+  // resolve (mesmo padrão de DialogNovoAgendamento) — roda depois do reset
+  // acima, sem re-disparar o reset inteiro a cada nova precificação.
+  useEffect(() => {
+    if (pricingByService.size === 0) return;
+    setRows((prev) =>
+      prev.map((r) => {
+        const pricing = pricingByService.get(r.servicoId);
+        if (!pricing || !pricing.covered) return r;
+        const valor = pricing.free ? 0 : pricing.priceInCents / 100;
+        return valor !== r.valor ? { ...r, valor } : r;
+      }),
+    );
+  }, [pricingByService]);
 
   const mensagemConfirmacao = useMemo(() => {
     if (!agendamento || !servico) return "";
