@@ -75,6 +75,8 @@ export interface AgendamentoVM {
   aniversarianteSemana: boolean;
   /** Cliente tem observação interna cadastrada. */
   temNota: boolean;
+  /** Cor (`Plan.labelColor`) do plano ativo do cliente — null quando não é assinante (spec-revisao-cliente-4.md §3.1). */
+  planCor: string | null;
 }
 
 /** Um serviço escolhido no agendamento (com profissional opcional). */

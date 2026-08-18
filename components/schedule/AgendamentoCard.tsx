@@ -8,6 +8,17 @@ import { STATUS_COR } from "./status";
 import { AgendamentoIcones } from "./AgendamentoIcones";
 import type { AgendamentoVM, ServicoVM, SlotSize } from "./types";
 
+/** `#rrggbb` -> `rgba(r,g,b,alpha)`. Cai para preto se a cor vier num formato inesperado. */
+function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return `rgba(28,33,40,${alpha})`;
+  const int = parseInt(m[1], 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export function AgendamentoCard({
   agendamento,
   servico,
@@ -31,6 +42,10 @@ export function AgendamentoCard({
   const duracao = agendamento.duracao;
   const heightPx = (duracao / slotSize) * slotHeightPx;
   const statusCor = STATUS_COR[agendamento.status];
+  // Cliente assinante: fundo ganha um tint da cor do plano, pra identificar
+  // visualmente quem é assinante direto na agenda (spec-revisao-cliente-4.md
+  // §3.1) — a borda continua na cor do status (não muda de significado).
+  const planBg = agendamento.planCor ? hexToRgba(agendamento.planCor, 0.28) : null;
 
   return (
     <div
@@ -53,8 +68,8 @@ export function AgendamentoCard({
         // item 4): fundo listrado diagonal em vez de sólido, pra diferenciar o
         // card visualmente de um agendamento com profissional definido.
         background: agendamento.semPreferencia
-          ? "repeating-linear-gradient(135deg, rgba(28,33,40,0.97) 0px, rgba(28,33,40,0.97) 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)"
-          : "rgba(28,33,40,0.97)",
+          ? `repeating-linear-gradient(135deg, ${planBg ?? "rgba(28,33,40,0.97)"} 0px, ${planBg ?? "rgba(28,33,40,0.97)"} 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)`
+          : (planBg ?? "rgba(28,33,40,0.97)"),
         // Bordas laterais e inferior conforme a situação do agendamento.
         borderLeft: `3px solid ${statusCor}`,
         borderRight: `1.5px solid ${statusCor}`,

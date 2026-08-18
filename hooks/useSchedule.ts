@@ -94,6 +94,15 @@ export function useSchedule(
   const [clientActivePlans, setClientActivePlans] = useState<Map<string, string[]>>(
     new Map(),
   );
+  /**
+   * Cor (`Plan.labelColor`) do plano ativo de cada cliente — usada para
+   * colorir o bloco do agendamento na agenda (spec-revisao-cliente-4.md
+   * §3.1). Cliente com mais de um plano ativo usa a cor do primeiro
+   * encontrado (mesma ordem de chegada de `clientActivePlans`).
+   */
+  const [clientActivePlanColor, setClientActivePlanColor] = useState<Map<string, string>>(
+    new Map(),
+  );
 
   useEffect(() => {
     if (!barbershopId) return;
@@ -104,6 +113,7 @@ export function useSchedule(
         if (!active) return;
         const statusMap = new Map<string, AssinanteSituacao>();
         const plansMap = new Map<string, string[]>();
+        const colorMap = new Map<string, string>();
         for (const contract of res.contracts) {
           const situacao: AssinanteSituacao =
             contract.contractStatus === "ATRASADO" ? "inadimplente" : "ativo";
@@ -114,10 +124,14 @@ export function useSchedule(
             const names = plansMap.get(contract.clientId) ?? [];
             names.push(contract.plan.name);
             plansMap.set(contract.clientId, names);
+            if (!colorMap.has(contract.clientId) && contract.plan.labelColor) {
+              colorMap.set(contract.clientId, contract.plan.labelColor);
+            }
           }
         }
         setSubscriberStatusByClient(statusMap);
         setClientActivePlans(plansMap);
+        setClientActivePlanColor(colorMap);
       })
       .catch(() => {
         // silencioso — ícone de assinante simplesmente não aparece
@@ -294,6 +308,7 @@ export function useSchedule(
         assinante: subscriberStatusByClient.get(primary.clientId) ?? null,
         aniversarianteSemana: isBirthdayThisWeek(cli?.birthDate),
         temNota: !!cli?.notes?.trim(),
+        planCor: clientActivePlanColor.get(primary.clientId) ?? null,
       } satisfies AgendamentoVM;
     });
   }, [
@@ -304,6 +319,7 @@ export function useSchedule(
     clientById,
     firstAppointmentIdByClient,
     subscriberStatusByClient,
+    clientActivePlanColor,
   ]);
 
   // ─── Agendamentos do dia selecionado (kanban) ───────────────────────────────
@@ -505,6 +521,7 @@ export function useSchedule(
     updateAgendamento,
     transferAgendamento,
     clientActivePlans,
+    clientActivePlanColor,
     refetchAgendamentos: refetch,
   };
 }
