@@ -51,6 +51,7 @@ const CLIENT_PROTECTED_SUBS = [
   "agendamentos",
   "plano",
   "perfil",
+  "cupons",
 ];
 const CLIENT_PUBLIC_AUTH_SUBS = ["login", "register", "forgot-password"];
 

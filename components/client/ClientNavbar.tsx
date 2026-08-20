@@ -8,6 +8,7 @@ import {
   Home,
   CalendarCheck,
   CreditCard,
+  Ticket,
   User as UserIcon,
   LogOut,
   LogIn,
@@ -43,6 +44,7 @@ export function ClientNavbar({ slug }: ClientNavbarProps) {
     { href: base, label: "Início", icon: Home },
     { href: `${base}/agendamentos`, label: "Agendamentos", icon: CalendarCheck },
     { href: `${base}/plano`, label: "Plano", icon: CreditCard },
+    { href: `${base}/cupons`, label: "Cupons", icon: Ticket },
     { href: `${base}/perfil`, label: "Perfil", icon: UserIcon },
   ];
 

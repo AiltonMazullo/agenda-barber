@@ -41,3 +41,8 @@ export interface CreateCouponPayload {
 export interface CouponUsage extends Coupon {
   partnerCompany: PartnerCompany;
 }
+
+/** Cupom do cliente final (autoatendimento) — sempre com a empresa parceira embutida. */
+export interface MyCoupon extends Coupon {
+  partnerCompany: PartnerCompany;
+}
