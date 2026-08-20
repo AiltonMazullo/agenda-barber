@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
-import { PageHeader, DatePickerField, SelectField } from "@/components/shared";
+import { PageHeader, DatePickerField, SelectField, Loading } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { usePreCancelledClients } from "@/hooks/usePreCancelledClients";
 import { CANCEL_REASON_OPTIONS, type CancelReasonCode } from "@/types/pre-cancelled-client.types";
 
-export default function NovoPreCanceladoPage() {
+function NovoPreCanceladoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { barbershop } = useAuth();
@@ -111,5 +111,13 @@ export default function NovoPreCanceladoPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NovoPreCanceladoPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <NovoPreCanceladoContent />
+    </Suspense>
   );
 }
