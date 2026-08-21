@@ -393,9 +393,11 @@ function SortablePlanRow({
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {formatBRL(plan.priceInCents / 100)}
-          {plan.availableQuantity != null
-            ? ` · ${plan.availableQuantity} vagas`
-            : " · 0 vagas (defina uma quantidade para liberar contratações)"}
+          {plan.unlimitedSales
+            ? " · Sem limite de vendas"
+            : plan.availableQuantity != null
+              ? ` · ${plan.availableQuantity} vagas`
+              : " · 0 vagas (defina uma quantidade para liberar contratações)"}
         </p>
       </TableCell>
       <TableCell className="px-4 py-3">

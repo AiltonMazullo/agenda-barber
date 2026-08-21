@@ -54,6 +54,8 @@ export interface Plan {
   labelColor: string;
   galaxId: string | null;
   availableQuantity: number | null;
+  /** Quando true, ignora `availableQuantity` — plano sempre disponível para contratação. */
+  unlimitedSales: boolean;
   subscriptionLockDays: number;
   maxSimultaneousServices: number;
   serviceFrequencyDays: number;
@@ -99,6 +101,7 @@ export interface CreatePlanPayload {
   labelColor: string;
   galaxId?: string;
   availableQuantity?: number | null;
+  unlimitedSales?: boolean;
   subscriptionLockDays?: number;
   maxSimultaneousServices?: number;
   serviceFrequencyDays?: number;

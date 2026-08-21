@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SelectField } from "@/components/shared";
 import { toast } from "sonner";
 import { apiAssetUrl } from "@/lib/api";
@@ -97,6 +98,7 @@ export function DialogNovoPlano({
   const [hexInput, setHexInput] = useState("#F5A623");
   const [galaxId, setGalaxId] = useState("");
   const [availableQuantity, setAvailableQuantity] = useState("");
+  const [unlimitedSales, setUnlimitedSales] = useState(false);
   const [hidden, setHidden] = useState(false);
 
   // regras operacionais
@@ -144,6 +146,7 @@ export function DialogNovoPlano({
     setAvailableQuantity(
       plan?.availableQuantity != null ? String(plan.availableQuantity) : "",
     );
+    setUnlimitedSales(plan?.unlimitedSales ?? false);
     setHidden(plan?.hidden ?? false);
     setFreeDays(plan?.freeDays ?? []);
     setAvailableWeekdays(
@@ -369,7 +372,7 @@ export function DialogNovoPlano({
     const qty = availableQuantity.trim()
       ? parseInt(availableQuantity, 10)
       : undefined;
-    if (qty !== undefined && (Number.isNaN(qty) || qty <= 0)) {
+    if (!unlimitedSales && qty !== undefined && (Number.isNaN(qty) || qty <= 0)) {
       toast.error("Quantidade disponível deve ser um número positivo.");
       return;
     }
@@ -437,7 +440,8 @@ export function DialogNovoPlano({
         priceInCents,
         labelColor,
         galaxId: galaxId.trim() || undefined,
-        availableQuantity: qty ?? null,
+        availableQuantity: unlimitedSales ? null : (qty ?? null),
+        unlimitedSales,
         hidden,
         freeDays,
         availableWeekdays: availableWeekdays.map(isoToWeekday0).sort((a, b) => a - b),
@@ -532,13 +536,24 @@ export function DialogNovoPlano({
                     value={availableQuantity}
                     onChange={(e) => setAvailableQuantity(e.target.value)}
                     placeholder="0 (sem vagas)"
-                    className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
+                    disabled={unlimitedSales}
+                    className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10 disabled:opacity-50"
                   />
                 </Field>
               </div>
+              <label className="flex items-center gap-2 -mt-1 cursor-pointer w-fit">
+                <Checkbox
+                  checked={unlimitedSales}
+                  onCheckedChange={(v) => setUnlimitedSales(v === true)}
+                />
+                <span className="text-xs font-medium text-foreground">
+                  Sem limite de vendas
+                </span>
+              </label>
               <p className="text-[11px] text-text-faint -mt-1">
-                Deixar em branco = 0 vagas: o plano fica indisponível para novas contratações até
-                você definir uma quantidade.
+                {unlimitedSales
+                  ? "O plano fica sempre disponível para novas contratações, sem esgotar vagas."
+                  : "Deixar em branco = 0 vagas: o plano fica indisponível para novas contratações até você definir uma quantidade."}
               </p>
 
               <div className="grid grid-cols-2 gap-3">
