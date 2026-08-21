@@ -143,6 +143,34 @@ export function useComandaForm(
   );
 
   /**
+   * Profissional de um item da comanda — resolve pelo agendamento vinculado
+   * (`appointmentId`) e cai pro profissional responsável da comanda quando o
+   * item não está atrelado a um agendamento específico (AVULSA). Usado pra
+   * listar o profissional em cada linha de `ItensSection` (mesmo padrão de
+   * `DialogFecharComanda`).
+   */
+  const profissionalResponsavel = useMemo(
+    () => (comanda?.employeeId ? (employeeNameById.get(comanda.employeeId) ?? null) : null),
+    [comanda, employeeNameById],
+  );
+  const resolveItemProfissional = useCallback(
+    (appointmentId: string | null) => {
+      if (appointmentId) {
+        const appointment = appointments.find((a) => a.id === appointmentId);
+        const empId = appointment?.employeeId ?? appointment?.employee?.id ?? "";
+        const nome =
+          employeeNameById.get(empId) ??
+          appointment?.employee?.appName ??
+          appointment?.employee?.name ??
+          null;
+        if (nome) return nome;
+      }
+      return profissionalResponsavel;
+    },
+    [appointments, employeeNameById, profissionalResponsavel],
+  );
+
+  /**
    * Agendamentos ainda não vinculados, disponíveis para adicionar — ver
    * spec-revisao-cliente-1.md §6.2. Restrito ao mesmo dia e ao mesmo cliente
    * do primeiro agendamento já vinculado (o que originou a comanda),
@@ -476,6 +504,7 @@ export function useComandaForm(
     agendamentoOptions,
     linkedOptions,
     availableToLinkOptions,
+    resolveItemProfissional,
     clienteOptions,
     /** Lista crua de clientes — usada pela busca com autocomplete (spec-revisao-cliente-4.md §4.4). */
     clients,

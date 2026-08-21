@@ -144,6 +144,7 @@ export function ComandaForm({
         categorias={form.categoriasProdutos}
         catalogo={form.produtos}
         itens={form.itens}
+        resolveProfissional={form.resolveItemProfissional}
         onAdd={form.addItem}
         onRemove={form.removeItem}
       />
@@ -155,6 +156,7 @@ export function ComandaForm({
         categorias={form.categoriasServicos}
         catalogo={form.servicos}
         itens={form.itens}
+        resolveProfissional={form.resolveItemProfissional}
         onAdd={form.addItem}
         onRemove={form.removeItem}
       />

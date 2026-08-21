@@ -43,6 +43,8 @@ interface ItensSectionProps {
   categorias: SelectOption<string>[];
   catalogo: CatalogoOption[];
   itens: ComandaItem[];
+  /** Resolve o profissional responsável por um item (pelo agendamento vinculado, ou o responsável da comanda em itens avulsos). */
+  resolveProfissional?: (appointmentId: string | null) => string | null;
   onAdd: (input: NovoItemInput) => boolean | Promise<boolean>;
   onRemove: (itemId: string) => void;
 }
@@ -54,6 +56,7 @@ export function ItensSection({
   categorias,
   catalogo,
   itens,
+  resolveProfissional,
   onAdd,
   onRemove,
 }: ItensSectionProps) {
@@ -241,6 +244,7 @@ export function ItensSection({
           <ul className="space-y-2">
             {listados.map((item) => {
               const vinculo = agendamentoLabel(item.appointmentId);
+              const profissional = resolveProfissional?.(item.appointmentId) ?? null;
               return (
                 <li
                   key={item.id}
@@ -258,6 +262,9 @@ export function ItensSection({
                       )}
                       {vinculo && (
                         <StatusBadge tone="brand">{vinculo}</StatusBadge>
+                      )}
+                      {profissional && (
+                        <StatusBadge tone="neutral">{profissional}</StatusBadge>
                       )}
                       {!isProduto && item.valorUnitarioInCents === 0 && (
                         <StatusBadge tone="success">Grátis (assinatura)</StatusBadge>
