@@ -8,17 +8,6 @@ import { STATUS_COR } from "./status";
 import { AgendamentoIcones } from "./AgendamentoIcones";
 import type { AgendamentoVM, ServicoVM, SlotSize } from "./types";
 
-/** `#rrggbb` -> `rgba(r,g,b,alpha)`. Cai para preto se a cor vier num formato inesperado. */
-function hexToRgba(hex: string, alpha: number): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return `rgba(28,33,40,${alpha})`;
-  const int = parseInt(m[1], 16);
-  const r = (int >> 16) & 255;
-  const g = (int >> 8) & 255;
-  const b = int & 255;
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 export function AgendamentoCard({
   agendamento,
   servico,
@@ -42,11 +31,6 @@ export function AgendamentoCard({
   const duracao = agendamento.duracao;
   const heightPx = (duracao / slotSize) * slotHeightPx;
   const statusCor = STATUS_COR[agendamento.status];
-  // Cliente assinante: fundo ganha a cor do plano bem saturada, pra
-  // identificação rápida direto na agenda (spec-revisao-cliente-4.md §3.1,
-  // ajuste pedido pelo dono — o tint de 28% ficava sutil demais pra bater o
-  // olho) — a borda continua na cor do status (não muda de significado).
-  const planBg = agendamento.planCor ? hexToRgba(agendamento.planCor, 0.6) : null;
 
   return (
     <div
@@ -67,10 +51,15 @@ export function AgendamentoCard({
         height: `${heightPx - 2}px`,
         // "Sem preferência de profissional" (employeeId null, ver DialogDetalhe
         // item 4): fundo listrado diagonal em vez de sólido, pra diferenciar o
-        // card visualmente de um agendamento com profissional definido.
+        // card visualmente de um agendamento com profissional definido. A cor
+        // do plano do cliente não fica mais no fundo do card (ficava sólida
+        // demais) — ela aparece atrás do card, na grade (ver `ProfissionalColuna`).
+        // Fundo do card levemente translúcido (em vez de opaco) — deixa a
+        // faixa colorida do plano (atrás, na grade) transparecer sutilmente
+        // por trás do card, sem pintar o card inteiro de sólido.
         background: agendamento.semPreferencia
-          ? `repeating-linear-gradient(135deg, ${planBg ?? "rgba(28,33,40,0.97)"} 0px, ${planBg ?? "rgba(28,33,40,0.97)"} 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)`
-          : (planBg ?? "rgba(28,33,40,0.97)"),
+          ? "repeating-linear-gradient(135deg, rgba(28,33,40,0.85) 0px, rgba(28,33,40,0.85) 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)"
+          : "rgba(28,33,40,0.82)",
         // Bordas laterais e inferior conforme a situação do agendamento.
         borderLeft: `3px solid ${statusCor}`,
         borderRight: `1.5px solid ${statusCor}`,

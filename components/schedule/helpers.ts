@@ -9,6 +9,17 @@ import {
   type SlotSize,
 } from "./types";
 
+/** `#rrggbb` -> `rgba(r,g,b,alpha)`. Cai para preto se a cor vier num formato inesperado. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return `rgba(28,33,40,${alpha})`;
+  const int = parseInt(m[1], 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 /** "510" → "08:30" */
 export function minToTime(min: number): string {
   const h = Math.floor(min / 60);
