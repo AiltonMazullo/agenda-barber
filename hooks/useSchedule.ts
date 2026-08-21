@@ -308,6 +308,7 @@ export function useSchedule(
         assinante: subscriberStatusByClient.get(primary.clientId) ?? null,
         aniversarianteSemana: isBirthdayThisWeek(cli?.birthDate),
         temNota: !!cli?.notes?.trim(),
+        observacao: primary.notes ?? undefined,
         planCor: clientActivePlanColor.get(primary.clientId) ?? null,
       } satisfies AgendamentoVM;
     });

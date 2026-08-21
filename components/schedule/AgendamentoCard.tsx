@@ -42,10 +42,11 @@ export function AgendamentoCard({
   const duracao = agendamento.duracao;
   const heightPx = (duracao / slotSize) * slotHeightPx;
   const statusCor = STATUS_COR[agendamento.status];
-  // Cliente assinante: fundo ganha um tint da cor do plano, pra identificar
-  // visualmente quem é assinante direto na agenda (spec-revisao-cliente-4.md
-  // §3.1) — a borda continua na cor do status (não muda de significado).
-  const planBg = agendamento.planCor ? hexToRgba(agendamento.planCor, 0.28) : null;
+  // Cliente assinante: fundo ganha a cor do plano bem saturada, pra
+  // identificação rápida direto na agenda (spec-revisao-cliente-4.md §3.1,
+  // ajuste pedido pelo dono — o tint de 28% ficava sutil demais pra bater o
+  // olho) — a borda continua na cor do status (não muda de significado).
+  const planBg = agendamento.planCor ? hexToRgba(agendamento.planCor, 0.6) : null;
 
   return (
     <div

@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
@@ -124,6 +125,7 @@ export function DialogDetalhe({
   onTransferClient,
   onCreateClient,
   onAbrirComanda,
+  onFecharComanda,
   comandaAberta,
 }: {
   open: boolean;
@@ -150,6 +152,8 @@ export function DialogDetalhe({
   onCreateClient: (data: QuickClientInput) => Promise<Client | null>;
   /** Cria uma comanda do tipo AGENDAMENTO pré-preenchida com este agendamento. */
   onAbrirComanda?: (agendamento: AgendamentoVM) => void | Promise<void>;
+  /** Pula direto pra tela de fechamento (pagamento) de uma comanda ABERTA já vinculada, sem passar pela composição. */
+  onFecharComanda?: (comanda: Comanda) => void;
   /** Comanda ainda aberta já vinculada a este agendamento, se houver. */
   comandaAberta?: Comanda | null;
 }) {
@@ -175,6 +179,9 @@ export function DialogDetalhe({
 
   // ── Serviços ──
   const [rows, setRows] = useState<ServicoSelecionado[]>([]);
+
+  // ── Observação ──
+  const [observacao, setObservacao] = useState("");
 
   // ── Histórico (auditoria) ──
   const [historico, setHistorico] = useState<AuditLog[]>([]);
@@ -262,6 +269,7 @@ export function DialogDetalhe({
     setHoraInicio(minToTime(agendamento.inicioMin));
     setHoraFim(minToTime(agendamento.inicioMin + agendamento.duracao));
     setBranchId(agendamento.branchId ?? "");
+    setObservacao(agendamento.observacao ?? "");
     setSemPreferencia(agendamento.semPreferencia);
     setProfissionalId(agendamento.semPreferencia ? "" : agendamento.profissionalId);
     setRows(
@@ -438,6 +446,11 @@ export function DialogDetalhe({
         if (!agendamento.semPreferencia) payload.employeeId = null;
       } else if (profissionalId && profissionalId !== agendamento.profissionalId) {
         payload.employeeId = profissionalId;
+      }
+
+      const observacaoTrimmed = observacao.trim();
+      if (observacaoTrimmed !== (agendamento.observacao ?? "").trim()) {
+        payload.notes = observacaoTrimmed || null;
       }
 
       if (Object.keys(payload).length > 0) {
@@ -646,6 +659,20 @@ export function DialogDetalhe({
             </label>
           </div>
 
+          {/* ── 4b. Observação ── */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+              Observação
+            </label>
+            <Textarea
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Opcional"
+              rows={2}
+              className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 resize-none"
+            />
+          </div>
+
           {/* ── 5. Últimos 3 agendamentos ── */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5">
@@ -766,6 +793,15 @@ export function DialogDetalhe({
                 className="h-8 px-3 rounded-md border border-border bg-surface-elevated text-xs text-foreground hover:border-brand/40 transition-colors flex items-center gap-1.5 disabled:opacity-60"
               >
                 {abrindoComanda ? "Abrindo…" : comandaAberta ? "Ver comanda" : "Abrir comanda"}
+              </button>
+            )}
+            {onFecharComanda && comandaAberta?.status === "ABERTA" && (
+              <button
+                type="button"
+                onClick={() => onFecharComanda(comandaAberta)}
+                className="h-8 px-3 rounded-md border border-brand/40 bg-brand/10 text-xs text-brand hover:bg-brand/20 transition-colors flex items-center gap-1.5"
+              >
+                Fechar comanda
               </button>
             )}
           </div>

@@ -94,15 +94,6 @@ import type {
 import type { UpdatableAppointmentStatus } from "@/types/appointment.types";
 import { Loading, DatePickerField } from "@/components/shared";
 
-/** Pseudo-profissional só para dar uma coluna própria aos agendamentos "sem preferência" na grade — não corresponde a um Employee real. */
-const PROFISSIONAL_SEM_PREFERENCIA: ProfissionalVM = {
-  id: SEM_PREFERENCIA_ID,
-  nome: "Sem preferência",
-  avatar: "?",
-  ativo: true,
-  branchId: null,
-};
-
 export default function SchedulePage() {
   const { barbershop } = useAuth();
   const { branches } = useBranches(barbershop?.id);
@@ -142,6 +133,7 @@ export default function SchedulePage() {
     updateAgendamento,
     transferAgendamento,
     clientActivePlans,
+    refetchAgendamentos,
   } = useSchedule(barbershop?.id, selectedDate, filialId || undefined);
 
   // Bloqueios de horário (persistidos — ver ajustes/Módulo Agenda.md)
@@ -295,21 +287,18 @@ export default function SchedulePage() {
     [profissionais, filtroProf],
   );
 
-  // Agendamentos "sem preferência" (employeeId null) não pertencem a nenhum
-  // profissional cadastrado — ganham uma pseudo-coluna própria na grade
-  // (somente leitura: não aceita drop nem criação de bloqueio, ver
-  // `ProfissionalColuna`) pra não sumirem da agenda.
-  const colunasVisiveis = useMemo<ProfissionalVM[]>(() => {
-    if (filtroProf === SEM_PREFERENCIA_ID) return [PROFISSIONAL_SEM_PREFERENCIA];
-    if (filtroProf === "todos")
-      return [...profissionaisVisiveis, PROFISSIONAL_SEM_PREFERENCIA];
-    return profissionaisVisiveis;
-  }, [profissionaisVisiveis, filtroProf]);
+  // Coluna "Sem preferência" removida da grade (pedido do dono — esse
+  // conceito de profissional não existe mais aqui; regra definitiva fica
+  // para uma call). Agendamentos com `employeeId: null`, se ainda
+  // existirem, deixam de aparecer na grade até essa decisão.
+  const colunasVisiveis = useMemo<ProfissionalVM[]>(
+    () => profissionaisVisiveis,
+    [profissionaisVisiveis],
+  );
 
   const agPorProfissional = useMemo(() => {
     const map: Record<string, AgendamentoVM[]> = {};
     profissionais.forEach((p) => (map[p.id] = []));
-    map[SEM_PREFERENCIA_ID] = [];
     agendamentos.forEach((ag) => {
       // Cancelados aparecem só na visualização em lista. Faltas (NO_SHOW)
       // continuam na grade (spec-revisao-cliente-4.md §3.2) — só mudam de
@@ -516,6 +505,13 @@ export default function SchedulePage() {
     },
     [createComanda],
   );
+
+  /** Atalho direto do dropdown do agendamento: comanda já existe e está
+   * ABERTA, pula a composição e vai direto pro fechamento/pagamento. */
+  const handleFecharComandaDireta = useCallback((comanda: Comanda) => {
+    setFecharComandaTarget(comanda);
+    setDialogDetalhe(false);
+  }, []);
 
   const handleResizeEnd = useCallback(
     (id: string, novaDuracao: number) => {
@@ -864,11 +860,7 @@ export default function SchedulePage() {
                 <DropdownButton className="h-9 px-3 rounded-md border border-border bg-surface-raised text-sm text-foreground flex items-center gap-2 hover:border-brand/40 transition-colors cursor-pointer">
                   <User className="size-3.5 text-muted-foreground" />
                   <span className="max-w-[90px] truncate text-xs">
-                    {filtroProf === "todos"
-                      ? "Todos"
-                      : filtroProf === SEM_PREFERENCIA_ID
-                        ? PROFISSIONAL_SEM_PREFERENCIA.nome
-                        : profById.get(filtroProf)?.nome}
+                    {filtroProf === "todos" ? "Todos" : profById.get(filtroProf)?.nome}
                   </span>
                   <ChevronDown className="size-3.5 text-muted-foreground" />
                 </DropdownButton>
@@ -895,15 +887,6 @@ export default function SchedulePage() {
                     {p.avatar} {p.nome}
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuItem
-                  onClick={() => setFiltroProf(SEM_PREFERENCIA_ID)}
-                  className={cn(
-                    "text-xs hover:bg-surface-elevated cursor-pointer",
-                    filtroProf === SEM_PREFERENCIA_ID && "text-brand",
-                  )}
-                >
-                  {PROFISSIONAL_SEM_PREFERENCIA.avatar} {PROFISSIONAL_SEM_PREFERENCIA.nome}
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -1204,7 +1187,6 @@ export default function SchedulePage() {
                         onSlotClick={handleSlotClick}
                         indisponibilidades={indisponibilidades}
                         startHour={gridStartHour}
-                        disabled={prof.id === SEM_PREFERENCIA_ID}
                       />
                     </div>
                   ))}
@@ -1278,6 +1260,7 @@ export default function SchedulePage() {
           onTransferClient={transferAgendamento}
           onCreateClient={createClient}
           onAbrirComanda={handleAbrirComanda}
+          onFecharComanda={handleFecharComandaDireta}
           comandaAberta={comandaAbertaDoAgendamento}
         />
         <DialogConflito
@@ -1316,7 +1299,16 @@ export default function SchedulePage() {
               ...comandaToDraft(fecharComandaTarget),
               itens,
             });
-            return setComandaStatus(fecharComandaTarget.id, "FECHADA", pagamentos);
+            const result = await setComandaStatus(
+              fecharComandaTarget.id,
+              "FECHADA",
+              pagamentos,
+            );
+            // O fechamento cascateia o status do(s) agendamento(s) vinculado(s)
+            // pra COMPLETED no backend (fica cinza na agenda) — sem isso o
+            // card só refletia a mudança depois de um refresh manual da página.
+            if (result) await refetchAgendamentos();
+            return result;
           }}
         />
         <DialogNovoBloqueio

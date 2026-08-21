@@ -146,4 +146,6 @@ export interface UpdateAppointmentPayload {
   endAt?: string;
   branchId?: string | null;
   employeeId?: string | null;
+  /** Observação livre (spec-revisao-cliente-4.md §2.3). `null` explícito limpa a observação. */
+  notes?: string | null;
 }

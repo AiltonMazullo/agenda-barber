@@ -7,6 +7,7 @@ import {
   Cake,
   CheckCircle2,
   StickyNote,
+  MessageSquareText,
   Hourglass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,12 @@ export function AgendamentoIcones({
   agendamento: AgendamentoVM;
   iconClassName?: string;
 }) {
-  const items: { key: string; Icon: typeof Star; className: string }[] = [];
+  const items: {
+    key: string;
+    Icon: typeof Star;
+    className: string;
+    title?: string;
+  }[] = [];
   if (agendamento.primeiroAgendamento) {
     items.push({ key: "primeiro", Icon: Star, className: "text-brand" });
   }
@@ -42,13 +48,27 @@ export function AgendamentoIcones({
   if (agendamento.temNota) {
     items.push({ key: "nota", Icon: StickyNote, className: "text-text-faint" });
   }
+  if (agendamento.observacao?.trim()) {
+    items.push({
+      key: "observacao",
+      Icon: MessageSquareText,
+      className: "text-amber-300",
+      title: agendamento.observacao.trim(),
+    });
+  }
 
   if (items.length === 0) return null;
 
   return (
     <div className="flex items-center gap-1 flex-wrap">
-      {items.map(({ key, Icon, className }) => (
-        <Icon key={key} className={cn(iconClassName, "shrink-0", className)} />
+      {items.map(({ key, Icon, className, title }) => (
+        <Icon
+          key={key}
+          className={cn(iconClassName, "shrink-0", className)}
+          {...(title ? { "aria-label": title } : {})}
+        >
+          {title && <title>{title}</title>}
+        </Icon>
       ))}
     </div>
   );
