@@ -260,7 +260,7 @@ export default function SchedulePage() {
   const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
   const scrolledToNowForDate = useRef<string | null>(null);
   useEffect(() => {
-    if (nowTopPx === null || viewMode !== "kanban") return;
+    if (isLoading || nowTopPx === null || viewMode !== "kanban") return;
     const dateKey = toDateInputValue(selectedDate);
     if (scrolledToNowForDate.current === dateKey) return;
     const el = kanbanScrollRef.current;
@@ -268,7 +268,7 @@ export default function SchedulePage() {
     scrolledToNowForDate.current = dateKey;
     const headerHeight = 92;
     el.scrollTop = Math.max(0, headerHeight + nowTopPx - el.clientHeight / 2);
-  }, [nowTopPx, viewMode, selectedDate]);
+  }, [isLoading, nowTopPx, viewMode, selectedDate]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
