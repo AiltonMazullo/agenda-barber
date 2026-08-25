@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Ticket, CheckCircle2, Store } from "lucide-react";
+import Link from "next/link";
+import { Ticket, CheckCircle2, Store, Lock } from "lucide-react";
 import { Loading, EmptyState } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
+import { useClientAuth } from "@/hooks/useClientAuth";
+import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { useMyCoupons } from "@/hooks/useMyCoupons";
 import { formatDate } from "@/utils/format";
 
@@ -16,8 +19,14 @@ import { formatDate } from "@/utils/format";
  */
 export default function CupomClientePage() {
   const { barbershop } = usePublicBarbershop();
+  const { isAuthenticated } = useClientAuth();
+  const { mySubscription, isLoading: isLoadingSubscription } =
+    useClientSubscription(isAuthenticated ? barbershop?.id : undefined);
+  const hasActivePlan =
+    mySubscription?.subscription.status === "ACTIVE" &&
+    !mySubscription.pendingAuthorization;
   const { coupons, isLoading, isRedeeming, redeem } = useMyCoupons(
-    barbershop?.id,
+    hasActivePlan ? barbershop?.id : undefined,
   );
   const [code, setCode] = useState("");
 
@@ -27,6 +36,37 @@ export default function CupomClientePage() {
     if (!trimmed) return;
     const redeemed = await redeem(trimmed);
     if (redeemed) setCode("");
+  }
+
+  // Cupons são benefício de quem tem plano ativo — sem assinatura, manda
+  // pra tela do Plano em vez de mostrar o autoatendimento.
+  if (!isAuthenticated || (!isLoadingSubscription && !hasActivePlan)) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <EmptyState
+          icon={<Lock className="size-10" />}
+          message="Essa área é exclusiva para assinantes do plano ativo."
+          action={
+            barbershop ? (
+              <Link
+                href={`/client/${barbershop.slug}/plano`}
+                className="inline-flex h-9 px-4 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors items-center"
+              >
+                Ver planos
+              </Link>
+            ) : undefined
+          }
+        />
+      </div>
+    );
+  }
+
+  if (isLoadingSubscription) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <Loading />
+      </div>
+    );
   }
 
   return (

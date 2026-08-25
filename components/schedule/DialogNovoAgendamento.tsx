@@ -398,7 +398,7 @@ export function DialogNovoAgendamento({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+        <DialogContent className="bg-surface-raised border border-border text-foreground max-w-2xl p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-base font-bold">

@@ -6,6 +6,8 @@ export interface PartnerCompany {
   id: string;
   barbershopId: string;
   name: string;
+  /** Gerado a partir do nome na criação — identifica o link público `/parceiro/:slug`. */
+  slug: string;
   status: PartnerCompanyStatus;
   createdAt: string;
   updatedAt: string;
@@ -45,4 +47,20 @@ export interface CouponUsage extends Coupon {
 /** Cupom do cliente final (autoatendimento) — sempre com a empresa parceira embutida. */
 export interface MyCoupon extends Coupon {
   partnerCompany: PartnerCompany;
+}
+
+/** Um cupom já resgatado, como visto no link público `/parceiro/:slug` (sem auth). */
+export interface PublicCouponUsage {
+  id: string;
+  code: string;
+  discount: string;
+  usedAt: string | null;
+  createdAt: string;
+  client: { id: string; name: string } | null;
+}
+
+/** Retorno de `GET /partner-companies/public/:slug`. */
+export interface PublicPartnerCompanyCoupons {
+  company: { id: string; name: string };
+  coupons: PublicCouponUsage[];
 }

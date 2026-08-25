@@ -14,6 +14,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { useClientAuth } from "@/hooks/useClientAuth";
+import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import {
   Sidebar,
@@ -38,13 +39,23 @@ export function ClientNavbar({ slug }: ClientNavbarProps) {
   const router = useRouter();
   const { logout, isAuthenticated } = useClientAuth();
   const { barbershop } = usePublicBarbershop();
+  // "Cupons" (Clube do Assinante) é benefício de quem tem plano ativo —
+  // só busca a assinatura quando logado, pra não disparar 401 à toa.
+  const { mySubscription } = useClientSubscription(
+    isAuthenticated ? barbershop?.id : undefined,
+  );
+  const hasActivePlan =
+    mySubscription?.subscription.status === "ACTIVE" &&
+    !mySubscription.pendingAuthorization;
 
   const base = `/client/${slug}`;
   const items = [
     { href: base, label: "Início", icon: Home },
     { href: `${base}/agendamentos`, label: "Agendamentos", icon: CalendarCheck },
     { href: `${base}/plano`, label: "Plano", icon: CreditCard },
-    { href: `${base}/cupons`, label: "Cupons", icon: Ticket },
+    ...(hasActivePlan
+      ? [{ href: `${base}/cupons`, label: "Cupons", icon: Ticket }]
+      : []),
     { href: `${base}/perfil`, label: "Perfil", icon: UserIcon },
   ];
 

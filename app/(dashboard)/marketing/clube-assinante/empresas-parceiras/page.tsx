@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Copy, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -147,6 +147,21 @@ function PartnerCompanyDialog({
   );
 }
 
+/** Link público (sem login) onde a empresa parceira confere quem resgatou qual cupom dela. */
+function partnerLink(slug: string): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/parceiro/${slug}`;
+}
+
+async function copyPartnerLink(slug: string) {
+  try {
+    await navigator.clipboard.writeText(partnerLink(slug));
+    toast.success("Link copiado.");
+  } catch {
+    toast.error("Não foi possível copiar o link.");
+  }
+}
+
 export default function EmpresasParceirasPage() {
   const { barbershop } = useAuth();
   const { companies, isLoading, refresh, create, update, remove } =
@@ -189,6 +204,21 @@ export default function EmpresasParceirasPage() {
           },
           { key: "name", label: "Nome" },
           {
+            key: "slug",
+            label: "Link de validação",
+            render: (r) => (
+              <button
+                type="button"
+                onClick={() => void copyPartnerLink(r.slug)}
+                title="Copiar link — a empresa parceira usa para conferir os cupons resgatados, sem login"
+                className="inline-flex items-center gap-1.5 text-xs font-mono text-brand hover:underline"
+              >
+                <Copy className="size-3" />
+                /parceiro/{r.slug}
+              </button>
+            ),
+          },
+          {
             key: "createdAt",
             label: "Criado em",
             render: (r) => formatDate(r.createdAt),
@@ -212,6 +242,7 @@ export default function EmpresasParceirasPage() {
         csvColumns={[
           { key: "id", label: "ID" },
           { key: "name", label: "Nome" },
+          { key: "slug", label: "Slug do link" },
           { key: "status", label: "Status" },
           { key: "createdAt", label: "Criado em" },
         ]}
