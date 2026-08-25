@@ -117,7 +117,7 @@ export function DraggableAgendamento({
       />
       {isResizeActive && (
         <div
-          className="absolute left-0.5 right-0.5 top-0 rounded-md border-2 border-dashed border-red-500 bg-red-500/10 pointer-events-none z-30"
+          className="absolute left-1.5 right-1.5 top-0 rounded-md border-2 border-dashed border-red-500 bg-red-500/10 pointer-events-none z-30"
           style={{ height: displayH - 2 }}
         />
       )}

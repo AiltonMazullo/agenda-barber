@@ -41,7 +41,10 @@ export function AgendamentoCard({
           : agendamento.cliente
       }
       className={cn(
-        "absolute left-0.5 right-0.5 rounded-md overflow-hidden select-none transition-all",
+        // Padding lateral maior (era left-0.5/right-0.5, quase colado nas
+        // bordas) — deixa a faixa colorida do plano (atrás, na grade)
+        // visível nas laterais do card, melhorando a identificação.
+        "absolute left-1.5 right-1.5 rounded-md overflow-hidden select-none transition-all",
         isDragging ? "opacity-40" : isResizing ? "opacity-50" : "opacity-100",
         onClick && !isDragging
           ? "cursor-pointer hover:brightness-110"
