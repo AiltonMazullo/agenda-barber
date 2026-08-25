@@ -75,11 +75,15 @@ export function ServicoSelector({
 
   function addRow() {
     const s = servicos[0];
+    // Novo serviço herda o profissional já escolhido na última linha — evita
+    // forçar "Sem preferência" quando o atendimento inteiro é com a mesma
+    // pessoa (caso mais comum).
+    const profissionalId = value[value.length - 1]?.profissionalId;
     onChange([
       ...value,
       {
         servicoId: s?.id ?? "",
-        profissionalId: undefined,
+        profissionalId,
         duracao: s?.tempoPadrao ?? 30,
         valor: s?.preco ?? 0,
       },

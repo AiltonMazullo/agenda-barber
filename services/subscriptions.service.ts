@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import type {
   BulkUpdateSubscriptionsPayload,
   BulkUpdateSubscriptionsResult,
+  ProductPricing,
   ServicePricing,
   Subscription,
   SubscriptionBillingType,
@@ -89,6 +90,18 @@ export const subscriptionsService = {
   ): Promise<ServicePricing> {
     const { data } = await api.get<ServicePricing>(
       `${base(barbershopId)}/clients/${clientId}/service-pricing/${serviceId}`,
+    );
+    return data;
+  },
+
+  /** Preço efetivo (preço fixo do plano ou desconto de categoria) de um produto para um cliente assinante. */
+  async getProductPricing(
+    barbershopId: string,
+    clientId: string,
+    productId: string,
+  ): Promise<ProductPricing> {
+    const { data } = await api.get<ProductPricing>(
+      `${base(barbershopId)}/clients/${clientId}/product-pricing/${productId}`,
     );
     return data;
   },

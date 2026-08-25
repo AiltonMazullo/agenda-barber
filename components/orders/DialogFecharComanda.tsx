@@ -579,6 +579,27 @@ export function DialogFecharComanda({
       }
     }
 
+    // Mesma regra para produtos: preço fixo do plano (`PlanProduct`) ou
+    // desconto por categoria (`PlanCategory`), quando o produto está
+    // vinculado a um agendamento de cliente assinante. Sobrescreve o valor
+    // que o usuário deixou no campo (pré-preenchido com o preço de
+    // catálogo) só quando o plano de fato cobre o produto.
+    if (isProduto && vinculaAgendamento && novoAppointmentId && barbershopId) {
+      const appointment = appointments.find((a) => a.id === novoAppointmentId);
+      if (appointment) {
+        try {
+          const pricing = await subscriptionsService.getProductPricing(
+            barbershopId,
+            appointment.clientId,
+            novoRefId,
+          );
+          if (pricing.covered) valorUnitarioInCents = pricing.priceInCents;
+        } catch {
+          // fallback: preço de catálogo/digitado já setado acima
+        }
+      }
+    }
+
     setItens((prev) => [
       ...prev,
       {

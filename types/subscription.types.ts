@@ -109,6 +109,9 @@ export type ServicePricing =
   | { covered: true; free: true; priceInCents: 0 }
   | { covered: true; free: false; priceInCents: number; discountPercent: number };
 
+/** Mesmo shape de `ServicePricing`, para o preço efetivo de um produto (plano fixo ou desconto por categoria). */
+export type ProductPricing = ServicePricing;
+
 export interface MySubscription {
   subscription: Subscription & { plan: Plan };
   usage: ServiceUsage[];

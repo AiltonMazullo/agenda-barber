@@ -228,8 +228,10 @@ export function ProfissionalColuna({
 
         {/* Cliente assinante: a cor do plano tinge a faixa da grade que o
             agendamento ocupa (não mais o card em si, que ficava sólido
-            demais) — identificação rápida sem "gritar" na agenda
-            (spec-revisao-cliente-4.md §3.1). Fica atrás dos cards. */}
+            demais) — identificação rápida na agenda (spec-revisao-cliente-4.md
+            §3.1). Fica atrás dos cards. Opacidade elevada (era 0.16, quase
+            imperceptível no tema escuro) + borda sólida à esquerda pra dar
+            um segundo ponto de contraste. */}
         {agendamentos.map((ag) => {
           if (!ag.planCor) return null;
           const topPx =
@@ -242,7 +244,8 @@ export function ProfissionalColuna({
               style={{
                 top: topPx,
                 height: heightPx,
-                backgroundColor: hexToRgba(ag.planCor, 0.16),
+                backgroundColor: hexToRgba(ag.planCor, 0.38),
+                borderLeft: `3px solid ${ag.planCor}`,
               }}
             />
           );

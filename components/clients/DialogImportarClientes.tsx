@@ -30,8 +30,10 @@ function downloadTemplate() {
 
 /**
  * Importação de clientes via planilha CSV (spec-revisao-cliente-4.md §6.3).
- * Campos obrigatórios por linha: Nome, Data de nascimento, E-mail, Telefone
- * e CPF — "Como nos conheceu" é aceito mas não bloqueia a linha se faltar.
+ * Campos obrigatórios por linha: Nome, Data de nascimento, E-mail e
+ * Telefone — CPF e "Como nos conheceu" são aceitos mas não bloqueiam a linha
+ * se faltarem (ajuste de feedback: CPF nem sempre está disponível na base de
+ * origem da importação em massa).
  */
 export function DialogImportarClientes({
   open,
@@ -95,10 +97,10 @@ export function DialogImportarClientes({
           <p className="text-sm text-muted-foreground">
             Arquivo CSV com as colunas{" "}
             <strong className="text-foreground">
-              Nome, Data de nascimento, E-mail, Telefone e CPF
+              Nome, Data de nascimento, E-mail e Telefone
             </strong>{" "}
-            (obrigatórias) e &quot;Como nos conheceu&quot; (opcional). Linhas com e-mail já cadastrado são
-            puladas.
+            (obrigatórias) e CPF / &quot;Como nos conheceu&quot; (opcionais). Linhas com e-mail já
+            cadastrado são puladas.
           </p>
 
           <button

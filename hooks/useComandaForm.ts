@@ -148,14 +148,29 @@ export function useComandaForm(
    * item não está atrelado a um agendamento específico (AVULSA). Usado pra
    * listar o profissional em cada linha de `ItensSection` (mesmo padrão de
    * `DialogFecharComanda`).
+   *
+   * Prioriza o snapshot persistido em `comanda.agendamentos[].profissionalNome`
+   * (mesma fonte que `DialogFecharComanda` usa) — o lookup ao vivo em
+   * `appointments` só serve de fallback para agendamentos recém-vinculados
+   * nesta sessão, que ainda não têm snapshot. Sem essa prioridade, a tela de
+   * editar/ver comanda ficava sem mostrar o profissional sempre que o
+   * agendamento ao vivo não era encontrado (ex.: cancelado/alterado depois),
+   * exatamente o cenário que o snapshot existe para blindar.
    */
   const profissionalResponsavel = useMemo(
     () => (comanda?.employeeId ? (employeeNameById.get(comanda.employeeId) ?? null) : null),
     [comanda, employeeNameById],
   );
+  const profissionalSnapshotByAppointment = useMemo(() => {
+    const m = new Map<string, string | null>();
+    comanda?.agendamentos.forEach((a) => m.set(a.appointmentId, a.profissionalNome));
+    return m;
+  }, [comanda]);
   const resolveItemProfissional = useCallback(
     (appointmentId: string | null) => {
       if (appointmentId) {
+        const snapshot = profissionalSnapshotByAppointment.get(appointmentId);
+        if (snapshot) return snapshot;
         const appointment = appointments.find((a) => a.id === appointmentId);
         const empId = appointment?.employeeId ?? appointment?.employee?.id ?? "";
         const nome =
@@ -167,7 +182,7 @@ export function useComandaForm(
       }
       return profissionalResponsavel;
     },
-    [appointments, employeeNameById, profissionalResponsavel],
+    [appointments, employeeNameById, profissionalResponsavel, profissionalSnapshotByAppointment],
   );
 
   /**
