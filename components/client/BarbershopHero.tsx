@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { barbershopAppearanceStore } from "@/lib/barbershop-appearance-store";
 import { apiAssetUrl } from "@/lib/api";
-import { marketingBannerService } from "@/services/marketing-banner.service";
 import type { Barbershop } from "@/types/barbershop.types";
 
 interface BarbershopHeroProps {
@@ -21,43 +20,10 @@ interface HeroBanner {
 const AUTOPLAY_MS = 5000;
 
 export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
-  const defaultBanners: HeroBanner[] = (barbershop.carouselImages ?? [])
+  const banners: HeroBanner[] = (barbershop.carouselImages ?? [])
     .filter((u) => u && u.trim())
     .map((u) => ({ imageUrl: apiAssetUrl(u) ?? u, linkUrl: null }));
 
-  // Banners cadastrados em Marketing têm prioridade sobre o carrossel padrão
-  // de Configurações; se não houver nenhum, cai no carrossel padrão.
-  const [marketingBanners, setMarketingBanners] = useState<HeroBanner[] | null>(
-    null,
-  );
-  useEffect(() => {
-    let active = true;
-    marketingBannerService
-      .listPublic(barbershop.id)
-      .then((list) => {
-        if (!active) return;
-        const banners = list
-          .map((b) => {
-            const url = b.imageUrl3 ?? b.imageUrl2 ?? b.imageUrl1;
-            return url
-              ? { imageUrl: apiAssetUrl(url) ?? url, linkUrl: b.linkUrl }
-              : null;
-          })
-          .filter((b): b is HeroBanner => !!b);
-        setMarketingBanners(banners);
-      })
-      .catch(() => {
-        if (active) setMarketingBanners([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [barbershop.id]);
-
-  const banners =
-    marketingBanners && marketingBanners.length > 0
-      ? marketingBanners
-      : defaultBanners;
   const [index, setIndex] = useState(0);
   const [logoCentered, setLogoCentered] = useState(false);
 

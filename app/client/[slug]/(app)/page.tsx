@@ -18,6 +18,7 @@ import { clientAppointmentsService } from "@/services/client-appointments.servic
 import { clientCatalogService } from "@/services/client-catalog.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
 import { ClubBannerCarousel } from "@/components/client/ClubBannerCarousel";
+import { MarketingBannerCarousel } from "@/components/client/MarketingBannerCarousel";
 import { FeaturedFlag } from "@/components/client/FeaturedFlag";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
 import { Loading } from "@/components/shared/Loading";
@@ -164,7 +165,12 @@ export default function BarbershopPublicPage({ params }: PageProps) {
           {isAuthenticated ? (
             <ClubBannerCarousel
               barbershopId={barbershop.id}
-              fallback={<BarbershopHero barbershop={barbershop} />}
+              fallback={
+                <MarketingBannerCarousel
+                  barbershopId={barbershop.id}
+                  fallback={<BarbershopHero barbershop={barbershop} />}
+                />
+              }
             />
           ) : (
             <BarbershopHero barbershop={barbershop} />
