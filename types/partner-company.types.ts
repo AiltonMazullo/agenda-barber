@@ -6,8 +6,12 @@ export interface PartnerCompany {
   id: string;
   barbershopId: string;
   name: string;
-  /** Gerado a partir do nome na criação — identifica o link público `/parceiro/:slug`. */
-  slug: string;
+  /**
+   * Gerado a partir do nome na criação — identifica o link público
+   * `/parceiro/:slug`. `null` só em empresas cadastradas antes deste campo
+   * existir; toda empresa nova sempre recebe um.
+   */
+  slug: string | null;
   status: PartnerCompanyStatus;
   createdAt: string;
   updatedAt: string;

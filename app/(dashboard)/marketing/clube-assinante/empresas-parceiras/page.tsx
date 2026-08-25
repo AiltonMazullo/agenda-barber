@@ -206,17 +206,22 @@ export default function EmpresasParceirasPage() {
           {
             key: "slug",
             label: "Link de validação",
-            render: (r) => (
-              <button
-                type="button"
-                onClick={() => void copyPartnerLink(r.slug)}
-                title="Copiar link — a empresa parceira usa para conferir os cupons resgatados, sem login"
-                className="inline-flex items-center gap-1.5 text-xs font-mono text-brand hover:underline"
-              >
-                <Copy className="size-3" />
-                /parceiro/{r.slug}
-              </button>
-            ),
+            render: (r) =>
+              r.slug ? (
+                <button
+                  type="button"
+                  onClick={() => void copyPartnerLink(r.slug!)}
+                  title="Copiar link — a empresa parceira usa para conferir os cupons resgatados, sem login"
+                  className="inline-flex items-center gap-1.5 text-xs font-mono text-brand hover:underline"
+                >
+                  <Copy className="size-3" />
+                  /parceiro/{r.slug}
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Edite para gerar o link
+                </span>
+              ),
           },
           {
             key: "createdAt",
