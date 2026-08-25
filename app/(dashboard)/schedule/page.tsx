@@ -257,17 +257,20 @@ export default function SchedulePage() {
   // Ao abrir a agenda (ou trocar de dia), rola até a posição da linha do
   // tempo atual (ver spec-revisao-cliente-1.md §5.4) — uma vez por dia
   // selecionado, não a cada recálculo de `nowTopPx` (a cada minuto).
-  const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
+  // Quem rola verticalmente é o <main> do layout do dashboard, não este
+  // wrapper (que só tem overflow-x para a grade em telas estreitas) — por
+  // isso usamos `scrollIntoView` na própria linha em vez de `scrollTop`
+  // manual num container que não é o de fato scrollável.
+  const nowLineRef = useRef<HTMLDivElement | null>(null);
   const scrolledToNowForDate = useRef<string | null>(null);
   useEffect(() => {
     if (isLoading || nowTopPx === null || viewMode !== "kanban") return;
     const dateKey = toDateInputValue(selectedDate);
     if (scrolledToNowForDate.current === dateKey) return;
-    const el = kanbanScrollRef.current;
+    const el = nowLineRef.current;
     if (!el) return;
     scrolledToNowForDate.current = dateKey;
-    const headerHeight = 92;
-    el.scrollTop = Math.max(0, headerHeight + nowTopPx - el.clientHeight / 2);
+    el.scrollIntoView({ block: "center" });
   }, [isLoading, nowTopPx, viewMode, selectedDate]);
 
   const sensors = useSensors(
@@ -1135,10 +1138,7 @@ export default function SchedulePage() {
             />
           </div>
         ) : viewMode === "kanban" ? (
-          <div
-            ref={kanbanScrollRef}
-            className="overflow-x-auto schedule-scroll shrink-0"
-          >
+          <div className="overflow-x-auto schedule-scroll shrink-0">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -1154,13 +1154,14 @@ export default function SchedulePage() {
                 />
                 <div className="w-px bg-surface-elevated shrink-0" />
                 <div className="flex flex-1 divide-x divide-border-subtle">
-                  {colunasVisiveis.map((prof) => (
+                  {colunasVisiveis.map((prof, profIndex) => (
                     <div
                       key={prof.id}
                       className="relative flex flex-col flex-1 min-w-[140px]"
                     >
                       {nowTopPx !== null && (
                         <div
+                          ref={profIndex === 0 ? nowLineRef : undefined}
                           className="absolute left-0 right-0 z-30 flex items-center pointer-events-none"
                           style={{ top: 92 + nowTopPx }}
                         >
