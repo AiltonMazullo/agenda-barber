@@ -19,16 +19,31 @@ export async function getPublicBarbershopMeta(slug: string): Promise<PublicBarbe
 
   if (apiUrl) {
     try {
-      const res = await fetch(`${apiUrl}/barbershops/${slug}`, {
-        // Requisitado por manifest/metadata a cada carregamento de página —
-        // cache curto evita bater na API toda hora sem travar a instalação
-        // do PWA se ela estiver fora do ar.
-        next: { revalidate: 300 },
-      });
+      // `GET /barbershops/:slug` exige token (dono ou cliente logado) — ver
+      // `barbershopsService.getBySlug` no front, que por isso cai pra
+      // `GET /barbershops` (lista, pública, sem auth) quando dá 401/403/404.
+      // Aqui, no servidor (metadata/manifest, sem sessão de navegador pra
+      // reaproveitar), não tem token nenhum pra tentar — vai direto pra rota
+      // pública, senão o nome/logo nunca resolviam (sempre caía no genérico
+      // "Agendle" silenciosamente, mesmo com o logo cadastrado).
+      const res = await fetch(
+        `${apiUrl}/barbershops?q=${encodeURIComponent(slug)}`,
+        {
+          // Requisitado por manifest/metadata a cada carregamento de página —
+          // cache curto evita bater na API toda hora sem travar a instalação
+          // do PWA se ela estiver fora do ar.
+          next: { revalidate: 300 },
+        },
+      );
       if (res.ok) {
-        const data = (await res.json()) as { name?: string; logoUrl?: string | null };
-        if (data.name) name = data.name;
-        logoUrl = data.logoUrl ?? null;
+        const list = (await res.json()) as {
+          slug?: string;
+          name?: string;
+          logoUrl?: string | null;
+        }[];
+        const found = list.find((b) => b.slug === slug);
+        if (found?.name) name = found.name;
+        logoUrl = found?.logoUrl ?? null;
       }
     } catch {
       // best-effort — metadata genérica se a API não responder
