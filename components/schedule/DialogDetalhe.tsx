@@ -278,7 +278,12 @@ export function DialogDetalhe({
             const vm = servicoMap.get(s.id);
             return {
               servicoId: s.id,
-              profissionalId: undefined,
+              // Herda o profissional do próprio agendamento — antes vinha
+              // sempre "Sem preferência" no seletor por serviço, mesmo com
+              // um profissional já atribuído no campo acima.
+              profissionalId: agendamento.semPreferencia
+                ? undefined
+                : agendamento.profissionalId,
               duracao:
                 vm?.tempoPadrao ??
                 Math.round(agendamento.duracao / agendamento.servicos.length),
@@ -466,7 +471,7 @@ export function DialogDetalhe({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
+      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-2xl p-0 gap-0">
         <div
           className="h-1 w-full rounded-t-lg"
           style={{ backgroundColor: servico.cor }}
@@ -502,7 +507,7 @@ export function DialogDetalhe({
           </div>
         </DialogHeader>
 
-        <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto schedule-scroll">
+        <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto schedule-scroll">
           {/* ── 1. Cliente ── */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -595,7 +600,7 @@ export function DialogDetalhe({
           )}
 
           {/* ── 3. Data / Horário início / Horário fim / Filial ── */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
                 Data *

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getPublicBarbershopMeta } from "./public-barbershop-meta";
 
 /**
  * Manifest do PWA por barbearia (spec-revisao-cliente-4.md §6.2) — antes o
@@ -6,6 +7,10 @@ import type { MetadataRoute } from "next";
  * cujo único papel é desregistrar service workers de uma versão anterior).
  * Ao instalar o app na tela inicial, mostra o logo e o nome da empresa em
  * vez de um ícone/nome genérico.
+ *
+ * Cobre Android/Chrome. iOS Safari ignora o Web App Manifest para ícone/nome
+ * do atalho — isso é resolvido separadamente via tags `apple-touch-icon` /
+ * `apple-mobile-web-app-title` em `layout.tsx` (`generateMetadata`).
  *
  * Roda no servidor, fora de qualquer Provider React — busca a barbearia
  * direto na API pública (mesma rota usada por `client-catalog.service.ts`).
@@ -16,36 +21,12 @@ export default async function manifest({
   params: Promise<{ slug: string }>;
 }): Promise<MetadataRoute.Manifest> {
   const { slug } = await params;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  let name = "Agendle";
-  let logoUrl: string | null = null;
-
-  if (apiUrl) {
-    try {
-      const res = await fetch(`${apiUrl}/barbershops/${slug}`, {
-        // Manifest é gerado por request (não precisa cache agressivo) mas
-        // não deve travar a instalação do PWA se a API estiver fora do ar.
-        next: { revalidate: 300 },
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { name?: string; logoUrl?: string | null };
-        if (data.name) name = data.name;
-        logoUrl = data.logoUrl ?? null;
-      }
-    } catch {
-      // best-effort — manifest genérico se a API não responder
-    }
-  }
+  const { name, iconSrc } = await getPublicBarbershopMeta(slug);
 
   // Sem logo cadastrado, cai no favicon padrão do produto (não é ideal como
   // ícone de app — não é quadrado/alta-resolução — mas evita um manifest
   // sem ícone nenhum; a alternativa correta é o dono cadastrar um logo).
-  const iconSrc = logoUrl
-    ? logoUrl.startsWith("http")
-      ? logoUrl
-      : `${apiUrl ?? ""}${logoUrl}`
-    : "/favicon.ico";
+  const src = iconSrc ?? "/favicon.ico";
 
   return {
     name,
@@ -56,11 +37,11 @@ export default async function manifest({
     display: "standalone",
     background_color: "#0b0d10",
     theme_color: "#f5b82e",
-    icons: logoUrl
+    icons: iconSrc
       ? [
-          { src: iconSrc, sizes: "192x192", type: "image/png" },
-          { src: iconSrc, sizes: "512x512", type: "image/png" },
+          { src, sizes: "192x192", type: "image/png" },
+          { src, sizes: "512x512", type: "image/png" },
         ]
-      : [{ src: iconSrc, sizes: "any", type: "image/x-icon" }],
+      : [{ src, sizes: "any", type: "image/x-icon" }],
   };
 }
