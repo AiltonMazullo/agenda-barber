@@ -1,151 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Copy, Pencil, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { RegistrosAtivosTable } from "@/components/shared/RegistrosAtivosTable";
-import { ConfirmDialog, SelectField, StatusBadge } from "@/components/shared";
+import { ConfirmDialog, StatusBadge } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartnerCompanies } from "@/hooks/usePartnerCompanies";
 import { formatDate } from "@/utils/format";
-import type {
-  PartnerCompany,
-  PartnerCompanyStatus,
-} from "@/types/partner-company.types";
-import type { SelectOption } from "@/types/common.types";
-
-const STATUS_OPTIONS: SelectOption<PartnerCompanyStatus>[] = [
-  { value: "ACTIVE", label: "Ativo" },
-  { value: "INACTIVE", label: "Inativo" },
-];
-
-function FormLabel({
-  children,
-  required,
-}: {
-  children: React.ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-      {children}
-      {required && <span className="text-brand">*</span>}
-    </label>
-  );
-}
-
-interface PartnerCompanyDialogProps {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  company: PartnerCompany | null;
-  onCreate: (payload: {
-    name: string;
-    status?: PartnerCompanyStatus;
-  }) => Promise<unknown>;
-  onUpdate: (
-    id: string,
-    payload: { name?: string; status?: PartnerCompanyStatus },
-  ) => Promise<unknown>;
-}
-
-function PartnerCompanyDialog({
-  open,
-  onOpenChange,
-  company,
-  onCreate,
-  onUpdate,
-}: PartnerCompanyDialogProps) {
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState<PartnerCompanyStatus>("ACTIVE");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setName(company?.name ?? "");
-    setStatus(company?.status ?? "ACTIVE");
-  }, [open, company]);
-
-  async function handleSave() {
-    if (!name.trim()) {
-      toast.error("Informe o nome da empresa.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const result = company
-        ? await onUpdate(company.id, { name: name.trim(), status })
-        : await onCreate({ name: name.trim(), status });
-      if (result) onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-subtle">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-base font-bold">
-              {company ? "Editar Empresa Parceira" : "Nova Empresa Parceira"}
-            </DialogTitle>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </DialogHeader>
-
-        <div className="px-6 py-5 space-y-4">
-          <div className="space-y-1.5">
-            <FormLabel required>Nome</FormLabel>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="bg-surface-base border-border text-foreground focus-visible:ring-brand/30 h-10"
-            />
-          </div>
-
-          <SelectField
-            id="status"
-            label="Status"
-            value={status}
-            options={STATUS_OPTIONS}
-            onChange={setStatus}
-          />
-        </div>
-
-        <div className="px-6 pb-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="h-9 px-5 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors disabled:opacity-60"
-          >
-            {saving ? "Salvando…" : "Salvar"}
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import type { PartnerCompany } from "@/types/partner-company.types";
 
 /** Link público (sem login) onde a empresa parceira confere quem resgatou qual cupom dela. */
 function partnerLink(slug: string): string {
@@ -163,22 +27,19 @@ async function copyPartnerLink(slug: string) {
 }
 
 export default function EmpresasParceirasPage() {
+  const router = useRouter();
   const { barbershop } = useAuth();
-  const { companies, isLoading, refresh, create, update, remove } =
+  const { companies, isLoading, refresh, remove } =
     usePartnerCompanies(barbershop?.id);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PartnerCompany | null>(null);
   const [toRemove, setToRemove] = useState<PartnerCompany | null>(null);
 
   function openCreate() {
-    setEditing(null);
-    setDialogOpen(true);
+    router.push("/marketing/clube-assinante/empresas-parceiras/novo");
   }
 
   function openEdit(c: PartnerCompany) {
-    setEditing(c);
-    setDialogOpen(true);
+    router.push(`/marketing/clube-assinante/empresas-parceiras/${c.id}`);
   }
 
   function doRemove() {
@@ -272,14 +133,6 @@ export default function EmpresasParceirasPage() {
             </button>
           </>
         )}
-      />
-
-      <PartnerCompanyDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        company={editing}
-        onCreate={create}
-        onUpdate={update}
       />
 
       <ConfirmDialog

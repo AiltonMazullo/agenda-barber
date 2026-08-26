@@ -5,8 +5,40 @@ import type {
   CreateCouponPayload,
   CreatePartnerCompanyPayload,
   PartnerCompany,
+  UpdateCouponPayload,
   UpdatePartnerCompanyPayload,
 } from "@/types/partner-company.types";
+
+/** Monta o FormData de "Dados" + "Redes Sociais" (compartilhado por create/update). */
+function appendDetails(
+  form: FormData,
+  payload: CreatePartnerCompanyPayload | UpdatePartnerCompanyPayload,
+) {
+  const fields: (keyof typeof payload)[] = [
+    "cnpj",
+    "email",
+    "phone",
+    "zipCode",
+    "address",
+    "number",
+    "complement",
+    "neighborhood",
+    "state",
+    "city",
+    "category",
+    "website",
+    "facebookUsername",
+    "facebookUrl",
+    "instagramUsername",
+    "instagramUrl",
+  ];
+  for (const field of fields) {
+    const value = payload[field];
+    if (value !== undefined) form.append(field, String(value));
+  }
+  if (payload.featured !== undefined) form.append("featured", String(payload.featured));
+  if (payload.logo) form.append("logo", payload.logo);
+}
 
 export const partnerCompanyService = {
   async list(barbershopId: string): Promise<PartnerCompany[]> {
@@ -16,13 +48,25 @@ export const partnerCompanyService = {
     return data;
   },
 
+  async getById(barbershopId: string, id: string): Promise<PartnerCompany> {
+    const companies = await this.list(barbershopId);
+    const company = companies.find((c) => c.id === id);
+    if (!company) throw new Error("Empresa parceira não encontrada.");
+    return company;
+  },
+
   async create(
     barbershopId: string,
     payload: CreatePartnerCompanyPayload,
   ): Promise<PartnerCompany> {
+    const form = new FormData();
+    form.append("name", payload.name);
+    if (payload.status) form.append("status", payload.status);
+    appendDetails(form, payload);
     const { data } = await api.post<PartnerCompany>(
       `/barbershops/${barbershopId}/partner-companies`,
-      payload,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },
@@ -32,9 +76,15 @@ export const partnerCompanyService = {
     id: string,
     payload: UpdatePartnerCompanyPayload,
   ): Promise<PartnerCompany> {
+    const form = new FormData();
+    if (payload.name !== undefined) form.append("name", payload.name);
+    if (payload.status) form.append("status", payload.status);
+    appendDetails(form, payload);
+    if (payload.removeLogo) form.append("removeLogo", "true");
     const { data } = await api.put<PartnerCompany>(
       `/barbershops/${barbershopId}/partner-companies/${id}`,
-      payload,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
     return data;
   },
@@ -64,6 +114,18 @@ export const partnerCompanyService = {
   ): Promise<Coupon> {
     const { data } = await api.post<Coupon>(
       `/barbershops/${barbershopId}/partner-companies/${partnerCompanyId}/coupons`,
+      payload,
+    );
+    return data;
+  },
+
+  async updateCoupon(
+    barbershopId: string,
+    couponId: string,
+    payload: UpdateCouponPayload,
+  ): Promise<Coupon> {
+    const { data } = await api.put<Coupon>(
+      `/barbershops/${barbershopId}/partner-companies/coupons/${couponId}`,
       payload,
     );
     return data;
