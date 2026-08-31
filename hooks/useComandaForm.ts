@@ -329,6 +329,35 @@ export function useComandaForm(
     [servicos, tipo, barbershopId, appointments],
   );
 
+  /**
+   * Preço de um item de PRODUTO vinculado a agendamento: mesma regra de
+   * `resolveServicoPrice` (spec-ajustes-escopo-1.md §1.1) — se o cliente do
+   * agendamento tiver assinatura com o produto coberto (preço fixo do plano
+   * ou desconto de categoria), sobrescreve o preço de catálogo/digitado.
+   */
+  const resolveProdutoPrice = useCallback(
+    async (input: NovoItemInput): Promise<number> => {
+      const ref = produtos.find((c) => c.id === input.refId);
+      const precoBase = ref?.valorInCents ?? input.valorUnitarioInCents;
+      if (tipo !== "AGENDAMENTO" || !input.appointmentId || !barbershopId) {
+        return precoBase;
+      }
+      const appointment = appointments.find((a) => a.id === input.appointmentId);
+      if (!appointment) return precoBase;
+      try {
+        const pricing = await subscriptionsService.getProductPricing(
+          barbershopId,
+          appointment.clientId,
+          input.refId,
+        );
+        return pricing.covered ? pricing.priceInCents : precoBase;
+      } catch {
+        return precoBase;
+      }
+    },
+    [produtos, tipo, barbershopId, appointments],
+  );
+
   const addItem = useCallback(
     async (input: NovoItemInput): Promise<boolean> => {
       if (isLocked) return false;
@@ -344,7 +373,7 @@ export function useComandaForm(
         return false;
       }
       const valorUnitarioInCents =
-        input.tipo === "SERVICO" ? await resolveServicoPrice(input) : input.valorUnitarioInCents;
+        input.tipo === "SERVICO" ? await resolveServicoPrice(input) : await resolveProdutoPrice(input);
       setItens((prev) => [
         ...prev,
         {
@@ -362,7 +391,15 @@ export function useComandaForm(
       setErro(null);
       return true;
     },
-    [produtos, servicos, tipo, linkedAppointmentIds, resolveServicoPrice, isLocked],
+    [
+      produtos,
+      servicos,
+      tipo,
+      linkedAppointmentIds,
+      resolveServicoPrice,
+      resolveProdutoPrice,
+      isLocked,
+    ],
   );
 
   const removeItem = useCallback(

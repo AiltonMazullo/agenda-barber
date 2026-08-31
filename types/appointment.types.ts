@@ -7,6 +7,8 @@ import type { Service } from "@/types/service.types";
 export type AppointmentStatus =
   | "PENDING"
   | "CONFIRMED"
+  | "ARRIVED"
+  | "IN_PROGRESS"
   | "CANCELLED"
   | "COMPLETED"
   | "NO_SHOW";
@@ -47,6 +49,13 @@ export interface AppointmentRaw {
   durationOverrideMin: number | null;
   /** Observação livre digitada na criação/edição (spec-revisao-cliente-4.md §2.3). */
   notes?: string | null;
+  /**
+   * Profissional sorteado por "sem preferência" (spec-ajustes-escopo-1.md
+   * §3.1/§3.2) — `employeeId` sempre vem preenchido (nunca null); esta flag
+   * só marca a origem "sorteado" pra UI (layout listrado, navegação entre
+   * profissionais).
+   */
+  noPreferenceOrigin: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -102,8 +111,22 @@ export interface CreateAppointmentPayload {
   scheduledAt: string;
   /** Confirma a criação mesmo com o aviso de conflito de plano (§1.1). */
   force?: boolean;
+  /**
+   * Horário final editável (spec-ajustes-escopo-1.md §2.1) — duração (min)
+   * de cada serviço, na mesma ordem/tamanho de `serviceIds`. Sobrescreve a
+   * duração padrão do serviço; omitido usa sempre o padrão.
+   */
+  durationOverrides?: number[];
   /** Observação livre (spec-revisao-cliente-4.md §2.3). */
   notes?: string;
+  /**
+   * "Sem preferência de profissional" (spec-ajustes-escopo-1.md §3.1/§3.2) —
+   * quando true, `employeeId` é ignorado e o backend sorteia um profissional
+   * com disponibilidade real no horário pedido.
+   */
+  noPreference?: boolean;
+  /** Filial — usada pra restringir os candidatos do sorteio de "sem preferência". */
+  branchId?: string;
 }
 
 /** Resposta de `POST /appointments` quando há um conflito não bloqueante (regra dos 30 min por plano). */
@@ -146,6 +169,12 @@ export interface UpdateAppointmentPayload {
   endAt?: string;
   branchId?: string | null;
   employeeId?: string | null;
+  /**
+   * "Sem preferência" (spec-ajustes-escopo-1.md §3.1) — quando true, o
+   * backend sorteia um profissional disponível e ignora `employeeId`.
+   * Substitui o antigo `employeeId: null`.
+   */
+  noPreference?: boolean;
   /** Observação livre (spec-revisao-cliente-4.md §2.3). `null` explícito limpa a observação. */
   notes?: string | null;
 }

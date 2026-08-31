@@ -12,24 +12,31 @@ import type {
 export function useFinancialEntries(
   barbershopId: string | undefined,
   filters: FinancialEntryFilters = {},
+  // spec-ajustes-escopo-2 §2.4: opcional — sem paginação, mantém o
+  // comportamento legado (busca a lista inteira, `total` vem `null`).
+  pagination?: { page: number; pageSize: number },
 ) {
   const [entries, setEntries] = useState<FinancialEntry[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const filtersKey = JSON.stringify(filters);
+  const paginationKey = JSON.stringify(pagination);
 
   const fetchEntries = useCallback(async () => {
     if (!barbershopId) return;
     setIsLoading(true);
     try {
-      const data = await financialEntriesService.list(barbershopId, filters);
-      setEntries(data);
+      const result = await financialEntriesService.list(barbershopId, filters, pagination);
+      setEntries(result.data);
+      setTotal(result.total);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao carregar lançamentos.");
     } finally {
       setIsLoading(false);
-       
+
     }
-  }, [barbershopId, filtersKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barbershopId, filtersKey, paginationKey]);
 
   useEffect(() => {
     if (!barbershopId) {
@@ -87,5 +94,5 @@ export function useFinancialEntries(
     [barbershopId, fetchEntries],
   );
 
-  return { entries, isLoading, create, markPaid, remove, refetch: fetchEntries };
+  return { entries, total, isLoading, create, markPaid, remove, refetch: fetchEntries };
 }

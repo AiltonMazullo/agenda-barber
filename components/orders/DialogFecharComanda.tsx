@@ -44,13 +44,7 @@ import {
   maskBRLInput,
   parseBRL,
 } from "@/utils/format";
-import { COMANDA_FORMA_PAGAMENTO_OPTIONS } from "@/utils/comanda";
-import type {
-  Comanda,
-  ComandaFormaPagamento,
-  ComandaItem,
-  ComandaItemTipo,
-} from "@/types/orders.types";
+import type { Comanda, ComandaItem, ComandaItemTipo } from "@/types/orders.types";
 import type { SelectOption } from "@/types/common.types";
 
 /** Total líquido (bruto - desconto) de um item, em centavos. */
@@ -77,27 +71,12 @@ function itemSufixo(id: string): string {
   return id.slice(-7).toUpperCase();
 }
 
-/**
- * Mapeia o nome livre de uma `PaymentMethodConfig` (ex.: "Pix Itaú", "Cartão
- * de Crédito") para o enum legado `ComandaFormaPagamento` ainda usado no
- * fechamento (spec-revisao-cliente-4.md §4.3 — migrar de vez pra
- * `paymentMethodId` é um passo maior, com impacto de dado em
- * `ComandaPagamento`, fora de escopo aqui). Best-effort por palavra-chave.
- */
-function inferFormaPagamento(nome: string): ComandaFormaPagamento {
-  const n = nome.toLowerCase();
-  if (n.includes("dinheiro")) return "DINHEIRO";
-  if (n.includes("débito") || n.includes("debito")) return "DEBITO";
-  if (n.includes("crédito") || n.includes("credito")) return "CREDITO";
-  if (n.includes("pix")) return "PIX";
-  return "OUTRO";
-}
-
 interface PagamentoRow {
   key: string;
   cashRegisterId: string;
   valorText: string;
-  formaPagamento: ComandaFormaPagamento | "";
+  /** `PaymentMethodConfig.id` real, cadastrado em Configurações → Formas de pagamento (§2.1). */
+  paymentMethodId: string;
 }
 
 /** Campo somente-leitura de valor monetário, usado na seção "Valores". */
@@ -380,7 +359,7 @@ export function DialogFecharComanda({
     itens: ComandaItem[];
     pagamentos: {
       cashRegisterId: string;
-      formaPagamento: ComandaFormaPagamento;
+      paymentMethodId: string;
       valorInCents: number;
     }[];
   }) => Promise<unknown> | void;
@@ -414,26 +393,21 @@ export function DialogFecharComanda({
     [registers, comanda?.branchId],
   );
 
-  // Formas de pagamento habilitadas para a filial da comanda
-  // (spec-revisao-cliente-4.md §4.3) — antes a lista era sempre fixa
-  // (Dinheiro/Crédito/Débito/Pix/Outro), ignorando a configuração de
-  // "Formas de pagamento" por filial em Configurações. Sem nenhuma
-  // configurada pra essa filial, cai de volta na lista fixa (não bloqueia o
-  // fechamento de quem ainda não configurou o módulo novo).
+  // Formas de pagamento habilitadas para a filial da comanda (§2.1) — lista
+  // direto as `PaymentMethodConfig` reais cadastradas em Configurações →
+  // Formas de pagamento, com o nome tal como cadastrado, sem passar por
+  // inferência de palavra-chave (antes colapsava em Dinheiro/Crédito/
+  // Débito/Pix/Outro, escondendo o nome real e colapsando métodos
+  // diferentes — ex. dois Pix distintos — no mesmo "PIX").
   const formaPagamentoOptions: SelectOption[] = useMemo(() => {
-    if (!comanda?.branchId) return COMANDA_FORMA_PAGAMENTO_OPTIONS;
-    const nomesAtivos = paymentMethods
+    if (!comanda?.branchId) return [];
+    return paymentMethods
       .filter(
         (m) =>
           m.status === "ACTIVE" &&
           m.branchConfigs.some((bc) => bc.branchId === comanda.branchId),
       )
-      .map((m) => m.name);
-    if (nomesAtivos.length === 0) return COMANDA_FORMA_PAGAMENTO_OPTIONS;
-    const valores = Array.from(new Set(nomesAtivos.map(inferFormaPagamento)));
-    return COMANDA_FORMA_PAGAMENTO_OPTIONS.filter((o) =>
-      valores.includes(o.value as ComandaFormaPagamento),
-    );
+      .map((m) => ({ value: m.id, label: m.name }));
   }, [paymentMethods, comanda?.branchId]);
 
   // Clona os itens da comanda para edição local dos descontos.
@@ -453,7 +427,7 @@ export function DialogFecharComanda({
         key: crypto.randomUUID(),
         cashRegisterId: openRegisters.length === 1 ? openRegisters[0].id : "",
         valorText: maskBRLInput(String(totalInicial)),
-        formaPagamento: "",
+        paymentMethodId: "",
       },
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -643,7 +617,7 @@ export function DialogFecharComanda({
         key: crypto.randomUUID(),
         cashRegisterId: openRegisters.length === 1 ? openRegisters[0].id : "",
         valorText: "",
-        formaPagamento: "",
+        paymentMethodId: "",
       },
     ]);
   }
@@ -672,7 +646,7 @@ export function DialogFecharComanda({
     pagamentos.every(
       (p) =>
         p.cashRegisterId !== "" &&
-        p.formaPagamento !== "" &&
+        p.paymentMethodId !== "" &&
         p.valorText.trim() !== "",
     );
 
@@ -690,7 +664,7 @@ export function DialogFecharComanda({
         itens,
         pagamentos: pagamentos.map((p) => ({
           cashRegisterId: p.cashRegisterId,
-          formaPagamento: p.formaPagamento as ComandaFormaPagamento,
+          paymentMethodId: p.paymentMethodId,
           valorInCents: Math.round(parseBRL(p.valorText) * 100),
         })),
       });
@@ -1010,12 +984,14 @@ export function DialogFecharComanda({
                       <LabeledSelect
                         label="Forma de pagamento"
                         required
-                        placeholder="Selecione..."
-                        value={p.formaPagamento}
+                        placeholder={
+                          formaPagamentoOptions.length === 0
+                            ? "Nenhuma cadastrada para esta filial"
+                            : "Selecione..."
+                        }
+                        value={p.paymentMethodId}
                         onValueChange={(v) =>
-                          updatePagamentoRow(p.key, {
-                            formaPagamento: v as ComandaFormaPagamento,
-                          })
+                          updatePagamentoRow(p.key, { paymentMethodId: v })
                         }
                         options={formaPagamentoOptions}
                       />

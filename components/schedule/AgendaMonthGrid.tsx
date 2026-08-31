@@ -29,7 +29,9 @@ export function AgendaMonthGrid({
   const porDia = useMemo(() => {
     const map = new Map<string, AgendamentoVM[]>();
     for (const ag of agendamentos) {
-      if (ag.status === "CANCELLED") continue;
+      // spec-ajustes-escopo-1.md §2.2 — cancelados e faltas (NO_SHOW) só
+      // aparecem na visualização em lista, não na grade/mês.
+      if (ag.status === "CANCELLED" || ag.status === "NO_SHOW") continue;
       const list = map.get(ag.dataIso) ?? [];
       list.push(ag);
       map.set(ag.dataIso, list);

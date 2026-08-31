@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { comandasService } from "@/services/comandas.service";
-import type {
-  Comanda,
-  ComandaDraft,
-  ComandaPagamento,
-  ComandaStatus,
-} from "@/types/orders.types";
+import type { Comanda, ComandaDraft, ComandaStatus } from "@/types/orders.types";
 
 const STATUS_TOAST: Record<ComandaStatus, string> = {
   ABERTA: "Comanda reaberta.",
@@ -16,22 +11,42 @@ const STATUS_TOAST: Record<ComandaStatus, string> = {
   CANCELADA: "Comanda cancelada.",
 };
 
-/** CRUD de comandas da barbearia, integrado com a API real. */
+interface UseComandasFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  status?: ComandaStatus;
+  search?: string;
+}
+
+/**
+ * CRUD de comandas da barbearia, integrado com a API real.
+ * spec-ajustes-escopo-2 §2.4: `pagination` é opcional — sem ele, busca a
+ * lista inteira (`total` vem `null`), mesmo padrão de `useFinancialEntries`.
+ */
 export function useComandas(
   barbershopId: string | undefined,
-  dateFilter?: { dateFrom?: string; dateTo?: string },
+  filters?: UseComandasFilters,
+  pagination?: { page: number; pageSize: number },
 ) {
   const [comandas, setComandas] = useState<Comanda[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const dateFrom = dateFilter?.dateFrom;
-  const dateTo = dateFilter?.dateTo;
+  const { dateFrom, dateTo, status, search } = filters ?? {};
+  const paginationKey = JSON.stringify(pagination);
 
   const fetchComandas = useCallback(async () => {
     if (!barbershopId) return;
     setIsLoading(true);
     try {
-      const data = await comandasService.list(barbershopId, { dateFrom, dateTo });
-      setComandas(data);
+      const result = await comandasService.list(barbershopId, {
+        dateFrom,
+        dateTo,
+        status,
+        search,
+        ...pagination,
+      });
+      setComandas(result.data);
+      setTotal(result.total);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Falha ao carregar comandas.",
@@ -39,7 +54,8 @@ export function useComandas(
     } finally {
       setIsLoading(false);
     }
-  }, [barbershopId, dateFrom, dateTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barbershopId, dateFrom, dateTo, status, search, paginationKey]);
 
   useEffect(() => {
     if (!barbershopId) {
@@ -89,7 +105,7 @@ export function useComandas(
     async (
       id: string,
       status: ComandaStatus,
-      pagamentos?: Pick<ComandaPagamento, "cashRegisterId" | "formaPagamento" | "valorInCents">[],
+      pagamentos?: { cashRegisterId: string; paymentMethodId: string; valorInCents: number }[],
     ): Promise<Comanda | null> => {
       if (!barbershopId) return null;
       try {
@@ -128,5 +144,5 @@ export function useComandas(
     [barbershopId, fetchComandas],
   );
 
-  return { comandas, isLoading, create, update, setStatus, remove };
+  return { comandas, total, isLoading, create, update, setStatus, remove, refetch: fetchComandas };
 }

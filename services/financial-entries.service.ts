@@ -12,11 +12,27 @@ import type {
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/financial-entries`;
 
 export const financialEntriesService = {
-  async list(barbershopId: string, filters: FinancialEntryFilters = {}): Promise<FinancialEntry[]> {
+  /**
+   * spec-ajustes-escopo-2 §2.4: sem `page`/`pageSize`, o backend responde
+   * `total: null` e `data` com a lista inteira (compat com quem ainda não
+   * pagina). Mesmo padrão já usado em `comandas.service.ts`.
+   */
+  async list(
+    barbershopId: string,
+    filters: FinancialEntryFilters = {},
+    pagination?: { page: number; pageSize: number },
+  ): Promise<{ data: FinancialEntry[]; total: number | null }> {
     const { categoryIds, ...rest } = filters;
-    const { data } = await api.get<FinancialEntry[]>(base(barbershopId), {
-      params: { ...rest, categoryIds: categoryIds?.length ? categoryIds.join(",") : undefined },
-    });
+    const { data } = await api.get<{ data: FinancialEntry[]; total: number | null }>(
+      base(barbershopId),
+      {
+        params: {
+          ...rest,
+          categoryIds: categoryIds?.length ? categoryIds.join(",") : undefined,
+          ...pagination,
+        },
+      },
+    );
     return data;
   },
 

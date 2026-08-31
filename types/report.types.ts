@@ -151,12 +151,25 @@ export interface TicketMedioAgendamento {
 export interface ComissaoServicoRow {
   employeeId: string | null;
   profissional: string | null;
+  /** Cliente que originou o atendimento — spec-ajustes-escopo-3 §1. */
+  clientId: string | null;
+  cliente: string | null;
+  /** Nome do(s) plano(s) ativo(s) do cliente — só preenchido quando `comClube`. */
+  plano: string | null;
   servico: string;
   data: string;
   comClube: boolean;
   valorInCents: number;
   commissionPercent: number;
   comissaoInCents: number;
+  /** "Fichas" do serviço p/ rateio do Clube de Comissão — null se ocultado do relatório do funcionário. */
+  fichaValue: number | null;
+  /** Composição da comissão (base + adicional + diferenciada) — só != 0 quando `comClube`. */
+  baseInCents: number;
+  additionalInCents: number;
+  subscriberInCents: number;
+  additionalPercent: number;
+  subscriberPercent: number;
 }
 
 export interface ComissaoProdutoRow {

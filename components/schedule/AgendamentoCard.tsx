@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { Clock, Wifi, Monitor, GripVertical } from "lucide-react";
+import { Clock, Wifi, Monitor, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPhone } from "@/utils/format";
 import { minToTime } from "./helpers";
 import { STATUS_COR } from "./status";
 import { AgendamentoIcones } from "./AgendamentoIcones";
@@ -17,6 +18,7 @@ export function AgendamentoCard({
   isResizing = false,
   onClick,
   onResizeStart,
+  onNavigateProfissional,
 }: {
   agendamento: AgendamentoVM;
   servico: ServicoVM;
@@ -27,17 +29,25 @@ export function AgendamentoCard({
   isResizing?: boolean;
   onClick?: () => void;
   onResizeStart?: (e: React.PointerEvent) => void;
+  /** "Sem preferência" (§3.1): navega o card pra outro profissional livre, sem abrir o detalhe. */
+  onNavigateProfissional?: (ag: AgendamentoVM, direction: "prev" | "next") => void;
 }) {
   const duracao = agendamento.duracao;
   const heightPx = (duracao / slotSize) * slotHeightPx;
   const statusCor = STATUS_COR[agendamento.status];
+  // spec-ajustes-escopo-1.md §2.3: até o cliente chegar (status ainda
+  // PENDING/CONFIRMED), a borda do card usa a cor do plano do cliente (se
+  // tiver); assim que o status avançar (Chegou/Em andamento/Concluído/
+  // Falta/Cancelado) volta a usar a cor do status.
+  const aindaNaoChegou = agendamento.status === "PENDING" || agendamento.status === "CONFIRMED";
+  const corBorda = aindaNaoChegou && agendamento.planCor ? agendamento.planCor : statusCor;
 
   return (
     <div
       onClick={onClick}
       title={
         agendamento.telefone
-          ? `${agendamento.cliente} · ${agendamento.telefone}`
+          ? `${agendamento.cliente} · ${formatPhone(agendamento.telefone)}`
           : agendamento.cliente
       }
       className={cn(
@@ -55,18 +65,19 @@ export function AgendamentoCard({
         // "Sem preferência de profissional" (employeeId null, ver DialogDetalhe
         // item 4): fundo listrado diagonal em vez de sólido, pra diferenciar o
         // card visualmente de um agendamento com profissional definido. A cor
-        // do plano do cliente não fica mais no fundo do card (ficava sólida
-        // demais) — ela aparece atrás do card, na grade (ver `ProfissionalColuna`).
+        // do plano do cliente não fica no fundo do card (ficava sólida demais)
+        // — fica só na borda, até o cliente chegar (§2.3, `corBorda` acima).
         // Fundo do card levemente translúcido (em vez de opaco) — deixa a
         // faixa colorida do plano (atrás, na grade) transparecer sutilmente
         // por trás do card, sem pintar o card inteiro de sólido.
         background: agendamento.semPreferencia
           ? "repeating-linear-gradient(135deg, rgba(28,33,40,0.85) 0px, rgba(28,33,40,0.85) 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)"
           : "rgba(28,33,40,0.82)",
-        // Bordas laterais e inferior conforme a situação do agendamento.
-        borderLeft: `3px solid ${statusCor}`,
-        borderRight: `1.5px solid ${statusCor}`,
-        borderBottom: `2px solid ${statusCor}`,
+        // Bordas laterais e inferior conforme a situação do agendamento —
+        // cor do plano antes do cliente chegar, cor do status depois (§2.3).
+        borderLeft: `3px solid ${corBorda}`,
+        borderRight: `1.5px solid ${corBorda}`,
+        borderBottom: `2px solid ${corBorda}`,
         boxShadow: isDragging ? "none" : "0 1px 8px rgba(0,0,0,0.5)",
       }}
     >
@@ -115,6 +126,35 @@ export function AgendamentoCard({
           </div>
         )}
       </div>
+      {/* Navegação entre profissionais (§3.1) — só em cards "sem preferência" */}
+      {agendamento.semPreferencia && onNavigateProfissional && heightPx >= 28 && (
+        <div className="absolute top-1 right-1 flex items-center gap-0.5 z-20">
+          <button
+            type="button"
+            title="Trocar para o profissional anterior"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigateProfissional(agendamento, "prev");
+            }}
+            className="size-4 rounded-sm flex items-center justify-center bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="size-2.5" />
+          </button>
+          <button
+            type="button"
+            title="Trocar para o próximo profissional"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigateProfissional(agendamento, "next");
+            }}
+            className="size-4 rounded-sm flex items-center justify-center bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors"
+          >
+            <ChevronRight className="size-2.5" />
+          </button>
+        </div>
+      )}
       {/* Resize handle */}
       {onResizeStart && heightPx >= 28 && (
         <div

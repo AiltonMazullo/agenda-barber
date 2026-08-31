@@ -11,6 +11,8 @@ import {
   BadgeCheck,
   AlertCircle,
   CreditCard,
+  History,
+  CircleAlert,
 } from "lucide-react";
 import {
   Dialog,
@@ -41,6 +43,7 @@ import {
 } from "./helpers";
 import { maskCpf, formatPhone } from "@/utils/format";
 import { useAuth } from "@/hooks/useAuth";
+import { useClientRecentAppointments } from "@/hooks/useClientRecentAppointments";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import type {
   AgendamentoVM,
@@ -51,14 +54,31 @@ import type {
   ServicoSelecionado,
   ServicoVM,
 } from "./types";
+import type { AppointmentStatus } from "@/types/appointment.types";
 import type { Client } from "@/types/client.types";
 import type { Branch } from "@/types/branch.types";
 import type { ServicePricing } from "@/types/subscription.types";
+
+const STATUS_LABEL: Record<AppointmentStatus, string> = {
+  PENDING: "Pendente",
+  CONFIRMED: "Confirmado",
+  ARRIVED: "Chegou",
+  IN_PROGRESS: "Em andamento",
+  COMPLETED: "Concluído",
+  CANCELLED: "Cancelado",
+  NO_SHOW: "Faltou",
+};
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
+}
+
+/** "yyyy-MM-dd" → "dd/MM", sem depender do fuso do navegador. */
+function diaMes(dataIso: string): string {
+  const [, m, d] = dataIso.split("-");
+  return `${d}/${m}`;
 }
 
 export function DialogNovoAgendamento({
@@ -74,6 +94,7 @@ export function DialogNovoAgendamento({
   bloqueios,
   clients,
   clientActivePlans,
+  clientDelinquency,
   defaultDate,
   prefilledHora,
   prefilledProfId,
@@ -97,6 +118,8 @@ export function DialogNovoAgendamento({
   clients: Client[];
   /** Nomes dos planos ativos por cliente — indicador "Cliente possui plano X ativo" abaixo da seleção. */
   clientActivePlans: Map<string, string[]>;
+  /** Clientes com assinatura em atraso — indicador de inadimplência no modal (spec-ajustes-escopo-3 §6). */
+  clientDelinquency?: Map<string, boolean>;
   defaultDate: Date;
   prefilledHora?: string;
   prefilledProfId?: string;
@@ -114,6 +137,38 @@ export function DialogNovoAgendamento({
   const [hora, setHora] = useState(prefilledHora ?? "09:00");
   const [observacao, setObservacao] = useState("");
   const [branchId, setBranchId] = useState<string>(defaultBranchId ?? "");
+
+  // Horário final (§2.1): pré-calculado a partir da soma das durações dos
+  // serviços selecionados (já editáveis por linha no ServicoSelector) — mas
+  // também editável diretamente aqui. Editar o horário final ajusta a
+  // duração do ÚLTIMO serviço da lista para fechar o total pedido.
+  const duracaoTotalMin = useMemo(
+    () => rows.reduce((sum, r) => sum + r.duracao, 0),
+    [rows],
+  );
+  const horaFinal = useMemo(
+    () => minToTime(timeToMin(hora) + duracaoTotalMin),
+    [hora, duracaoTotalMin],
+  );
+  function handleHoraFinalChange(novaHoraFinal: string) {
+    if (rows.length === 0) return;
+    const novoTotal = timeToMin(novaHoraFinal) - timeToMin(hora);
+    const outrasDuracoes = rows
+      .slice(0, -1)
+      .reduce((sum, r) => sum + r.duracao, 0);
+    const novaDuracaoUltimo = novoTotal - outrasDuracoes;
+    if (novaDuracaoUltimo < 5) {
+      toast.error(
+        "Horário final muito próximo do início para a duração dos serviços.",
+      );
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r, i) =>
+        i === prev.length - 1 ? { ...r, duracao: novaDuracaoUltimo } : r,
+      ),
+    );
+  }
 
   /** Profissionais visíveis no seletor de serviço, filtrados pela filial escolhida acima. */
   const profissionais = useMemo(
@@ -193,6 +248,13 @@ export function DialogNovoAgendamento({
   }, [clients, buscaCliente]);
 
   const planosAtivos = clientId ? (clientActivePlans.get(clientId) ?? []) : [];
+  const clienteInadimplente = clientId ? (clientDelinquency?.get(clientId) ?? false) : false;
+
+  // Últimos 3 agendamentos do cliente selecionado — mesmo histórico rápido já
+  // usado no modal de detalhe (`DialogDetalhe`), aqui pra recepção ver o
+  // padrão do cliente antes de confirmar o novo agendamento.
+  const { appointments: ultimosAgendamentos, isLoading: loadingUltimos } =
+    useClientRecentAppointments(barbershop?.id, clientId || undefined, !!clientId, 3);
 
   // ── Preço/duração dinâmicos ──
   // O preço e a duração do serviço nunca são digitados manualmente: vêm do
@@ -376,6 +438,7 @@ export function DialogNovoAgendamento({
       // reais (confirmar, fechar comanda, marcar falta, cancelar), nunca
       // direto na criação.
       origem: "recepcao", // definida automaticamente
+      branchId: branchId || undefined,
     });
     // Reset parcial
     setClientId("");
@@ -595,6 +658,73 @@ export function DialogNovoAgendamento({
                 </div>
               ))}
 
+            {/* ── Inadimplência (spec-ajustes-escopo-3 §6) — agendar
+                continua permitido mesmo assim, é só um alerta. ── */}
+            {clientId && clienteInadimplente && (
+              <div className="flex items-center gap-2 rounded-md border border-danger-foreground/30 bg-danger/10 px-3 py-2">
+                <CircleAlert className="size-3.5 text-danger-foreground shrink-0" />
+                <p className="text-[11px] text-danger-foreground">
+                  Cliente com assinatura em atraso.
+                </p>
+              </div>
+            )}
+
+            {/* ── Últimos 3 agendamentos do cliente ── */}
+            {clientId && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <History className="size-3.5 text-muted-foreground" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Últimos agendamentos
+                  </span>
+                </div>
+                {loadingUltimos ? (
+                  <p className="text-xs text-text-faint">Carregando…</p>
+                ) : ultimosAgendamentos.length === 0 ? (
+                  <p className="text-xs text-text-faint">
+                    Nenhum agendamento anterior encontrado.
+                  </p>
+                ) : (
+                  <div className="rounded-md border border-border-subtle divide-y divide-border-subtle overflow-x-auto">
+                    <table className="w-full text-[11px]">
+                      <thead>
+                        <tr className="text-text-faint">
+                          <th className="text-left font-medium px-2 py-1">Data</th>
+                          <th className="text-left font-medium px-2 py-1">Serviço</th>
+                          <th className="text-left font-medium px-2 py-1">Produtos</th>
+                          <th className="text-left font-medium px-2 py-1">Profissional</th>
+                          <th className="text-left font-medium px-2 py-1">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border-subtle">
+                        {ultimosAgendamentos.slice(0, 3).map((a) => (
+                          <tr key={a.id}>
+                            <td className="px-2 py-1.5 whitespace-nowrap text-foreground">
+                              {diaMes(a.scheduledAt.slice(0, 10))}
+                            </td>
+                            <td className="px-2 py-1.5 text-foreground truncate max-w-[90px]">
+                              {a.service?.name ?? "Serviço"}
+                            </td>
+                            <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[90px]">
+                              {a.products.length > 0
+                                ? a.products.map((p) => p.nome).join(", ")
+                                : "—"}
+                            </td>
+                            <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[80px]">
+                              {a.employee?.appName ?? a.employee?.name ?? "—"}
+                            </td>
+                            <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[70px]">
+                              {STATUS_LABEL[a.status]}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Serviços (múltiplos) ── */}
             <ServicoSelector
               value={rows}
@@ -627,6 +757,18 @@ export function DialogNovoAgendamento({
                 <HoraSelect value={hora} onChange={setHora} date={data} />
               </div>
             </div>
+
+            {/* ── Horário final (§2.1): pré-calculado a partir da duração dos
+                serviços selecionados, mas editável — editar aqui ajusta a
+                duração do último serviço da lista pra fechar o total. ── */}
+            {rows.length > 0 && rows.every((r) => r.servicoId) && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-brand">
+                  Horário final
+                </label>
+                <HoraSelect value={horaFinal} onChange={handleHoraFinalChange} date={data} />
+              </div>
+            )}
 
             {/* ── Verificar horário ── */}
             <button

@@ -17,6 +17,8 @@ import {
   Phone,
   GripVertical,
   Save,
+  CalendarX,
+  XCircle,
 } from "lucide-react";
 import {
   DndContext,
@@ -51,7 +53,14 @@ import {
   EmptyState,
   DataTablePagination,
   Loading,
+  ConfirmDialog,
 } from "@/components/shared";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DialogNovoPlano } from "@/components/plans/DialogNovoPlano";
 import { DialogNovaAssinatura } from "@/components/plans/DialogNovaAssinatura";
 import { formatBRL, formatDate } from "@/utils/format";
@@ -95,8 +104,14 @@ function QuickLinksBar() {
 
 function AssinantesTab() {
   const { barbershop } = useAuth();
-  const { activeSubscriptions, summary, isLoading, refetch } = useSubscriptions(
+  const { activeSubscriptions, summary, isLoading, refetch, cancel } = useSubscriptions(
     barbershop?.id,
+  );
+  // spec-ajustes-escopo-2 §1.3: expõe as duas opções de cancelamento lado a
+  // lado — "Cancelar agora" (`cancelByOwner`, imediato) e "Cancelar ao final
+  // do ciclo" (fluxo PreCancelledClient, já existia isolado).
+  const [cancelNowTarget, setCancelNowTarget] = useState<{ id: string; clientName: string } | null>(
+    null,
   );
 
   const { plans } = usePlans(barbershop?.id);
@@ -298,13 +313,37 @@ function AssinantesTab() {
                         {formatDate(s.startedAt)}
                       </TableCell>
                       <TableCell className="px-4 py-4">
-                        <Link
-                          href={`/subscriptions/pre-cancelados/novo?subscriptionId=${s.id}`}
-                          title="Agendar cancelamento (fim do ciclo)"
-                          className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors"
-                        >
-                          <UserMinus className="size-3" />
-                        </Link>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            aria-label={`Cancelar assinatura de ${s.client.name}`}
+                            title="Cancelar assinatura"
+                            className="size-7 rounded-md border border-danger/30 bg-transparent text-danger-foreground flex items-center justify-center hover:bg-danger/10 transition-colors cursor-pointer outline-none"
+                          >
+                            <UserMinus className="size-3" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-56">
+                            <DropdownMenuItem
+                              render={
+                                <Link
+                                  href={`/subscriptions/pre-cancelados/novo?subscriptionId=${s.id}`}
+                                />
+                              }
+                              className="text-xs cursor-pointer"
+                            >
+                              <CalendarX className="size-3.5" />
+                              Cancelar ao final do ciclo
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setCancelNowTarget({ id: s.id, clientName: s.client.name })
+                              }
+                              className="text-xs cursor-pointer text-danger-foreground"
+                            >
+                              <XCircle className="size-3.5" />
+                              Cancelar agora
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -337,6 +376,22 @@ function AssinantesTab() {
           onCreated={refetch}
         />
       )}
+      <ConfirmDialog
+        open={cancelNowTarget !== null}
+        onOpenChange={(v) => !v && setCancelNowTarget(null)}
+        title="Cancelar assinatura agora?"
+        description={
+          cancelNowTarget
+            ? `A assinatura de ${cancelNowTarget.clientName} será cancelada imediatamente — sem esperar o fim do ciclo já pago.`
+            : undefined
+        }
+        confirmLabel="Cancelar agora"
+        tone="danger"
+        onConfirm={() => {
+          if (cancelNowTarget) void cancel(cancelNowTarget.id);
+          setCancelNowTarget(null);
+        }}
+      />
     </div>
   );
 }

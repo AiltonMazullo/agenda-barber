@@ -95,6 +95,24 @@ export const clientsService = {
     return data;
   },
 
+  /**
+   * Histórico paginado de agendamentos do cliente (mais recentes primeiro) —
+   * aba "Agendamentos" do painel do cliente (spec-ajustes-escopo-3 §7).
+   * Mesma rota de `getRecentAppointments`, agora com `page`/`pageSize`.
+   */
+  async getAppointmentsPaginated(
+    barbershopId: string,
+    id: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ data: AppointmentWithProducts[]; total: number }> {
+    const { data } = await api.get<{ data: AppointmentWithProducts[]; total: number }>(
+      `/barbershops/${barbershopId}/clients/${id}/appointments`,
+      { params: { page, pageSize } },
+    );
+    return data;
+  },
+
   /** Envia a foto do cliente (campo `photo`, JPEG/PNG/WebP até 2MB). */
   async uploadPhoto(
     barbershopId: string,

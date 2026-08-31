@@ -26,12 +26,18 @@ export default function EditarCategoriaFinanceiraPage() {
     if (found) setCategory(found);
   }, [categories, params.id]);
 
-  async function handleSubmit(values: { name: string; parentCategoryId: string; status: "ACTIVE" | "INACTIVE" }) {
+  async function handleSubmit(values: {
+    name: string;
+    parentCategoryId: string;
+    status: "ACTIVE" | "INACTIVE";
+    requiresEmployee: boolean;
+  }) {
     setSaving(true);
     const updated = await update(params.id, {
       name: values.name,
       parentCategoryId: values.parentCategoryId || null,
       status: values.status,
+      requiresEmployee: values.requiresEmployee,
     });
     setSaving(false);
     if (updated) router.push("/financial/categorias");

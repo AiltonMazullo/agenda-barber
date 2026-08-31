@@ -190,8 +190,12 @@ export default function ComissoesPage() {
     );
   }
 
-  // Total bruto = comissões (avulso + produto + clube) + bônus + vale, com os
-  // valores de bônus/vale reavaliados a cada digitação (antes de confirmar).
+  // Total bruto = comissões (avulso + produto + clube) + bônus, com o valor
+  // de bônus reavaliado a cada digitação (antes de confirmar). Vale NÃO
+  // entra no bruto — é adiantamento a descontar, não receita (spec-ajustes-
+  // escopo-2 §6.1: antes entrava aqui com o mesmo sinal do bônus e era
+  // subtraído de novo no total líquido abaixo, cancelando o próprio efeito
+  // — líquido = bruto sempre, vale nunca era de fato descontado).
   // Total líquido = bruto − vale (adiantamento já recebido pelo profissional),
   // mesma regra usada por `generateCommissions()` no backend (§4.6).
   function totalBrutoInCents(r: CommissionResultRow): number {
@@ -199,8 +203,7 @@ export default function ComissoesPage() {
       r.servicesAvulsoInCents +
       r.servicesProdutoInCents +
       r.servicesClubInCents +
-      Math.round(parseBRL(bonusInputs[r.employeeId] ?? "0") * 100) +
-      Math.round(parseBRL(valeInputs[r.employeeId] ?? "0") * 100)
+      Math.round(parseBRL(bonusInputs[r.employeeId] ?? "0") * 100)
     );
   }
 

@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { appointmentsService, isCreateAppointmentWarning } from "@/services/appointments.service";
 import type {
@@ -16,6 +16,28 @@ import type {
 export function useAppointments(barbershopId: string | undefined) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // spec-ajustes-escopo-2 §7: substitui o `window.confirm` do aviso de
+  // conflito de 30 min por plano por um modal padrão (`ConfirmDialog`,
+  // renderizado pelo consumidor — ver schedule/page.tsx). Como `create()` é
+  // assíncrono e precisa aguardar a resposta do usuário antes de decidir
+  // reenviar com `force: true`, o aviso pendente vira estado + uma Promise
+  // resolvida quando o consumidor chama `resolvePendingWarning`.
+  const [pendingWarning, setPendingWarning] = useState<string | null>(null);
+  const pendingWarningResolver = useRef<((confirmed: boolean) => void) | null>(null);
+
+  const confirmWarning = useCallback((warning: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      pendingWarningResolver.current = resolve;
+      setPendingWarning(warning);
+    });
+  }, []);
+
+  const resolvePendingWarning = useCallback((confirmed: boolean) => {
+    pendingWarningResolver.current?.(confirmed);
+    pendingWarningResolver.current = null;
+    setPendingWarning(null);
+  }, []);
 
   useEffect(() => {
     if (!barbershopId) {
@@ -65,7 +87,8 @@ export function useAppointments(barbershopId: string | undefined) {
         // Regra dos 30 min por plano (§1.1): a recepção pode confirmar mesmo
         // assim — reenvia com `force: true` uma única vez.
         if (isCreateAppointmentWarning(result)) {
-          if (!window.confirm(result.warning)) return null;
+          const confirmed = await confirmWarning(result.warning);
+          if (!confirmed) return null;
           const forced = await appointmentsService.create(barbershopId, {
             ...payload,
             force: true,
@@ -86,7 +109,7 @@ export function useAppointments(barbershopId: string | undefined) {
         return null;
       }
     },
-    [barbershopId],
+    [barbershopId, confirmWarning],
   );
 
   const updateStatus = useCallback(
@@ -281,5 +304,7 @@ export function useAppointments(barbershopId: string | undefined) {
     update,
     transfer,
     refetch,
+    pendingWarning,
+    resolvePendingWarning,
   };
 }

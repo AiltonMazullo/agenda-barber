@@ -68,6 +68,8 @@ export interface CreateFinancialEntryPayload {
   bankAccountId?: string;
   branchId?: string;
   dueDate: string;
+  /** spec-ajustes-escopo-2 §6.2/§6.3: profissional vinculado, quando a categoria exige (`requiresEmployee`). */
+  employeeId?: string;
 }
 
 export interface UpdateFinancialEntryPayload {

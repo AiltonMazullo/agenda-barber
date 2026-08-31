@@ -27,7 +27,7 @@ import { clientPlansService } from "@/services/client-plans.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useClientSubscription } from "@/hooks/useClientSubscription";
-import { formatBRL } from "@/utils/format";
+import { formatBRL, formatDate } from "@/utils/format";
 import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
 import type { Plan } from "@/types/plan.types";
 import type { Client } from "@/types/client.types";
@@ -72,9 +72,6 @@ function PlanCard({
   onCancel,
 }: PlanCardProps) {
   const accentColor = plan.labelColor ?? "#f5b82e";
-
-  // "Dias de gratuidade" (freeDays) é config interna do backoffice — não deve
-  // aparecer no app do cliente (spec-revisao-cliente-4.md §5.4).
 
   const availableWeekdaysLabel =
     plan.availableWeekdays.length > 0 ? formatWeekdays(plan.availableWeekdays) : "Todos os dias";
@@ -350,6 +347,29 @@ export default function PlanoClientePage() {
           agendamento.
         </p>
       </div>
+
+      {/* Inadimplência (spec-ajustes-escopo-3 §6) — antes não havia nenhuma
+          menção a atraso/cancelamento automático na tela do próprio
+          cliente. `autoCancelAt` é a data explícita (item 6.3) em que a
+          assinatura é cancelada automaticamente se o atraso persistir. */}
+      {mySubscription?.delinquency.isOverdue && (
+        <div className="rounded-lg border border-danger/30 bg-danger/5 p-4 flex items-start gap-3">
+          <AlertCircle className="size-5 text-danger-foreground shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
+            Sua assinatura está com pagamento em atraso.
+            {mySubscription.delinquency.autoCancelAt && (
+              <>
+                {" "}
+                Se não for regularizado, ela será cancelada automaticamente em{" "}
+                <span className="font-semibold text-danger-foreground">
+                  {formatDate(mySubscription.delinquency.autoCancelAt)}
+                </span>
+                .
+              </>
+            )}
+          </p>
+        </div>
+      )}
 
       {loading && <Loading />}
 

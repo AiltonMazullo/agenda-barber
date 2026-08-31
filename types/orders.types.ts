@@ -58,6 +58,9 @@ export type ComandaFormaPagamento =
 export interface ComandaPagamento {
   id: string;
   cashRegisterId: string;
+  /** Forma de pagamento real (`PaymentMethodConfig.id`) selecionada no fechamento — ver spec-ajustes-escopo-2 §2.1. */
+  paymentMethodId: string | null;
+  /** Legado — derivado server-side a partir de `paymentMethodId`, mantido só para relatórios antigos. */
   formaPagamento: ComandaFormaPagamento;
   valorInCents: number;
 }

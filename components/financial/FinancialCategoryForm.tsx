@@ -28,6 +28,7 @@ export interface FinancialCategoryFormValues {
   type: FinancialCategoryType;
   parentCategoryId: string;
   status: FinancialCategoryStatus;
+  requiresEmployee: boolean;
 }
 
 export function FinancialCategoryForm({
@@ -48,6 +49,7 @@ export function FinancialCategoryForm({
   const [type, setType] = useState<FinancialCategoryType>("PAYABLE");
   const [parentCategoryId, setParentCategoryId] = useState("");
   const [status, setStatus] = useState<FinancialCategoryStatus>("ACTIVE");
+  const [requiresEmployee, setRequiresEmployee] = useState(false);
 
   useEffect(() => {
     if (category) {
@@ -55,6 +57,7 @@ export function FinancialCategoryForm({
       setType(category.type);
       setParentCategoryId(category.parentCategoryId ?? "");
       setStatus(category.status);
+      setRequiresEmployee(category.requiresEmployee);
     }
   }, [category]);
 
@@ -109,11 +112,21 @@ export function FinancialCategoryForm({
         )}
       </div>
 
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={requiresEmployee}
+          disabled={readOnly}
+          onChange={(e) => setRequiresEmployee(e.target.checked)}
+        />
+        Vincular a profissional (exibe o seletor de profissional ao lançar nesta categoria)
+      </label>
+
       {!readOnly && (
         <div className="flex justify-end pt-2">
           <button
             type="button"
-            onClick={() => onSubmit({ name, type, parentCategoryId, status })}
+            onClick={() => onSubmit({ name, type, parentCategoryId, status, requiresEmployee })}
             disabled={!name || saving}
             className="h-10 px-5 rounded-md text-sm font-bold bg-brand text-brand-foreground hover:bg-brand-hover transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >

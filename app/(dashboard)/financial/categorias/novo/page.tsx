@@ -24,6 +24,7 @@ export default function NovaCategoriaFinanceiraPage() {
   const [name, setName] = useState("");
   const [type, setType] = useState<FinancialCategoryType>("PAYABLE");
   const [parentCategoryId, setParentCategoryId] = useState("");
+  const [requiresEmployee, setRequiresEmployee] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const primaryOptions = categories.filter((c) => c.type === type && !c.parentCategoryId);
@@ -35,6 +36,7 @@ export default function NovaCategoriaFinanceiraPage() {
       name,
       type,
       parentCategoryId: parentCategoryId || undefined,
+      requiresEmployee,
     });
     setSaving(false);
     if (created) router.push("/financial/categorias");
@@ -84,6 +86,15 @@ export default function NovaCategoriaFinanceiraPage() {
             options={primaryOptions.map((c) => ({ value: c.id, label: c.name }))}
           />
         </div>
+
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={requiresEmployee}
+            onChange={(e) => setRequiresEmployee(e.target.checked)}
+          />
+          Vincular a profissional (exibe o seletor de profissional ao lançar nesta categoria)
+        </label>
 
         <div className="flex justify-end pt-2">
           <button

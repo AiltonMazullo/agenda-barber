@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/shared";
 import { googleCalendarService } from "@/services/google-calendar.service";
 import type { GoogleCalendarStatus } from "@/types/google-calendar.types";
 
@@ -63,6 +64,7 @@ export function GoogleCalendarButton() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   function loadStatus() {
     setLoading(true);
@@ -118,16 +120,14 @@ export function GoogleCalendarButton() {
   }
 
   async function handleDisconnect() {
-    const ok = window.confirm(
-      "Desconectar o Google Agenda? Seus agendamentos deixarão de ser sincronizados automaticamente.",
-    );
-    if (!ok) return;
     try {
       await googleCalendarService.disconnect();
       setStatus({ connected: false, enabled: false, googleEmail: null });
       toast.success("Google Agenda desconectado.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao desconectar.");
+    } finally {
+      setConfirmDisconnect(false);
     }
   }
 
@@ -202,7 +202,7 @@ export function GoogleCalendarButton() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleDisconnect}
+                onClick={() => setConfirmDisconnect(true)}
                 className="cursor-pointer w-full text-danger-foreground"
               >
                 Desconectar
@@ -211,6 +211,15 @@ export function GoogleCalendarButton() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={confirmDisconnect}
+        onOpenChange={setConfirmDisconnect}
+        title="Desconectar o Google Agenda?"
+        description="Seus agendamentos deixarão de ser sincronizados automaticamente."
+        confirmLabel="Desconectar"
+        tone="danger"
+        onConfirm={() => void handleDisconnect()}
+      />
     </>
   );
 }

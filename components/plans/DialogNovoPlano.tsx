@@ -102,14 +102,13 @@ export function DialogNovoPlano({
   const [hidden, setHidden] = useState(false);
 
   // regras operacionais
-  const [freeDays, setFreeDays] = useState<number[]>([]);
   const [availableWeekdays, setAvailableWeekdays] = useState<number[]>([]);
   const [maxSimultaneous, setMaxSimultaneous] = useState("1");
   const [lockDays, setLockDays] = useState("30");
+  // Periodicidade (dias): intervalo mínimo entre usos de um serviço do plano
+  // E antecedência de agendamento online liberada para assinantes deste
+  // plano — substitui o padrão do profissional quando > 0.
   const [frequencyDays, setFrequencyDays] = useState("7");
-  // Janela de antecedência de agendamento (§5.6) — vazio = sem override,
-  // mantém o padrão configurado no profissional.
-  const [bookingWindowDays, setBookingWindowDays] = useState("");
 
   // serviços
   const [serviceRows, setServiceRows] = useState<ServiceRow[]>([]);
@@ -148,16 +147,12 @@ export function DialogNovoPlano({
     );
     setUnlimitedSales(plan?.unlimitedSales ?? false);
     setHidden(plan?.hidden ?? false);
-    setFreeDays(plan?.freeDays ?? []);
     setAvailableWeekdays(
       (plan?.availableWeekdays ?? []).map(weekday0ToIso).sort((a, b) => a - b),
     );
     setMaxSimultaneous(String(plan?.maxSimultaneousServices ?? 1));
     setLockDays(String(plan?.subscriptionLockDays ?? 30));
     setFrequencyDays(String(plan?.serviceFrequencyDays ?? 7));
-    setBookingWindowDays(
-      plan?.bookingWindowDays != null ? String(plan.bookingWindowDays) : "",
-    );
     setServiceRows(
       plan?.planServices?.map((ps) => ({
         serviceId: ps.serviceId,
@@ -392,14 +387,6 @@ export function DialogNovoPlano({
       toast.error("Periodicidade deve ser 0 ou mais dias.");
       return;
     }
-    let bookingWindowDaysNum: number | null = null;
-    if (bookingWindowDays.trim() !== "") {
-      bookingWindowDaysNum = parseInt(bookingWindowDays, 10);
-      if (Number.isNaN(bookingWindowDaysNum) || bookingWindowDaysNum < 0) {
-        toast.error("Janela de agendamento deve ser 0 ou mais dias.");
-        return;
-      }
-    }
 
     // valida descontos e limites mensais
     for (const row of serviceRows) {
@@ -443,12 +430,10 @@ export function DialogNovoPlano({
         availableQuantity: unlimitedSales ? null : (qty ?? null),
         unlimitedSales,
         hidden,
-        freeDays,
         availableWeekdays: availableWeekdays.map(isoToWeekday0).sort((a, b) => a - b),
         maxSimultaneousServices: maxSimultaneousNum,
         subscriptionLockDays: lockDaysNum,
         serviceFrequencyDays: frequencyDaysNum,
-        bookingWindowDays: bookingWindowDaysNum,
         services: serviceRows.map((r) => ({
           serviceId: r.serviceId,
           discountPercent: parseFloat(r.discountPercent.replace(",", ".")) || 0,
@@ -641,54 +626,16 @@ export function DialogNovoPlano({
                     className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
                   />
                 </Field>
-                <Field label="Janela de agendamento (dias)">
-                  <Input
-                    id="bookingWindowDays"
-                    type="number"
-                    min={0}
-                    placeholder="Padrão do profissional"
-                    value={bookingWindowDays}
-                    onChange={(e) => setBookingWindowDays(e.target.value)}
-                    className="bg-surface-base border-border text-foreground placeholder:text-text-faint focus-visible:ring-brand/30 h-10"
-                  />
-                </Field>
               </div>
               <p className="text-[11px] text-text-faint -mt-1">
                 &quot;Serviços simultâneos&quot; define o intervalo mínimo entre usos: após o cliente usar
                 um serviço do plano, o próximo agendamento online de outro serviço do plano só
                 libera 30 min após o término do anterior — não é a quantidade de serviços no
-                mesmo agendamento (isso é o carrinho de serviços). &quot;Janela de agendamento&quot;
-                substitui, para assinantes deste plano, quantos dias à frente o profissional
-                libera para agendar online — deixe em branco para manter o padrão do profissional.
+                mesmo agendamento (isso é o carrinho de serviços). &quot;Periodicidade&quot; também
+                controla, para assinantes deste plano, quantos dias à frente a agenda fica
+                liberada para agendamento online — substitui o padrão do profissional quando
+                maior que 0; deixe 0 para manter o padrão do profissional.
               </p>
-
-              <Field label="Dias de gratuidade">
-                <div className="flex gap-1.5 flex-nowrap">
-                  {WEEK_DAYS.map(({ value, short }) => {
-                    const active = freeDays.includes(value);
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() =>
-                          setFreeDays((prev) =>
-                            active
-                              ? prev.filter((d) => d !== value)
-                              : [...prev, value].sort((a, b) => a - b),
-                          )
-                        }
-                        className={`w-full h-9 rounded-md text-xs font-bold border transition-colors ${
-                          active
-                            ? "bg-brand text-brand-foreground border-brand"
-                            : "bg-surface-base text-muted-foreground border-border hover:border-brand/40 hover:text-foreground"
-                        }`}
-                      >
-                        {short}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Field>
 
               <Field label="Permitido para">
                 <div className="flex gap-1.5 flex-nowrap">

@@ -709,18 +709,41 @@ function RelComissoesServicos() {
         <LoadingState />
       ) : (
         <ReportTable
-          columns={["Data", "Profissional", "Serviço", "Clube?", "Valor", "Comissão %", "Comissão"]}
+          columns={[
+            "Data",
+            "Profissional",
+            "Cliente",
+            "Plano",
+            "Serviço",
+            "Clube?",
+            "Valor",
+            "Comissão %",
+            "Comissão",
+          ]}
           rows={data ?? []}
           keyFn={(r, i) => `${r.employeeId}-${r.servico}-${i}`}
           emptyMessage="Sem atendimentos concluídos no período."
           renderRow={(r) => [
             formatDate(r.data),
             r.profissional ?? "—",
+            r.cliente ?? "—",
+            r.plano ?? "—",
             r.servico,
             r.comClube ? "Sim" : "Não",
             brl(r.valorInCents),
             `${r.commissionPercent}%`,
-            <span key="c" className="text-brand font-semibold">
+            // Composição da comissão (base + adicional + diferenciada) —
+            // spec-ajustes-escopo-3 §1: só faz sentido detalhar quando
+            // `comClube` (fora do clube, comissão = só a base).
+            <span
+              key="c"
+              className="text-brand font-semibold"
+              title={
+                r.comClube
+                  ? `Base: ${brl(r.baseInCents)} + Diferenciada: ${brl(r.subscriberInCents)} + Adicional: ${brl(r.additionalInCents)}`
+                  : undefined
+              }
+            >
               {brl(r.comissaoInCents)}
             </span>,
           ]}

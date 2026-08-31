@@ -13,6 +13,7 @@ import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useExpensePaymentMethods } from "@/hooks/useExpensePaymentMethods";
 import { useFinancialEntries } from "@/hooks/useFinancialEntries";
+import { useEmployees } from "@/hooks/useEmployees";
 import { maskBRLInput, parseBRL } from "@/utils/format";
 import type {
   FinancialEntryRecurrenceFrequency,
@@ -45,6 +46,7 @@ export function FinancialEntryForm({
   const { methods: paymentMethods } = usePaymentMethods(barbershop?.id);
   const { methods: expenseMethods } = useExpensePaymentMethods(barbershop?.id);
   const { create } = useFinancialEntries(barbershop?.id);
+  const { employees } = useEmployees(barbershop?.id);
 
   const [description, setDescription] = useState("");
   const [value, setValue] = useState("");
@@ -64,6 +66,13 @@ export function FinancialEntryForm({
   const [bankAccountId, setBankAccountId] = useState("");
   const [branchId, setBranchId] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
+  const [employeeId, setEmployeeId] = useState("");
+  // spec-ajustes-escopo-2 §6.2: toggle Bônus(+)/Vale(-) — só usado pra
+  // pré-preencher a descrição com o mesmo prefixo que `generateCommissions`
+  // já usa pras linhas que ele mesmo gera ("Bônus — Nome"/"Vale — Nome"),
+  // deixando o lançamento avulso reconhecível pelo mesmo padrão sem duplicar
+  // a lógica de geração de comissão em si.
+  const [entryKind, setEntryKind] = useState<"" | "BONUS" | "VALE">("");
   const [saving, setSaving] = useState(false);
 
   // Categoria-pai = sem parentCategoryId; subcategoria = filha da categoria
@@ -72,16 +81,42 @@ export function FinancialEntryForm({
   const parentCategories = categories.filter((c) => !c.parentCategoryId);
   const subCategories = categories.filter((c) => c.parentCategoryId === parentCategoryId);
   const effectiveCategoryId = subCategoryId || parentCategoryId;
+  // spec-ajustes-escopo-2 §6.2/§6.3: seletor de profissional generalizado
+  // pra qualquer categoria (ou subcategoria) marcada com "Vincular a
+  // profissional" — antes só existia fixo por nome pra "Comissões".
+  const effectiveCategory = categories.find((c) => c.id === effectiveCategoryId);
+  const requiresEmployee = effectiveCategory?.requiresEmployee ?? false;
 
   function handleParentCategoryChange(nextId: string) {
     setParentCategoryId(nextId);
     setSubCategoryId("");
   }
 
+  // Pré-preenche a descrição com o mesmo prefixo usado pelas linhas que
+  // `generateCommissions` cria sozinho ("Bônus — Nome"/"Vale — Nome") — só
+  // quando o campo ainda não foi editado manualmente, pra não sobrescrever o
+  // que o usuário já digitou.
+  function handleEntryKindChange(kind: "BONUS" | "VALE") {
+    const wasAutoFilled = entryKind && description === entryKindLabel(entryKind);
+    setEntryKind(kind);
+    if (!description || wasAutoFilled) setDescription(entryKindLabel(kind));
+  }
+
+  function entryKindLabel(kind: "BONUS" | "VALE"): string {
+    const employeeName = employees.find((e) => e.id === employeeId)?.appName;
+    const name = employeeName || employees.find((e) => e.id === employeeId)?.name;
+    return kind === "BONUS" ? `Bônus${name ? ` — ${name}` : ""}` : `Vale${name ? ` — ${name}` : ""}`;
+  }
+
   // Recorrência precisa de um número de ocorrências pra ser gerada de uma vez
   // só (igual ao parcelamento) — sem isso o backend não tem como materializar
   // a série inteira na criação (ver FinancialEntriesService.create).
-  const valid = description && value && dueDate && (!repeatEntry || recurrenceCount);
+  const valid =
+    description &&
+    value &&
+    dueDate &&
+    (!repeatEntry || recurrenceCount) &&
+    (!requiresEmployee || employeeId);
 
   async function handleSubmit() {
     if (!valid || !dueDate) return;
@@ -104,6 +139,7 @@ export function FinancialEntryForm({
       bankAccountId: bankAccountId || undefined,
       branchId: branchId || undefined,
       dueDate: dueDate.toISOString(),
+      employeeId: requiresEmployee ? employeeId || undefined : undefined,
     });
     setSaving(false);
     if (created) router.push(redirectTo);
@@ -292,7 +328,52 @@ export function FinancialEntryForm({
             options={accounts.map((a) => ({ value: a.id, label: a.name }))}
           />
           <DatePickerField id="dueDate" label="Data de vencimento *" date={dueDate} onChange={setDueDate} />
+          {requiresEmployee && (
+            <SelectField
+              id="employee"
+              label="Profissional *"
+              value={employeeId}
+              onChange={(id) => {
+                setEmployeeId(id);
+                if (entryKind) setDescription(entryKindLabel(entryKind));
+              }}
+              placeholder="Selecione"
+              options={employees.map((e) => ({ value: e.id, label: e.appName || e.name }))}
+            />
+          )}
         </div>
+
+        {requiresEmployee && (
+          <div className="space-y-1.5 pt-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Tipo (opcional)
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleEntryKindChange("BONUS")}
+                className={`h-9 px-4 rounded-md text-xs font-semibold border transition-colors ${
+                  entryKind === "BONUS"
+                    ? "border-success-foreground/40 bg-success/10 text-success-foreground"
+                    : "border-border bg-surface-base text-muted-foreground hover:bg-surface-elevated"
+                }`}
+              >
+                Bônus (+)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleEntryKindChange("VALE")}
+                className={`h-9 px-4 rounded-md text-xs font-semibold border transition-colors ${
+                  entryKind === "VALE"
+                    ? "border-danger/40 bg-danger/10 text-danger-foreground"
+                    : "border-border bg-surface-base text-muted-foreground hover:bg-surface-elevated"
+                }`}
+              >
+                Vale (-)
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

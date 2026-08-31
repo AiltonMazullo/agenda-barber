@@ -117,6 +117,12 @@ export interface MySubscription {
   usage: ServiceUsage[];
   /** Assinatura Pix Automático criada mas ainda aguardando o cliente autorizar no app do banco — sem benefícios de plano ainda. */
   pendingAuthorization?: boolean;
+  /** Inadimplência (spec-ajustes-escopo-3 §6) — `autoCancelAt` é a data em que o cancelamento automático acontece se o atraso persistir. */
+  delinquency: {
+    isOverdue: boolean;
+    daysOverdue: number;
+    autoCancelAt: string | null;
+  };
 }
 
 export interface SubscribePayload {

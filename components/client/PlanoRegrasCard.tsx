@@ -14,11 +14,20 @@ interface PlanoRegrasCardProps {
 
 /** Painel com as principais regras e o uso mensal da assinatura do cliente. */
 export function PlanoRegrasCard({ plan, usage }: PlanoRegrasCardProps) {
-  const metrics: Array<{ icon: React.ReactNode; label: string; value: string }> = [
+  const metrics: Array<{
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+    description?: string;
+  }> = [
     {
       icon: <Repeat2 className="size-3.5" />,
-      label: "Uso a cada",
+      label: "Periodicidade",
       value: plan.serviceFrequencyDays > 0 ? `${plan.serviceFrequencyDays} dias` : "Sem restrição",
+      description:
+        plan.serviceFrequencyDays > 0
+          ? `Agenda liberada com ${plan.serviceFrequencyDays} dias de antecedência`
+          : undefined,
     },
     {
       icon: <Lock className="size-3.5" />,
@@ -32,10 +41,6 @@ export function PlanoRegrasCard({ plan, usage }: PlanoRegrasCardProps) {
     },
   ];
 
-  // "Dias de gratuidade" (freeDays) é config interna do backoffice — não
-  // aparece no app do cliente (spec-revisao-cliente-4.md §5.4). O card mostra
-  // em vez disso os dias em que o plano vale ("Permitido para" — availableWeekdays,
-  // renomeado de "Dias livres", §5.5).
   metrics.push({
     icon: <CalendarOff className="size-3.5" />,
     label: "Permitido para",
@@ -60,12 +65,17 @@ export function PlanoRegrasCard({ plan, usage }: PlanoRegrasCardProps) {
 
         <ul className="space-y-2.5">
           {metrics.map((l) => (
-            <li key={l.label} className="flex items-start justify-between gap-3 text-xs">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                {l.icon}
-                {l.label}
-              </span>
-              <span className="text-right font-semibold text-foreground">{l.value}</span>
+            <li key={l.label} className="flex flex-col gap-0.5 text-xs">
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  {l.icon}
+                  {l.label}
+                </span>
+                <span className="text-right font-semibold text-foreground">{l.value}</span>
+              </div>
+              {l.description && (
+                <p className="text-[10.5px] text-text-faint">{l.description}</p>
+              )}
             </li>
           ))}
         </ul>

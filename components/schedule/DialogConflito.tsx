@@ -34,17 +34,21 @@ export function DialogConflito({
   if (!dados) return null;
   const servMovendo = servicoById.get(dados.agMovendo.servicoId);
   const durMovendo = dados.duracaoMovendo;
+  // spec-ajustes-escopo-2 §5.2: o modal agora abre sempre no drag-and-drop,
+  // não só em conflito — sem `conflitantes`, cai numa variante "sem
+  // conflito" com mensagem simplificada em vez da lista de sobreposição.
+  const semConflito = dados.conflitantes.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-surface-raised border border-border text-foreground max-w-md p-0 gap-0">
-        <div className="h-1 w-full rounded-t-lg bg-red-500" />
+        <div className={`h-1 w-full rounded-t-lg ${semConflito ? "bg-brand" : "bg-red-500"}`} />
         <DialogHeader className="px-6 pt-5 pb-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="size-4 text-red-400" />
+              <AlertTriangle className={`size-4 ${semConflito ? "text-brand" : "text-red-400"}`} />
               <DialogTitle className="text-base font-bold">
-                Conflito de Horário
+                {semConflito ? "Confirmar reagendamento" : "Conflito de Horário"}
               </DialogTitle>
             </div>
             <button
@@ -59,18 +63,24 @@ export function DialogConflito({
 
         <div className="px-6 py-5 space-y-4">
           <p className="text-sm text-muted-foreground">
-            O agendamento abaixo conflita com{" "}
-            <span className="text-foreground font-semibold">
-              {dados.conflitantes.length} agendamento
-              {dados.conflitantes.length > 1 ? "s" : ""}
-            </span>{" "}
-            existente{dados.conflitantes.length > 1 ? "s" : ""}. Deseja sobrepor
-            mesmo assim?
+            {semConflito ? (
+              "Confirma o novo horário para este agendamento?"
+            ) : (
+              <>
+                O agendamento abaixo conflita com{" "}
+                <span className="text-foreground font-semibold">
+                  {dados.conflitantes.length} agendamento
+                  {dados.conflitantes.length > 1 ? "s" : ""}
+                </span>{" "}
+                existente{dados.conflitantes.length > 1 ? "s" : ""}. Deseja sobrepor
+                mesmo assim?
+              </>
+            )}
           </p>
 
           <div className="rounded-lg border border-brand/40 bg-brand/5 p-3">
             <p className="text-[9px] font-bold uppercase tracking-widest text-brand mb-2">
-              Movendo
+              {semConflito ? "Novo horário" : "Movendo"}
             </p>
             <div className="flex items-center gap-2">
               {servMovendo && (
@@ -92,45 +102,49 @@ export function DialogConflito({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-red-400">
-              Conflito com
-            </p>
-            {dados.conflitantes.map((c) => {
-              const s = servicoById.get(c.servicoId);
-              return (
-                <div
-                  key={c.id}
-                  className="rounded-lg border border-red-500/30 bg-red-500/5 p-3"
-                >
-                  <div className="flex items-center gap-2">
-                    {s && (
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: s.cor }}
-                      />
-                    )}
-                    <span className="text-sm font-semibold text-foreground">
-                      {c.cliente}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {minToTime(c.inicioMin)} – {minToTime(c.inicioMin + c.duracao)}
-                    </span>
+          {!semConflito && (
+            <div className="space-y-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-red-400">
+                Conflito com
+              </p>
+              {dados.conflitantes.map((c) => {
+                const s = servicoById.get(c.servicoId);
+                return (
+                  <div
+                    key={c.id}
+                    className="rounded-lg border border-red-500/30 bg-red-500/5 p-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      {s && (
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: s.cor }}
+                        />
+                      )}
+                      <span className="text-sm font-semibold text-foreground">
+                        {c.cliente}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {minToTime(c.inicioMin)} – {minToTime(c.inicioMin + c.duracao)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-faint mt-1">
+                      {s?.nome} · {c.duracao}min
+                    </p>
                   </div>
-                  <p className="text-xs text-text-faint mt-1">
-                    {s?.nome} · {c.duracao}min
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-red-500/5 border border-red-500/20">
-            <AlertTriangle className="size-3.5 text-red-400 mt-0.5 shrink-0" />
-            <p className="text-xs text-red-300/80">
-              Sobrepor agendamentos pode prejudicar a qualidade do atendimento.
-            </p>
-          </div>
+          {!semConflito && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-red-500/5 border border-red-500/20">
+              <AlertTriangle className="size-3.5 text-red-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-red-300/80">
+                Sobrepor agendamentos pode prejudicar a qualidade do atendimento.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="px-6 pb-6 flex justify-end gap-3">
@@ -147,9 +161,11 @@ export function DialogConflito({
               onConfirm();
               onOpenChange(false);
             }}
-            className="h-9 px-5 rounded-md text-sm font-bold bg-red-500 text-foreground hover:bg-red-600 transition-colors"
+            className={`h-9 px-5 rounded-md text-sm font-bold text-foreground transition-colors ${
+              semConflito ? "bg-brand hover:bg-brand-hover" : "bg-red-500 hover:bg-red-600"
+            }`}
           >
-            Sobrepor mesmo assim
+            {semConflito ? "Confirmar" : "Sobrepor mesmo assim"}
           </button>
         </div>
       </DialogContent>

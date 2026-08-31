@@ -3,8 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
-import { EmptyState, ConfirmDialog, Loading, StatusBadge } from "@/components/shared";
+import {
+  DataTablePagination,
+  EmptyState,
+  ConfirmDialog,
+  Loading,
+  StatusBadge,
+} from "@/components/shared";
 import { useFinancialEntries } from "@/hooks/useFinancialEntries";
+import { useFinancialBalance } from "@/hooks/useFinancialBalance";
+import type { PageSize } from "@/hooks/usePagination";
 import { formatBRL, formatDate, formatTime } from "@/utils/format";
 import type { FinancialEntry, FinancialEntryType } from "@/types/financial-entry.types";
 
@@ -51,26 +59,60 @@ export function FinancialEntriesList({
   readOnly = false,
   hideTotals = false,
 }: FinancialEntriesListProps) {
-  const { entries, isLoading, markPaid, remove } = useFinancialEntries(barbershopId, {
-    type,
+  // spec-ajustes-escopo-2 §2.4: contas a pagar/receber não tinham paginação
+  // nenhuma — agora busca só a página atual do servidor, em vez da lista
+  // inteira fatiada no cliente (mesmo padrão já usado em `comandas`).
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
+  const { entries, total, isLoading, markPaid, remove } = useFinancialEntries(
+    barbershopId,
+    { type, branchId, dueDateFrom, dueDateTo, search, categoryIds },
+    { page, pageSize },
+  );
+  const [toDelete, setToDelete] = useState<FinancialEntry | null>(null);
+
+  // Volta pra página 1 sempre que os filtros mudam — ajuste de estado
+  // durante o render, senão a página atual pode ficar além do novo total.
+  const filtersKey = `${type ?? ""}|${branchId ?? ""}|${dueDateFrom ?? ""}|${dueDateTo ?? ""}|${search ?? ""}|${(categoryIds ?? []).join(",")}`;
+  const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+  if (filtersKey !== prevFiltersKey) {
+    setPrevFiltersKey(filtersKey);
+    setPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil((total ?? 0) / pageSize));
+  const from = (total ?? 0) === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total ?? 0);
+
+  function changePageSize(size: number) {
+    setPageSize(size as PageSize);
+    setPage(1);
+  }
+
+  // Totais calculados via endpoint de balanço (agregado no backend,
+  // independente de paginação) em vez de somar `entries` — que agora só
+  // contém a página atual, não a lista inteira.
+  const { balance, refetch: refetchBalance } = useFinancialBalance(barbershopId, {
     branchId,
     dueDateFrom,
     dueDateTo,
-    search,
+    description: search,
     categoryIds,
   });
-  const [toDelete, setToDelete] = useState<FinancialEntry | null>(null);
-
-  const totalizadores = entries.reduce(
-    (acc, e) => {
-      acc.total += e.valueInCents;
-      if (e.status === "PAID") acc.pago += e.valueInCents;
-      else if (e.status === "OVERDUE") acc.vencido += e.valueInCents;
-      else if (e.status === "PENDING") acc.aVencer += e.valueInCents;
-      return acc;
-    },
-    { vencido: 0, aVencer: 0, pago: 0, total: 0 },
-  );
+  const totalizadores =
+    type === "PAYABLE"
+      ? {
+          vencido: balance.payable.overdue,
+          aVencer: balance.payable.upcoming,
+          pago: balance.payable.paid,
+          total: balance.payable.total,
+        }
+      : {
+          vencido: balance.receivable.notReceived,
+          aVencer: balance.receivable.upcoming,
+          pago: balance.receivable.received,
+          total: balance.receivable.total,
+        };
 
   return (
     <div className="space-y-5">
@@ -140,10 +182,15 @@ export function FinancialEntriesList({
                 </div>
                 {!readOnly && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {entry.status !== "PAID" && entry.status !== "CANCELLED" && (
+                    {/* spec-ajustes-escopo-2 §2.2: comanda fechada (contas a
+                       receber) já nasce PAID automaticamente no fechamento —
+                       "Marcar pago" manual só faz sentido pra contas a pagar. */}
+                    {entry.type === "PAYABLE" &&
+                      entry.status !== "PAID" &&
+                      entry.status !== "CANCELLED" && (
                       <button
                         type="button"
-                        onClick={() => markPaid(entry.id)}
+                        onClick={() => markPaid(entry.id).then(refetchBalance)}
                         title="Marcar como pago"
                         className="h-9 px-3 rounded-md border border-success-foreground/40 bg-transparent text-xs font-semibold text-success-foreground hover:bg-success/10 transition-colors flex items-center gap-1.5"
                       >
@@ -168,6 +215,20 @@ export function FinancialEntriesList({
         )}
       </div>
 
+      {!isLoading && entries.length > 0 && (
+        <DataTablePagination
+          page={page}
+          pageSize={pageSize}
+          totalPages={totalPages}
+          total={total ?? 0}
+          from={from}
+          to={to}
+          onPageChange={setPage}
+          onPageSizeChange={changePageSize}
+          className="rounded-xl border border-border bg-surface-raised"
+        />
+      )}
+
       {!readOnly && (
         <ConfirmDialog
           open={toDelete !== null}
@@ -176,7 +237,7 @@ export function FinancialEntriesList({
           description={toDelete ? `"${toDelete.description}" será removido.` : undefined}
           confirmLabel="Remover"
           tone="danger"
-          onConfirm={() => toDelete && remove(toDelete.id)}
+          onConfirm={() => toDelete && remove(toDelete.id).then(refetchBalance)}
         />
       )}
     </div>

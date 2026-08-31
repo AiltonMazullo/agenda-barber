@@ -144,8 +144,6 @@ export default function AgendarPage({ params }: PageProps) {
   const [time, setTime] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Mapa slot → [employeeIds livres] — usado quando "sem preferência" está ativo.
-  const [freeEmployeesBySlot, setFreeEmployeesBySlot] = useState<Map<string, string[]>>(new Map());
 
   useEffect(() => {
     if (!barbershop) return;
@@ -204,7 +202,7 @@ export default function AgendarPage({ params }: PageProps) {
   );
 
   // Assinatura ativa do cliente — ajusta preços e regras do passo Serviço.
-  const { mySubscription } = useClientSubscription(barbershop?.id);
+  const { mySubscription, isLoading: isSubscriptionLoading } = useClientSubscription(barbershop?.id);
   const isSubscriber = mySubscription !== null;
   const subscription = mySubscription?.subscription ?? null;
   const usage = mySubscription?.usage ?? [];
@@ -221,12 +219,15 @@ export default function AgendarPage({ params }: PageProps) {
       .catch(() => setHasActivePlans(false));
   }, [barbershop]);
   useEffect(() => {
-    if (step !== 1 || isSubscriber || !hasActivePlans) return;
+    // Aguarda o fetch de `mySubscription` resolver antes de decidir — evita
+    // mostrar o popup para quem já assina só porque `mySubscription` ainda
+    // está `null` por estar carregando (spec-ajustes-escopo-2 §1.4).
+    if (step !== 1 || isSubscriptionLoading || isSubscriber || !hasActivePlans) return;
     const key = `plans-popup-shown-${slug}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
     setShowPlansPopup(true);
-  }, [step, isSubscriber, hasActivePlans, slug]);
+  }, [step, isSubscriptionLoading, isSubscriber, hasActivePlans, slug]);
 
   // Há filiais? Se não (caso raro), o passo "Filial" é pulado e todos os
   // profissionais ficam disponíveis.
@@ -283,37 +284,32 @@ export default function AgendarPage({ params }: PageProps) {
     setLoadingSlots(true);
 
     if (anyEmployee) {
-      // "Sem preferência": consulta cada profissional da filial e une os slots livres.
-      // Mantém o mapa slot → [empIds] para sortear um profissional livre na confirmação.
+      // "Sem preferência": consulta cada profissional da filial e une os
+      // slots livres, só pra exibir os horários disponíveis — o sorteio de
+      // qual profissional atende de fato acontece no backend, na
+      // confirmação (spec-ajustes-escopo-1.md §3.1).
       Promise.allSettled(
-        branchEmployees.map(async (emp) => ({
-          empId: emp.id,
-          slots: await availabilityService.getAvailableSlots(barbershop.id, {
+        branchEmployees.map((emp) =>
+          availabilityService.getAvailableSlots(barbershop.id, {
             employeeId: emp.id,
             serviceIds: selectedServices.map((s) => s.id),
             date: dateToISODate(date),
             clientId: client?.id,
           }),
-        })),
+        ),
       ).then((results) => {
         if (!active) return;
-        const slotMap = new Map<string, string[]>();
+        const slots = new Set<string>();
         for (const r of results) {
           if (r.status === "fulfilled") {
-            for (const slot of r.value.slots) {
-              const list = slotMap.get(slot) ?? [];
-              list.push(r.value.empId);
-              slotMap.set(slot, list);
-            }
+            for (const slot of r.value) slots.add(slot);
           }
         }
-        setFreeEmployeesBySlot(slotMap);
-        setAvailableSlots(Array.from(slotMap.keys()).sort());
+        setAvailableSlots(Array.from(slots).sort());
       }).finally(() => {
         if (active) setLoadingSlots(false);
       });
     } else {
-      setFreeEmployeesBySlot(new Map());
       availabilityService
         .getAvailableSlots(barbershop.id, {
           employeeId: selectedEmployee?.id,
@@ -372,19 +368,12 @@ export default function AgendarPage({ params }: PageProps) {
   async function handleConfirm() {
     if (!barbershop || selectedServices.length === 0 || !date || !time) return;
 
-    // "Sem preferência" → sorteia entre os profissionais que estão livres
-    // no slot escolhido (freeEmployeesBySlot). Se o mapa não tiver dados
-    // (fallback), sorteia entre todos da filial.
-    const effectiveEmployee = anyEmployee
-      ? (() => {
-          const freeIds = time ? (freeEmployeesBySlot.get(time) ?? []) : [];
-          const pool = freeIds.length > 0
-            ? branchEmployees.filter((e) => freeIds.includes(e.id))
-            : branchEmployees;
-          return pool[Math.floor(Math.random() * pool.length)];
-        })()
-      : selectedEmployee;
-    if (!effectiveEmployee) {
+    // "Sem preferência" (spec-ajustes-escopo-1.md §3.1): o sorteio acontece
+    // no backend agora, não mais aqui — evita corrida entre dois clientes
+    // vendo o mesmo profissional "livre" simultaneamente e mantém a
+    // semântica de "sem preferência" no `Appointment` criado (nova flag
+    // `noPreferenceOrigin`, ver `resolveNoPreferenceEmployee`).
+    if (!anyEmployee && !selectedEmployee) {
       toast.error("Selecione um profissional.");
       return;
     }
@@ -432,10 +421,16 @@ export default function AgendarPage({ params }: PageProps) {
       // retorna um Appointment por serviço (todos compartilhando groupId).
       const appts = await clientAppointmentsService.create(barbershop.id, {
         serviceIds: selectedServices.map((svc) => svc.id),
-        employeeId: effectiveEmployee.id,
+        employeeId: anyEmployee ? undefined : selectedEmployee!.id,
+        noPreference: anyEmployee,
+        branchId: selectedBranch?.id,
         scheduledAt: baseStart.toISOString(),
       });
-      for (const appt of appts) setLocalEmployee(appt.id, effectiveEmployee.id);
+      // `appt.employeeId` já vem preenchido com o profissional sorteado pelo
+      // backend quando `anyEmployee` — não mais um valor decidido aqui.
+      for (const appt of appts) {
+        if (appt.employeeId) setLocalEmployee(appt.id, appt.employeeId);
+      }
       toast.success(
         selectedServices.length > 1
           ? "Agendamentos confirmados!"

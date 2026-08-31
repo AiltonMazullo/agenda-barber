@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Wallet, Plus, DollarSign, History, Layers } from "lucide-react";
-import { PageHeader, SummaryCard, EmptyState, Loading } from "@/components/shared";
+import { ConfirmDialog, PageHeader, SummaryCard, EmptyState, Loading } from "@/components/shared";
 import {
   DialogAbrirCaixa,
   CaixaCard,
@@ -88,7 +88,9 @@ export default function CaixaPage() {
             ],
           });
         }
-        await detalhe.openDetalhe(created.id);
+        // spec-ajustes-escopo-2 §3.2: não abrir o dialog de detalhe
+        // automaticamente após criar o caixa — só fecha o dialog de abertura
+        // e deixa o card do caixa na listagem.
       }
     } finally {
       setAbrindo(false);
@@ -213,8 +215,18 @@ export default function CaixaPage() {
         onClose={(countedCashInCents, divergenceReasonNote) =>
           void detalhe.handleClose({ countedCashInCents, divergenceReasonNote })
         }
-        onRemove={() => void detalhe.handleRemove()}
+        onRemove={detalhe.requestRemove}
         fetchClosingSummary={detalhe.fetchClosingSummary}
+      />
+
+      <ConfirmDialog
+        open={detalhe.confirmingRemove}
+        onOpenChange={detalhe.setConfirmingRemove}
+        title="Excluir este caixa?"
+        description="Todas as movimentações serão removidas permanentemente."
+        confirmLabel="Excluir"
+        tone="danger"
+        onConfirm={() => void detalhe.handleRemove()}
       />
 
       <DialogEditarCaixa

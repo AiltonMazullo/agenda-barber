@@ -12,6 +12,7 @@ import {
   Settings2,
   Trash2,
   Loader2,
+  CircleAlert,
 } from "lucide-react";
 import {
   Dialog,
@@ -47,6 +48,7 @@ import { useClientDueRepurchases } from "@/hooks/useClientDueRepurchases";
 import { auditLogService } from "@/services/audit-log.service";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import { buildWhatsappLink, renderWhatsappMessage } from "@/utils/whatsapp-template";
+import { formatPhone, maskCpf } from "@/utils/format";
 import type {
   AgendamentoVM,
   ProfissionalVM,
@@ -68,6 +70,8 @@ import type { ServicePricing } from "@/types/subscription.types";
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
   CONFIRMED: "Confirmado",
+  ARRIVED: "Chegou",
+  IN_PROGRESS: "Em andamento",
   COMPLETED: "Concluído",
   CANCELLED: "Cancelado",
   NO_SHOW: "Faltou",
@@ -76,6 +80,8 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 const STATUS_TONE: Record<AppointmentStatus, string> = {
   PENDING: "bg-amber-500/15 text-amber-400",
   CONFIRMED: "bg-brand/15 text-brand",
+  ARRIVED: "bg-orange-500/15 text-orange-400",
+  IN_PROGRESS: "bg-yellow-500/15 text-yellow-400",
   COMPLETED: "bg-emerald-500/15 text-emerald-400",
   CANCELLED: "bg-red-500/15 text-red-400",
   NO_SHOW: "bg-pink-500/15 text-pink-400",
@@ -119,6 +125,7 @@ export function DialogDetalhe({
   branches,
   clients,
   clientActivePlans,
+  clientDelinquency,
   onDelete,
   onUpdateStatus,
   onSave,
@@ -142,6 +149,8 @@ export function DialogDetalhe({
   clients: Client[];
   /** Nomes dos planos ativos por cliente — indicador "Cliente possui plano X + Y ativo" (item 2). */
   clientActivePlans: Map<string, string[]>;
+  /** Clientes com assinatura em atraso — indicador de inadimplência no modal (spec-ajustes-escopo-3 §6). */
+  clientDelinquency?: Map<string, boolean>;
   onDelete: (id: string) => void;
   onUpdateStatus: (id: string, status: UpdatableAppointmentStatus) => void;
   /** Salva as mudanças do formulário — `PATCH /appointments/:id` unificado. */
@@ -227,6 +236,7 @@ export function DialogDetalhe({
   }, [clients, buscaCliente]);
 
   const planosAtivos = clientId ? (clientActivePlans.get(clientId) ?? []) : [];
+  const clienteInadimplente = clientId ? (clientDelinquency?.get(clientId) ?? false) : false;
 
   // Recalcula o valor com desconto de plano sempre que o dialog abre — o
   // preço não é persistido no agendamento (spec-revisao-cliente-4.md §1.2),
@@ -448,7 +458,11 @@ export function DialogDetalhe({
       }
 
       if (semPreferencia) {
-        if (!agendamento.semPreferencia) payload.employeeId = null;
+        // §3.1: o backend sorteia um profissional disponível — não grava
+        // mais `employeeId: null` (isso tornava o agendamento invisível na
+        // agenda). Só envia quando a origem realmente muda pra "sem
+        // preferência" (senão reenviaria o sorteio a cada salvamento).
+        if (!agendamento.semPreferencia) payload.noPreference = true;
       } else if (profissionalId && profissionalId !== agendamento.profissionalId) {
         payload.employeeId = profissionalId;
       }
@@ -572,13 +586,28 @@ export function DialogDetalhe({
                           <div className="min-w-0">
                             <p className="text-sm text-foreground truncate">{c.name}</p>
                             <p className="text-[11px] text-text-faint truncate">
-                              {c.phone || c.email}
+                              {c.phone ? formatPhone(c.phone) : c.email}
+                              {c.cpf && ` · ${maskCpf(c.cpf)}`}
                             </p>
                           </div>
                           {clientId === c.id && <Check className="size-3.5 text-brand shrink-0" />}
                         </button>
                       ))
                     )}
+                  </div>
+                )}
+
+                {/* Cliente selecionado — nome + telefone sempre visíveis (antes
+                    o telefone só aparecia no placeholder do campo de busca,
+                    somindo assim que o usuário digitava algo). */}
+                {cliente && buscaCliente.trim().length === 0 && (
+                  <div className="flex items-center gap-2 rounded-md border border-brand/30 bg-brand/5 px-3 py-2">
+                    <Check className="size-3.5 text-brand shrink-0" />
+                    <p className="text-[11px] text-muted-foreground truncate flex-1">
+                      <span className="text-foreground font-semibold">{cliente.name}</span>
+                      {cliente.phone && ` · ${formatPhone(cliente.phone)}`}
+                      {cliente.cpf && ` · ${maskCpf(cliente.cpf)}`}
+                    </p>
                   </div>
                 )}
               </>
@@ -595,6 +624,17 @@ export function DialogDetalhe({
                   {planosAtivos.join(" + ")}
                 </span>{" "}
                 ativo.
+              </p>
+            </div>
+          )}
+
+          {/* ── 2b. Indicador de inadimplência (spec-ajustes-escopo-3 §6) —
+              agendar continua permitido mesmo assim, é só um alerta. ── */}
+          {clientId && clienteInadimplente && (
+            <div className="flex items-center gap-2 rounded-md border border-danger-foreground/30 bg-danger/10 px-3 py-2">
+              <CircleAlert className="size-3.5 text-danger-foreground shrink-0" />
+              <p className="text-[11px] text-danger-foreground">
+                Cliente com assinatura em atraso.
               </p>
             </div>
           )}
@@ -701,6 +741,7 @@ export function DialogDetalhe({
                       <th className="text-left font-medium px-2 py-1">Serviço</th>
                       <th className="text-left font-medium px-2 py-1">Produtos</th>
                       <th className="text-left font-medium px-2 py-1">Profissional</th>
+                      <th className="text-left font-medium px-2 py-1">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -722,6 +763,16 @@ export function DialogDetalhe({
                           </td>
                           <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[90px]">
                             {a.employee?.appName ?? a.employee?.name ?? "—"}
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <span
+                              className={cn(
+                                "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full",
+                                STATUS_TONE[a.status],
+                              )}
+                            >
+                              {STATUS_LABEL[a.status]}
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -750,7 +801,7 @@ export function DialogDetalhe({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
-                    {itensRecompra.map((r) => (
+                    {itensRecompra.slice(0, 3).map((r) => (
                       <tr key={r.id}>
                         <td className="px-2 py-1.5 whitespace-nowrap text-foreground">
                           {diaMes(r.repurchaseAt.slice(0, 10))}
@@ -769,6 +820,13 @@ export function DialogDetalhe({
                     ))}
                   </tbody>
                 </table>
+                {/* Máximo 3 linhas exibidas — a lista completa segue a
+                    configuração de dias de recompra de cada serviço/produto. */}
+                {itensRecompra.length > 3 && (
+                  <p className="text-[10px] text-text-faint text-center py-1 border-t border-border-subtle">
+                    +{itensRecompra.length - 3} outro(s) item(ns) vencendo
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -877,6 +935,19 @@ export function DialogDetalhe({
                   </DropdownMenuItem>
                 )}
                 {(status === "PENDING" || status === "CONFIRMED") && (
+                  <DropdownMenuItem onClick={() => onUpdateStatus(agendamento.id, "ARRIVED")}>
+                    Cliente chegou
+                  </DropdownMenuItem>
+                )}
+                {status === "ARRIVED" && (
+                  <DropdownMenuItem onClick={() => onUpdateStatus(agendamento.id, "IN_PROGRESS")}>
+                    Iniciar atendimento
+                  </DropdownMenuItem>
+                )}
+                {(status === "PENDING" ||
+                  status === "CONFIRMED" ||
+                  status === "ARRIVED" ||
+                  status === "IN_PROGRESS") && (
                   <>
                     <DropdownMenuItem onClick={() => onUpdateStatus(agendamento.id, "COMPLETED")}>
                       Concluir atendimento

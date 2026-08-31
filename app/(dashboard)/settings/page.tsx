@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  ConfirmDialog,
   DatePickerField,
   DataTablePagination,
   Loading,
@@ -1679,6 +1680,7 @@ function TabFiliais() {
   );
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Branch | null>(null);
 
   async function handleSave(payload: CreateBranchPayload) {
     if (editing) {
@@ -1687,11 +1689,10 @@ function TabFiliais() {
     return create(payload);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Remover esta filial? Essa ação não pode ser desfeita.")) {
-      return;
-    }
-    await remove(id);
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    await remove(deleteTarget.id);
+    setDeleteTarget(null);
   }
 
   const columns: Column<Branch>[] = [
@@ -1765,7 +1766,7 @@ function TabFiliais() {
             </button>
             <button
               type="button"
-              onClick={() => handleDelete(b.id)}
+              onClick={() => setDeleteTarget(b)}
               title="Remover filial"
               className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
             >
@@ -1790,6 +1791,17 @@ function TabFiliais() {
             : null
         }
         isFirstBranch={branches.length === 0}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        title="Remover filial?"
+        description={
+          deleteTarget ? `"${deleteTarget.name}" será removida. Essa ação não pode ser desfeita.` : undefined
+        }
+        confirmLabel="Remover"
+        tone="danger"
+        onConfirm={() => void handleConfirmDelete()}
       />
     </>
   );
@@ -2354,6 +2366,7 @@ function TabProfissionais() {
   const { groups } = useAccessGroups(barbershop?.id);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
 
   async function handleSave(payload: CreateEmployeePayload) {
     if (editing) {
@@ -2365,13 +2378,10 @@ function TabProfissionais() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (
-      !confirm("Remover este profissional? Essa ação não pode ser desfeita.")
-    ) {
-      return;
-    }
-    await remove(id);
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    await remove(deleteTarget.id);
+    setDeleteTarget(null);
   }
 
   const branchById = new Map(branches.map((b) => [b.id, b.name]));
@@ -2481,7 +2491,7 @@ function TabProfissionais() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => setDeleteTarget(p)}
                           className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
                         >
                           <Trash2 className="size-3" />
@@ -2514,6 +2524,17 @@ function TabProfissionais() {
         branches={branches}
         groups={groups}
         onSave={handleSave}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        title="Remover profissional?"
+        description={
+          deleteTarget ? `"${deleteTarget.name}" será removido. Essa ação não pode ser desfeita.` : undefined
+        }
+        confirmLabel="Remover"
+        tone="danger"
+        onConfirm={() => void handleConfirmDelete()}
       />
     </Card>
   );
@@ -3116,6 +3137,7 @@ function TabServicos() {
   );
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const pag = usePagination(services, 10);
 
   const sensors = useSensors(
@@ -3130,11 +3152,10 @@ function TabServicos() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Remover este serviço? Essa ação não pode ser desfeita.")) {
-      return;
-    }
-    await remove(id);
+  async function handleConfirmDelete() {
+    if (!deleteId) return;
+    await remove(deleteId);
+    setDeleteId(null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -3299,7 +3320,7 @@ function TabServicos() {
                           setEditing(s);
                           setDialog(true);
                         }}
-                        onDelete={handleDelete}
+                        onDelete={setDeleteId}
                         onFeatured={setFeatured}
                       />
                     ))
@@ -3329,6 +3350,18 @@ function TabServicos() {
         categories={categories}
         onSave={handleSave}
         onCreateCategory={createCategory}
+      />
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(v) => !v && setDeleteId(null)}
+        title="Remover serviço?"
+        description={(() => {
+          const s = services.find((x) => x.id === deleteId);
+          return s ? `"${s.name}" será removido. Essa ação não pode ser desfeita.` : undefined;
+        })()}
+        confirmLabel="Remover"
+        tone="danger"
+        onConfirm={() => void handleConfirmDelete()}
       />
     </Card>
   );
@@ -3522,6 +3555,7 @@ function TabCategorias() {
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [createType, setCreateType] = useState<CategoryType>("SERVICO");
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
   const isLoading = produtoCategories.isLoading || servicoCategories.isLoading;
 
@@ -3555,15 +3589,10 @@ function TabCategorias() {
     }
   }
 
-  async function handleDelete(category: Category) {
-    const linkedThing = category.type === "PRODUTO" ? "Produtos" : "Serviços";
-    if (
-      !confirm(
-        `Remover esta categoria? ${linkedThing} vinculados serão desvinculados automaticamente.`,
-      )
-    )
-      return;
-    await hookFor(category.type).remove(category.id);
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    await hookFor(deleteTarget.type).remove(deleteTarget.id);
+    setDeleteTarget(null);
   }
 
   async function handleToggleStatus(category: Category) {
@@ -3670,7 +3699,7 @@ function TabCategorias() {
             </button>
             <button
               type="button"
-              onClick={() => handleDelete(c)}
+              onClick={() => setDeleteTarget(c)}
               title="Remover categoria"
               className="size-7 rounded-md border border-red-500/30 bg-transparent text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
             >
@@ -3687,6 +3716,21 @@ function TabCategorias() {
         type={editing ? editing.type : createType}
         onTypeChange={editing ? undefined : setCreateType}
         onSave={handleSave}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        title="Remover categoria?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" será removida. ${
+                deleteTarget.type === "PRODUTO" ? "Produtos" : "Serviços"
+              } vinculados serão desvinculados automaticamente.`
+            : undefined
+        }
+        confirmLabel="Remover"
+        tone="danger"
+        onConfirm={() => void handleConfirmDelete()}
       />
     </div>
   );
@@ -3706,6 +3750,7 @@ function TabPagamento() {
   const [testingProvider, setTestingProvider] = useState<GatewayProvider | null>(
     null,
   );
+  const [removeTarget, setRemoveTarget] = useState<GatewayProvider | null>(null);
 
   const byProvider = (provider: GatewayProvider) =>
     configs.find((c) => c.provider === provider);
@@ -3723,9 +3768,10 @@ function TabPagamento() {
     }
   }
 
-  async function handleRemove(provider: GatewayProvider) {
-    if (!confirm(`Remover a configuração do ${provider}?`)) return;
-    await remove(provider);
+  async function handleConfirmRemove() {
+    if (!removeTarget) return;
+    await remove(removeTarget);
+    setRemoveTarget(null);
   }
 
   async function handleTest(provider: GatewayProvider) {
@@ -3763,7 +3809,7 @@ function TabPagamento() {
               onConfigure={() => setDialogProvider(provider)}
               onActivate={() => activate(provider)}
               onTest={() => handleTest(provider)}
-              onRemove={() => handleRemove(provider)}
+              onRemove={() => setRemoveTarget(provider)}
             />
           ))}
         </div>
@@ -3780,6 +3826,15 @@ function TabPagamento() {
           onSave={handleSave}
         />
       )}
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(v) => !v && setRemoveTarget(null)}
+        title="Remover configuração do gateway?"
+        description={removeTarget ? `A configuração do ${removeTarget} será removida.` : undefined}
+        confirmLabel="Remover"
+        tone="danger"
+        onConfirm={() => void handleConfirmRemove()}
+      />
     </div>
   );
 }

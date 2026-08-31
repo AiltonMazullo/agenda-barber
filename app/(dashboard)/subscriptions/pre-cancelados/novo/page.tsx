@@ -32,10 +32,16 @@ function NovoPreCanceladoContent() {
     setSubscriptionId(fromQuery);
     const sub = activeSubscriptions.find((s) => s.id === fromQuery);
     if (sub?.billingDay) {
+      // spec-ajustes-escopo-2 §1.2: sugere 1 dia antes da próxima cobrança
+      // (não o próprio dia) — se a cobrança rodar no mesmo dia (mesmo cron
+      // ou antes do job de pré-cancelamento), cancelar no dia exato corria o
+      // risco de renovar antes de cancelar.
       const today = new Date();
-      const next = new Date(today.getFullYear(), today.getMonth(), sub.billingDay);
-      if (next <= today) next.setMonth(next.getMonth() + 1);
-      setCancelDate(next);
+      const nextBilling = new Date(today.getFullYear(), today.getMonth(), sub.billingDay);
+      if (nextBilling <= today) nextBilling.setMonth(nextBilling.getMonth() + 1);
+      const suggested = new Date(nextBilling);
+      suggested.setDate(suggested.getDate() - 1);
+      setCancelDate(suggested);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, activeSubscriptions.length]);

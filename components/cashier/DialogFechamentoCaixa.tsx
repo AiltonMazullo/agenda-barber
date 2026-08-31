@@ -86,8 +86,11 @@ export function DialogFechamentoCaixa({
     let abertura = 0;
     for (const t of transactions) {
       if (t.name === OPENING_TRANSACTION_NAME && t.type === "ENTRY") {
+        // spec-ajustes-escopo-2 §3.1: a abertura tem card próprio ("Abertura")
+        // — somá-la também em "Entradas" duplicava o valor entre os dois
+        // cards. Ainda entra no saldo final (dinheiro que de fato está no
+        // caixa), só não soma no total exibido em "Entradas".
         abertura = t.valueInCents;
-        totalEntradas += t.valueInCents;
       } else if (t.type === "ENTRY") {
         totalEntradas += t.valueInCents;
       } else {
@@ -97,7 +100,7 @@ export function DialogFechamentoCaixa({
     for (const c of comandas) {
       totalEntradas += c.totalInCents;
     }
-    return { totalEntradas, saldoFinal: totalEntradas - totalSaidas, abertura };
+    return { totalEntradas, saldoFinal: abertura + totalEntradas - totalSaidas, abertura };
   }, [transactions, comandas]);
 
   const paymentRows = Array.from(byPayment.entries()).sort((a, b) =>

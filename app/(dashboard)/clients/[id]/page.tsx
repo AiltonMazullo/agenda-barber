@@ -28,13 +28,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ConfirmDialog, Loading, SelectField } from "@/components/shared";
+import { ConfirmDialog, DataTablePagination, Loading, SelectField } from "@/components/shared";
 import { DialogEditarCliente } from "@/components/clients/DialogEditarCliente";
 import { PixQrCodePanel } from "@/components/subscription/PixQrCodePanel";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useClientAppointmentsPaginated } from "@/hooks/useClientAppointmentsPaginated";
 import { useDeactivatedClients } from "@/hooks/useDeactivatedClients";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { formatBRL, formatDate, formatTime, toWallClockDate } from "@/utils/format";
@@ -49,6 +49,8 @@ import type { SubscriptionCharge } from "@/types/subscription.types";
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   PENDING: "Pendente",
   CONFIRMED: "Confirmado",
+  ARRIVED: "Chegou",
+  IN_PROGRESS: "Em andamento",
   COMPLETED: "Concluído",
   CANCELLED: "Cancelado",
   NO_SHOW: "Faltou",
@@ -56,6 +58,8 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 const STATUS_TONE: Record<AppointmentStatus, string> = {
   PENDING: "bg-warning/15 text-warning-foreground",
   CONFIRMED: "bg-brand/15 text-brand",
+  ARRIVED: "bg-orange-500/15 text-orange-400",
+  IN_PROGRESS: "bg-yellow-500/15 text-yellow-400",
   COMPLETED: "bg-success/15 text-success-foreground",
   CANCELLED: "bg-danger/15 text-danger-foreground",
   NO_SHOW: "bg-danger/15 text-danger-foreground",
@@ -82,12 +86,24 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const router = useRouter();
   const { barbershop } = useAuth();
   const { clients, isLoading, update, updateNotes } = useClients(barbershop?.id);
-  const { appointments } = useAppointments(barbershop?.id);
+  const {
+    appointments: clientAppts,
+    isLoading: apptsLoading,
+    page: apptsPage,
+    pageSize: apptsPageSize,
+    total: apptsTotal,
+    totalPages: apptsTotalPages,
+    from: apptsFrom,
+    to: apptsTo,
+    setPage: setApptsPage,
+    changePageSize: changeApptsPageSize,
+  } = useClientAppointmentsPaginated(barbershop?.id, id);
   const { deactivate, isDeactivated } = useDeactivatedClients(barbershop?.id);
   const { subscriptions, cancel: cancelSubscription } = useSubscriptions(
     barbershop?.id,
   );
 
+  const [activeTab, setActiveTab] = useState("agendamentos");
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDesativar, setConfirmDesativar] = useState(false);
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
@@ -107,17 +123,20 @@ export default function ClienteDetalhePage({ params }: PageProps) {
     [clients, id],
   );
 
-  const clientAppts = useMemo(
-    () =>
-      appointments
-        .filter((a) => a.clientId === id)
-        .sort(
-          (a, b) =>
-            new Date(b.scheduledAt).getTime() -
-            new Date(a.scheduledAt).getTime(),
-        ),
-    [appointments, id],
-  );
+  // Inadimplência (spec-ajustes-escopo-3 §6) — mesmo critério do relatório
+  // "Contratos ativos" (getContracts/computeOverdueInfo no backend),
+  // aplicado aqui client-side sobre as cobranças já carregadas na aba
+  // Financeiro. A mais antiga em aberto é a que teria disparado o
+  // cancelamento automático (job de 8 dias) e é a exibida no CTA do banner.
+  const oldestOverdueCharge = useMemo(() => {
+    const now = new Date();
+    const overdue = charges.filter(
+      (c) =>
+        c.status === "OVERDUE" || (c.status === "PENDING" && new Date(c.dueDate) < now),
+    );
+    if (overdue.length === 0) return null;
+    return overdue.reduce((a, b) => (new Date(a.dueDate) < new Date(b.dueDate) ? a : b));
+  }, [charges]);
 
   const activeSubscription = useMemo(
     () =>
@@ -132,7 +151,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
     setComandasLoading(true);
     comandasService
       .list(barbershop.id, { clientId: id })
-      .then((data) => {
+      .then(({ data }) => {
         if (active) setComandas(data);
       })
       .catch(() => {
@@ -263,6 +282,35 @@ export default function ClienteDetalhePage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Banner de inadimplência — spec-ajustes-escopo-3 §6: antes não havia
+          nenhum alerta no topo do painel, só o badge OVERDUE/FAILED perdido
+          na lista da aba Financeiro. Agendar continua permitido mesmo
+          inadimplente (nenhum bloqueio adicionado aqui). */}
+      {oldestOverdueCharge && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-danger-foreground/30 bg-danger/10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Ban className="size-4 text-danger-foreground shrink-0" />
+            <p className="text-sm text-danger-foreground">
+              Cliente com cobrança em atraso desde{" "}
+              <span className="font-semibold">{formatDate(oldestOverdueCharge.dueDate)}</span>.
+            </p>
+          </div>
+          {oldestOverdueCharge.pixPayload && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("financeiro");
+                setPixChargeToShow(oldestOverdueCharge);
+              }}
+              className="h-8 px-3 rounded-md text-xs font-semibold border border-danger-foreground/40 text-danger-foreground hover:bg-danger/20 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <QrCode className="size-3.5" />
+              Ver Pix
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 items-start">
         {/* ── Ficha (esquerda) ── */}
         <div className="rounded-xl border border-border bg-surface-raised p-5 space-y-4">
@@ -355,7 +403,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
         </div>
 
         {/* ── Abas (direita) ── */}
-        <Tabs defaultValue="agendamentos">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="agendamentos">
               <Calendar className="size-3.5" />
@@ -376,42 +424,57 @@ export default function ClienteDetalhePage({ params }: PageProps) {
           </TabsList>
 
           <TabsContent value="agendamentos" className="pt-3">
-            {clientAppts.length === 0 ? (
+            {apptsLoading ? (
+              <Loading label="Carregando agendamentos" />
+            ) : clientAppts.length === 0 ? (
               <EmptyTab message="Nenhum agendamento para este cliente." />
             ) : (
-              <div className="space-y-2">
-                {clientAppts.map((a) => {
-                  const start = toWallClockDate(a.scheduledAt);
-                  const end = new Date(
-                    start.getTime() + (a.service?.durationMin ?? 0) * 60000,
-                  );
-                  const prof =
-                    a.employee?.appName ?? a.employee?.name ?? null;
-                  return (
-                    <div
-                      key={a.id}
-                      className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3"
-                    >
-                      <Calendar className="size-4 text-brand shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {a.service?.name ?? "Serviço"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(start)} {formatTime(start)} –{" "}
-                          {formatTime(end)}
-                          {prof ? ` • ${prof}` : ""}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${STATUS_TONE[a.status]}`}
+              <>
+                <div className="space-y-2">
+                  {clientAppts.map((a) => {
+                    const start = toWallClockDate(a.scheduledAt);
+                    const end = new Date(
+                      start.getTime() + (a.service?.durationMin ?? 0) * 60000,
+                    );
+                    const prof =
+                      a.employee?.appName ?? a.employee?.name ?? null;
+                    return (
+                      <div
+                        key={a.id}
+                        className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3"
                       >
-                        {STATUS_LABEL[a.status]}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                        <Calendar className="size-4 text-brand shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {a.service?.name ?? "Serviço"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(start)} {formatTime(start)} –{" "}
+                            {formatTime(end)}
+                            {prof ? ` • ${prof}` : ""}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${STATUS_TONE[a.status]}`}
+                        >
+                          {STATUS_LABEL[a.status]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <DataTablePagination
+                  page={apptsPage}
+                  pageSize={apptsPageSize}
+                  totalPages={apptsTotalPages}
+                  total={apptsTotal}
+                  from={apptsFrom}
+                  to={apptsTo}
+                  onPageChange={setApptsPage}
+                  onPageSizeChange={changeApptsPageSize}
+                  className="border-t-0 px-0"
+                />
+              </>
             )}
           </TabsContent>
 
@@ -484,16 +547,17 @@ export default function ClienteDetalhePage({ params }: PageProps) {
                     <span className="text-sm font-semibold text-foreground shrink-0">
                       {formatBRL(charge.amountInCents / 100)}
                     </span>
-                    {charge.status === "PENDING" && charge.pixPayload && (
-                      <button
-                        type="button"
-                        onClick={() => setPixChargeToShow(charge)}
-                        className="h-7 px-2.5 rounded-md text-xs font-semibold border border-border-subtle hover:bg-surface-elevated transition-colors flex items-center gap-1 shrink-0"
-                      >
-                        <QrCode className="size-3.5" />
-                        Ver Pix
-                      </button>
-                    )}
+                    {(charge.status === "PENDING" || charge.status === "OVERDUE") &&
+                      charge.pixPayload && (
+                        <button
+                          type="button"
+                          onClick={() => setPixChargeToShow(charge)}
+                          className="h-7 px-2.5 rounded-md text-xs font-semibold border border-border-subtle hover:bg-surface-elevated transition-colors flex items-center gap-1 shrink-0"
+                        >
+                          <QrCode className="size-3.5" />
+                          Ver Pix
+                        </button>
+                      )}
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
                         charge.status === "PAID"

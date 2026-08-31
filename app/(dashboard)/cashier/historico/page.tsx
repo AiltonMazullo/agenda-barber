@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, History, Search } from "lucide-react";
 import {
+  ConfirmDialog,
   PageHeader,
   EmptyState,
   DatePickerField,
@@ -165,8 +166,18 @@ export default function CaixaHistoricoPage() {
         onClose={(countedCashInCents, divergenceReasonNote) =>
           void detalhe.handleClose({ countedCashInCents, divergenceReasonNote })
         }
-        onRemove={() => void detalhe.handleRemove()}
+        onRemove={detalhe.requestRemove}
         fetchClosingSummary={detalhe.fetchClosingSummary}
+      />
+
+      <ConfirmDialog
+        open={detalhe.confirmingRemove}
+        onOpenChange={detalhe.setConfirmingRemove}
+        title="Excluir este caixa?"
+        description="Todas as movimentações serão removidas permanentemente."
+        confirmLabel="Excluir"
+        tone="danger"
+        onConfirm={() => void detalhe.handleRemove()}
       />
     </div>
   );

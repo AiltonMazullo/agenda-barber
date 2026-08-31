@@ -39,6 +39,8 @@ export function ProfissionalColuna({
   indisponibilidades,
   startHour = START_HOUR,
   disabled = false,
+  onNavigateProfissional,
+  previewSlot = null,
 }: {
   profissional: ProfissionalVM;
   agendamentos: AgendamentoVM[];
@@ -70,6 +72,10 @@ export function ProfissionalColuna({
    * por trás para persistir essas ações no backend.
    */
   disabled?: boolean;
+  /** Navega um card "sem preferência" para o próximo/anterior profissional livre (§3.1). */
+  onNavigateProfissional?: (ag: AgendamentoVM, direction: "prev" | "next") => void;
+  /** Slot exato de destino do card sendo arrastado, quando esta coluna é o alvo (§5.1). */
+  previewSlot?: { inicioMin: number; duracaoMin: number } | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${profissional.id}`,
@@ -208,7 +214,20 @@ export function ProfissionalColuna({
             />
           );
         })}
-        {isOver && !modoBloquear && (
+        {/* spec-ajustes-escopo-2 §5.1: preview do slot exato de destino
+            (antes destacava a coluna inteira via `isOver`, sem indicar o
+            horário) — mesmo padrão visual do `bloqueioPreview` abaixo. */}
+        {previewSlot && !modoBloquear && (
+          <div
+            className="absolute left-0.5 right-0.5 bg-brand/15 border-2 border-brand/50 rounded-sm pointer-events-none z-20"
+            style={{
+              top:
+                ((previewSlot.inicioMin - startHour * 60) / slotSize) * slotHeightPx,
+              height: (previewSlot.duracaoMin / slotSize) * slotHeightPx,
+            }}
+          />
+        )}
+        {isOver && !modoBloquear && !previewSlot && (
           <div className="absolute inset-0 border-2 border-brand/30 rounded-sm pointer-events-none" />
         )}
 
@@ -288,6 +307,7 @@ export function ProfissionalColuna({
               onCardClick={onCardClick}
               onResizeEnd={onResizeEnd}
               startHour={startHour}
+              onNavigateProfissional={onNavigateProfissional}
             />
           );
         })}

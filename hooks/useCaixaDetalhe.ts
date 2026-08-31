@@ -126,14 +126,20 @@ export function useCaixaDetalhe(crud: CashRegisterCrud) {
     return crud.getClosingSummary(detalhe.id);
   }
 
+  // spec-ajustes-escopo-2 §7: substitui o `confirm()` do navegador por um
+  // `ConfirmDialog` renderizado pelo consumidor (DialogDetalheCaixa) —
+  // `confirmingRemove` sinaliza o pedido pendente, `handleRemove` só executa
+  // a exclusão de fato quando o consumidor confirma.
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+
+  function requestRemove() {
+    if (!detalhe) return;
+    setConfirmingRemove(true);
+  }
+
   async function handleRemove() {
     if (!detalhe) return;
-    if (
-      !confirm(
-        "Excluir este caixa? Todas as movimentações serão removidas permanentemente.",
-      )
-    )
-      return;
+    setConfirmingRemove(false);
     setBusy(true);
     try {
       const ok = await crud.remove(detalhe.id);
@@ -157,6 +163,9 @@ export function useCaixaDetalhe(crud: CashRegisterCrud) {
     handleUpdate,
     handleClose,
     handleReopen,
+    confirmingRemove,
+    setConfirmingRemove,
+    requestRemove,
     fetchClosingSummary,
     handleRemove,
   };

@@ -104,6 +104,8 @@ export interface NovoAgendamentoInput {
   origem: Origem;
   /** Situação escolhida pelo dono ao cadastrar (default "PENDING"/Agendado). */
   status?: AppointmentStatus;
+  /** Filial do agendamento — usada pra filtrar candidatos no sorteio de "sem preferência" (§3.2). */
+  branchId?: string;
 }
 
 /** Dados para criação rápida de cliente (mini-form do dialog). */

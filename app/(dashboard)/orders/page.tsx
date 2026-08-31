@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -48,7 +48,8 @@ import { DialogFecharComanda } from "@/components/orders";
 import { useAuth } from "@/hooks/useAuth";
 import { useComandas } from "@/hooks/useComandas";
 import { useEmployees } from "@/hooks/useEmployees";
-import { usePagination } from "@/hooks/usePagination";
+import type { PageSize } from "@/hooks/usePagination";
+import { comandasService } from "@/services/comandas.service";
 import { comandaClienteLabel, comandaToDraft, comandaTotalInCents } from "@/utils/comanda";
 import { exportToCsv } from "@/utils/csv-export";
 import { formatBRL, formatDate } from "@/utils/format";
@@ -103,39 +104,97 @@ export default function ComandasPage() {
   };
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const { comandas, isLoading, update, setStatus, remove } = useComandas(
-    barbershop?.id,
-    { dateFrom: toISODate(dateFrom), dateTo: toISODate(dateTo) },
-  );
+  const isoDateFrom = toISODate(dateFrom);
+  const isoDateTo = toISODate(dateTo);
 
   const [search, setSearch] = useState("");
+  // Debounce simples pra não disparar uma busca no servidor a cada tecla.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [deleteTarget, setDeleteTarget] = useState<Comanda | null>(null);
   const [fecharTarget, setFecharTarget] = useState<Comanda | null>(null);
 
+  // spec-ajustes-escopo-2 §2.4: listagem paginada no servidor — status/busca
+  // e paginação viajam nos filtros da própria requisição, em vez de filtrar
+  // e fatiar no cliente sobre a lista inteira.
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
+  // Volta pra página 1 quando os filtros mudam — ajuste de estado durante o
+  // render (padrão recomendado pelo React em vez de um Effect só pra isso),
+  // já que senão a página atual pode ficar além do novo total.
+  const filtersKey = `${isoDateFrom ?? ""}|${isoDateTo ?? ""}|${statusFilter}|${debouncedSearch}`;
+  const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+  if (filtersKey !== prevFiltersKey) {
+    setPrevFiltersKey(filtersKey);
+    setPage(1);
+  }
+
+  const {
+    comandas,
+    total,
+    isLoading,
+    update: updateRaw,
+    setStatus: setStatusRaw,
+    remove: removeRaw,
+  } = useComandas(
+    barbershop?.id,
+    {
+      dateFrom: isoDateFrom,
+      dateTo: isoDateTo,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+      search: debouncedSearch || undefined,
+    },
+    { page, pageSize },
+  );
+
+  // Estatísticas do topo: independem do filtro de status/busca da tabela
+  // (só do período), por isso buscadas à parte, sem paginação.
+  const { comandas: comandasForStats, refetch: refetchStats } = useComandas(
+    barbershop?.id,
+    { dateFrom: isoDateFrom, dateTo: isoDateTo },
+  );
+
+  // Ações que mudam status/conteúdo já reconsultam a lista paginada
+  // (`useComandas`) — aqui só encadeamos o refetch das estatísticas, que
+  // vêm de uma segunda consulta independente.
+  const update: typeof updateRaw = async (...args) => {
+    const result = await updateRaw(...args);
+    refetchStats();
+    return result;
+  };
+  const setStatus: typeof setStatusRaw = async (...args) => {
+    const result = await setStatusRaw(...args);
+    refetchStats();
+    return result;
+  };
+  const remove: typeof removeRaw = async (...args) => {
+    await removeRaw(...args);
+    refetchStats();
+  };
+
   const stats = useMemo(() => {
-    const abertas = comandas.filter((c) => c.status === "ABERTA").length;
-    const fechadas = comandas.filter((c) => c.status === "FECHADA").length;
-    const canceladas = comandas.filter((c) => c.status === "CANCELADA").length;
-    const faturadoInCents = comandas
+    const abertas = comandasForStats.filter((c) => c.status === "ABERTA").length;
+    const fechadas = comandasForStats.filter((c) => c.status === "FECHADA").length;
+    const canceladas = comandasForStats.filter((c) => c.status === "CANCELADA").length;
+    const faturadoInCents = comandasForStats
       .filter((c) => c.status === "FECHADA")
       .reduce((acc, c) => acc + comandaTotalInCents(c.itens), 0);
     return { abertas, fechadas, canceladas, faturadoInCents };
-  }, [comandas]);
+  }, [comandasForStats]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return comandas.filter((c) => {
-      if (statusFilter !== "ALL" && c.status !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        String(c.numero).includes(q) ||
-        comandaClienteLabel(c).toLowerCase().includes(q)
-      );
-    });
-  }, [comandas, search, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil((total ?? 0) / pageSize));
+  const from = (total ?? 0) === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total ?? 0);
 
-  const pag = usePagination(filtered, 10);
+  function changePageSize(size: number) {
+    setPageSize(size as PageSize);
+    setPage(1);
+  }
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -143,10 +202,19 @@ export default function ComandasPage() {
     setDeleteTarget(null);
   }
 
-  function handleExportCsv() {
+  async function handleExportCsv() {
+    if (!barbershop?.id) return;
+    // Exporta todas as comandas que batem com os filtros atuais, não só a
+    // página exibida — busca a lista inteira sob demanda, sem paginação.
+    const { data: rows } = await comandasService.list(barbershop.id, {
+      dateFrom: isoDateFrom,
+      dateTo: isoDateTo,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+      search: debouncedSearch || undefined,
+    });
     exportToCsv(
       "comandas",
-      filtered.map((c) => ({
+      rows.map((c) => ({
         numero: c.numero,
         cliente: comandaClienteLabel(c),
         tipo: c.tipo === "AVULSA" ? "Avulsa" : "Agendamento",
@@ -179,7 +247,7 @@ export default function ComandasPage() {
             <Button
               variant="outline"
               onClick={handleExportCsv}
-              disabled={filtered.length === 0}
+              disabled={(total ?? comandas.length) === 0}
               className="cursor-pointer border-border bg-surface-raised text-foreground hover:bg-surface-elevated font-semibold h-9 text-xs"
             >
               <Download className="size-3.5 mr-1.5" />
@@ -265,16 +333,16 @@ export default function ComandasPage() {
             <div className="py-10">
               <Loading />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : comandas.length === 0 ? (
             <EmptyState
               icon={<ClipboardList className="size-10" />}
               message={
-                comandas.length === 0
+                comandasForStats.length === 0
                   ? "Nenhuma comanda registrada ainda."
                   : "Nenhuma comanda encontrada com esses filtros."
               }
               action={
-                comandas.length === 0 ? (
+                comandasForStats.length === 0 ? (
                   <Link
                     href="/orders/new"
                     className="text-xs font-semibold text-brand hover:underline"
@@ -306,7 +374,7 @@ export default function ComandasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pag.pageItems.map((comanda) => (
+                  {comandas.map((comanda) => (
                     <TableRow
                       key={comanda.id}
                       className="border-border-subtle"
@@ -412,14 +480,14 @@ export default function ComandasPage() {
               </Table>
 
               <DataTablePagination
-                page={pag.page}
-                pageSize={pag.pageSize}
-                totalPages={pag.totalPages}
-                total={pag.total}
-                from={pag.from}
-                to={pag.to}
-                onPageChange={pag.setPage}
-                onPageSizeChange={pag.setPageSize}
+                page={page}
+                pageSize={pageSize}
+                totalPages={totalPages}
+                total={total ?? 0}
+                from={from}
+                to={to}
+                onPageChange={setPage}
+                onPageSizeChange={changePageSize}
               />
             </>
           )}

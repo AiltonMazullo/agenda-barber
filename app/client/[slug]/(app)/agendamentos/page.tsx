@@ -11,7 +11,7 @@ import { AgendamentosHelpCard } from "@/components/client/AgendamentosHelpCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loading } from "@/components/shared/Loading";
-import { EmptyState, ListPaginationBar } from "@/components/shared";
+import { ConfirmDialog, EmptyState, ListPaginationBar } from "@/components/shared";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
 import { clientCatalogService } from "@/services/client-catalog.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
@@ -137,19 +137,22 @@ export default function AgendamentosPage({ params }: PageProps) {
   const agendadosPg = usePagination(agendados, 10);
   const historicoPg = usePagination(historico, 10);
 
-  async function handleCancel(id: string) {
-    const appt = appointments.find((a) => a.id === id);
+  const [cancelId, setCancelId] = useState<string | null>(null);
+
+  async function handleConfirmCancel() {
+    if (!cancelId) return;
+    const appt = appointments.find((a) => a.id === cancelId);
     if (!appt) return;
-    const ok = window.confirm("Deseja cancelar este agendamento?");
-    if (!ok) return;
     try {
-      await clientAppointmentsService.cancel(appt.barbershopId, id);
+      await clientAppointmentsService.cancel(appt.barbershopId, cancelId);
       setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: "CANCELLED" } : a)),
+        prev.map((a) => (a.id === cancelId ? { ...a, status: "CANCELLED" } : a)),
       );
       toast.success("Agendamento cancelado.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao cancelar.");
+    } finally {
+      setCancelId(null);
     }
   }
 
@@ -232,7 +235,7 @@ export default function AgendamentosPage({ params }: PageProps) {
                           empId ? empNameById.get(empId) ?? null : null
                         }
                         photoUrl={empId ? localPhotos[empId] ?? null : null}
-                        onCancel={handleCancel}
+                        onCancel={setCancelId}
                         onReschedule={handleReschedule}
                       />
                     );
@@ -305,6 +308,16 @@ export default function AgendamentosPage({ params }: PageProps) {
         barbershopId={rescheduleTarget?.barbershopId ?? ""}
         appointment={rescheduleTarget}
         onRescheduled={handleRescheduled}
+      />
+      <ConfirmDialog
+        open={cancelId !== null}
+        onOpenChange={(v) => !v && setCancelId(null)}
+        title="Cancelar agendamento?"
+        description="Deseja cancelar este agendamento?"
+        confirmLabel="Cancelar agendamento"
+        cancelLabel="Voltar"
+        tone="danger"
+        onConfirm={() => void handleConfirmCancel()}
       />
     </div>
   );

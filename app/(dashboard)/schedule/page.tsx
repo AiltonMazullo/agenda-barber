@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragMoveEvent,
   DragStartEvent,
   DragOverlay,
   PointerSensor,
@@ -92,7 +93,7 @@ import type {
   ViewMode,
 } from "@/components/schedule";
 import type { UpdatableAppointmentStatus } from "@/types/appointment.types";
-import { Loading, DatePickerField } from "@/components/shared";
+import { ConfirmDialog, Loading, DatePickerField } from "@/components/shared";
 
 export default function SchedulePage() {
   const { barbershop } = useAuth();
@@ -133,8 +134,22 @@ export default function SchedulePage() {
     updateAgendamento,
     transferAgendamento,
     clientActivePlans,
+    subscriberStatusByClient,
     refetchAgendamentos,
+    pendingWarning,
+    resolvePendingWarning,
   } = useSchedule(barbershop?.id, selectedDate, filialId || undefined);
+
+  // Clientes inadimplentes (spec-ajustes-escopo-3 §6) — mesmo mapa que já
+  // alimenta o ícone de alerta no card (AgendamentoIcones), agora também
+  // usado como indicador no modal ao selecionar/trocar o cliente.
+  const clientDelinquency = useMemo(() => {
+    const m = new Map<string, boolean>();
+    subscriberStatusByClient.forEach((situacao, clientId) => {
+      m.set(clientId, situacao === "inadimplente");
+    });
+    return m;
+  }, [subscriberStatusByClient]);
 
   // Bloqueios de horário (persistidos — ver ajustes/Módulo Agenda.md)
   const {
@@ -195,6 +210,8 @@ export default function SchedulePage() {
     agId: string;
     novoProfId: string;
     novoInicio: number;
+    /** false = reagendamento sem conflito, só passando pela confirmação padrão (§5.2). */
+    temConflito: boolean;
   } | null>(null);
   const [dialogComanda, setDialogComanda] = useState(false);
   const [dialogBloqueio, setDialogBloqueio] = useState(false);
@@ -303,11 +320,11 @@ export default function SchedulePage() {
     const map: Record<string, AgendamentoVM[]> = {};
     profissionais.forEach((p) => (map[p.id] = []));
     agendamentos.forEach((ag) => {
-      // Cancelados aparecem só na visualização em lista. Faltas (NO_SHOW)
-      // continuam na grade (spec-revisao-cliente-4.md §3.2) — só mudam de
-      // cor conforme a configuração de status; remover da agenda é ação
-      // manual do usuário (item "Remover" no dropdown do card).
-      if (ag.status === "CANCELLED") return;
+      // Cancelados e faltas (NO_SHOW) aparecem só na visualização em lista,
+      // não na grade (spec-ajustes-escopo-1.md §2.2 — substitui a decisão
+      // anterior de spec-revisao-cliente-4.md §3.2, que mantinha NO_SHOW
+      // visível na grade).
+      if (ag.status === "CANCELLED" || ag.status === "NO_SHOW") return;
       if (map[ag.profissionalId]) map[ag.profissionalId].push(ag);
     });
     return map;
@@ -359,9 +376,44 @@ export default function SchedulePage() {
     setActiveId(String(e.active.id));
   }, []);
 
+  // spec-ajustes-escopo-2 §5.1: preview do slot exato de destino durante o
+  // arrasto (antes só a coluna inteira do profissional destacava, sem
+  // indicar o horário) — mesmo cálculo de snap de `handleDragEnd`, mas
+  // rodando a cada `onDragMove` em vez de só no drop.
+  const [dragPreview, setDragPreview] = useState<{
+    profissionalId: string;
+    inicioMin: number;
+    duracaoMin: number;
+  } | null>(null);
+
+  const handleDragMove = useCallback(
+    (e: DragMoveEvent) => {
+      const { active, over, delta } = e;
+      if (!over) {
+        setDragPreview(null);
+        return;
+      }
+      const ag = agendamentos.find((a) => a.id === active.id);
+      if (!ag) return;
+
+      const overData = over.data?.current as { profissionalId?: string } | undefined;
+      const profissionalId = overData?.profissionalId ?? ag.profissionalId;
+      const deltaSlotsY = Math.round(delta.y / SLOT_HEIGHT_PX);
+      let inicioMin = snapToSlot(ag.inicioMin + deltaSlotsY * slotSize, slotSize);
+      inicioMin = Math.max(
+        gridStartHour * 60,
+        Math.min(gridEndHour * 60 - ag.duracao, inicioMin),
+      );
+
+      setDragPreview({ profissionalId, inicioMin, duracaoMin: ag.duracao });
+    },
+    [agendamentos, slotSize, SLOT_HEIGHT_PX, gridStartHour, gridEndHour],
+  );
+
   const handleDragEnd = useCallback(
     (e: DragEndEvent) => {
       setActiveId(null);
+      setDragPreview(null);
       const { active, over, delta } = e;
       if (!over) return;
       const ag = agendamentos.find((a) => a.id === active.id);
@@ -396,41 +448,82 @@ export default function SchedulePage() {
         return;
       }
 
-      if (agConflitos.length > 0) {
-        setDadosConflito({
-          agMovendo: ag,
-          conflitantes: agConflitos,
-          novoInicio: newInicio,
-          novoProfId: newProfId,
-          duracaoMovendo: ag.duracao,
+      // spec-ajustes-escopo-2 §5.2: sempre abre o dialog de confirmação
+      // antes de reagendar — antes, sem conflito o reagendamento era
+      // aplicado direto e otimista, sem chance de desistir do arrasto.
+      // Reaproveita o mesmo `DialogConflito`, que troca pra uma variante
+      // "sem conflito" (mensagem simplificada) quando `conflitantes` vem vazio.
+      setDadosConflito({
+        agMovendo: ag,
+        conflitantes: agConflitos,
+        novoInicio: newInicio,
+        novoProfId: newProfId,
+        duracaoMovendo: ag.duracao,
+      });
+      setConflitoPendente({
+        agId: ag.id,
+        novoProfId: newProfId,
+        novoInicio: newInicio,
+        temConflito: agConflitos.length > 0,
+      });
+      setDialogConflito(true);
+    },
+    [agendamentos, slotSize, SLOT_HEIGHT_PX, bloqueios],
+  );
+
+  /**
+   * Navegação entre profissionais de um card "sem preferência" (§3.1) — os
+   * botões ‹ › do card ciclam pelos profissionais visíveis, pulando quem
+   * está ocupado no mesmo horário, e reagenda pro primeiro livre encontrado.
+   * Continua marcado como "sem preferência" (o backend não limpa a flag ao
+   * reagendar) — só troca quem atende.
+   */
+  const handleNavigateProfissional = useCallback(
+    (ag: AgendamentoVM, direction: "prev" | "next") => {
+      if (colunasVisiveis.length < 2) return;
+      const currentIdx = colunasVisiveis.findIndex((p) => p.id === ag.profissionalId);
+      const step = direction === "next" ? 1 : -1;
+      for (let i = 1; i < colunasVisiveis.length; i++) {
+        const idx =
+          (currentIdx + step * i + colunasVisiveis.length * i) % colunasVisiveis.length;
+        const candidato = colunasVisiveis[idx];
+        if (candidato.id === ag.profissionalId) continue;
+        const conflicts = findConflicts(
+          agendamentos,
+          candidato.id,
+          ag.inicioMin,
+          ag.duracao,
+          ag.id,
+          bloqueios,
+        );
+        if (conflicts.length > 0) continue;
+        moveLocal(ag.id, { inicioMin: ag.inicioMin, profissionalId: candidato.id });
+        void rescheduleAgendamento(ag.id, ag.inicioMin, candidato.id).then((ok) => {
+          if (ok) toast.success(`Reatribuído para ${candidato.nome}.`);
         });
-        setConflitoPendente({
-          agId: ag.id,
-          novoProfId: newProfId,
-          novoInicio: newInicio,
-        });
-        setDialogConflito(true);
         return;
       }
-
-      // Move visualmente de imediato (otimista) e persiste no backend em
-      // seguida. Em caso de falha (ex.: conflito detectado pelo servidor),
-      // `rescheduleAgendamento` limpa o overlay e o card volta pro lugar.
-      moveLocal(ag.id, { inicioMin: newInicio, profissionalId: newProfId });
-      void rescheduleAgendamento(ag.id, newInicio, newProfId).then((ok) => {
-        if (ok) toast.success("Agendamento reagendado.");
-      });
+      toast.error("Nenhum outro profissional livre nesse horário.");
     },
-    [agendamentos, slotSize, SLOT_HEIGHT_PX, bloqueios, moveLocal, rescheduleAgendamento],
+    [colunasVisiveis, agendamentos, bloqueios, moveLocal, rescheduleAgendamento],
   );
 
   const confirmarConflito = useCallback(() => {
     if (!conflitoPendente) return;
-    const { agId, novoProfId, novoInicio } = conflitoPendente;
+    const { agId, novoProfId, novoInicio, temConflito } = conflitoPendente;
     moveLocal(agId, { inicioMin: novoInicio, profissionalId: novoProfId });
+    if (temConflito) {
+      toast.warning("Agendamento sobreposto (apenas visual).");
+    } else {
+      // Persiste no backend só depois da confirmação (§5.2). Em caso de
+      // falha (ex.: conflito detectado pelo servidor), `rescheduleAgendamento`
+      // limpa o overlay e o card volta pro lugar.
+      void rescheduleAgendamento(agId, novoInicio, novoProfId).then((ok) => {
+        if (ok) toast.success("Agendamento reagendado.");
+      });
+    }
     setConflitoPendente(null);
-    toast.warning("Agendamento sobreposto (apenas visual).");
-  }, [conflitoPendente, moveLocal]);
+  }, [conflitoPendente, moveLocal, rescheduleAgendamento]);
 
   const handleNovoAgendamento = useCallback(
     async (dados: NovoAgendamentoInput) => {
@@ -1143,6 +1236,7 @@ export default function SchedulePage() {
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
             >
               <div className="flex min-h-full">
@@ -1188,6 +1282,12 @@ export default function SchedulePage() {
                         onSlotClick={handleSlotClick}
                         indisponibilidades={indisponibilidades}
                         startHour={gridStartHour}
+                        onNavigateProfissional={handleNavigateProfissional}
+                        previewSlot={
+                          dragPreview && dragPreview.profissionalId === prof.id
+                            ? dragPreview
+                            : null
+                        }
                       />
                     </div>
                   ))}
@@ -1239,6 +1339,7 @@ export default function SchedulePage() {
           bloqueios={bloqueios}
           clients={clients}
           clientActivePlans={clientActivePlans}
+          clientDelinquency={clientDelinquency}
           defaultDate={selectedDate}
           prefilledHora={prefilledHora}
           prefilledProfId={prefilledProfId}
@@ -1255,6 +1356,7 @@ export default function SchedulePage() {
           branches={branches}
           clients={clients}
           clientActivePlans={clientActivePlans}
+          clientDelinquency={clientDelinquency}
           onDelete={handleDelete}
           onUpdateStatus={handleUpdateStatus}
           onSave={updateAgendamento}
@@ -1321,6 +1423,16 @@ export default function SchedulePage() {
           selectedDate={selectedDate}
           defaultFilialId={filialId}
           onSave={handleSalvarBloqueioModal}
+        />
+        <ConfirmDialog
+          open={pendingWarning !== null}
+          onOpenChange={(v) => !v && resolvePendingWarning(false)}
+          title="Conflito de 30 minutos por plano"
+          description={pendingWarning ?? undefined}
+          confirmLabel="Confirmar mesmo assim"
+          cancelLabel="Voltar"
+          tone="danger"
+          onConfirm={() => resolvePendingWarning(true)}
         />
       </div>
     </>

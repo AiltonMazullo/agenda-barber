@@ -16,6 +16,7 @@ export function DraggableAgendamento({
   onCardClick,
   onResizeEnd,
   startHour = START_HOUR,
+  onNavigateProfissional,
 }: {
   agendamento: AgendamentoVM;
   servico: ServicoVM;
@@ -25,6 +26,7 @@ export function DraggableAgendamento({
   onCardClick: (ag: AgendamentoVM) => void;
   onResizeEnd: (id: string, novaDuracao: number) => void;
   startHour?: number;
+  onNavigateProfissional?: (ag: AgendamentoVM, direction: "prev" | "next") => void;
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: agendamento.id,
@@ -114,6 +116,7 @@ export function DraggableAgendamento({
         isDragging={isThis}
         isResizing={isResizeActive}
         onResizeStart={handleResizeStart}
+        onNavigateProfissional={onNavigateProfissional}
       />
       {isResizeActive && (
         <div

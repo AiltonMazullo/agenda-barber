@@ -82,6 +82,8 @@ export function useSchedule(
     update,
     transfer,
     refetch,
+    pendingWarning,
+    resolvePendingWarning,
   } = useAppointments(barbershopId);
 
   const [overlay, setOverlay] = useState<Record<string, Overlay>>({});
@@ -294,7 +296,11 @@ export function useSchedule(
         groupId: primary.groupId,
         profissionalId: profId,
         profissionalNome: profNome,
-        semPreferencia: !primary.employeeId,
+        // spec-ajustes-escopo-1.md §3.1: reflete a flag persistida (o
+        // sorteio agora acontece no backend, que sempre grava um
+        // `employeeId` real) — não mais `!primary.employeeId`, que nunca
+        // seria true pra agendamentos novos.
+        semPreferencia: primary.noPreferenceOrigin,
         branchId: primary.branchId ?? null,
         cliente: primary.client?.name ?? "Cliente",
         telefone: primary.client?.phone ?? "",
@@ -363,7 +369,16 @@ export function useSchedule(
           clientId: input.clientId,
           serviceIds: batch.map((sv) => sv.servicoId),
           employeeId: profissionalId || undefined,
+          // "Sem preferência" (§3.2): quando a linha não tem profissional
+          // escolhido, o backend sorteia um com disponibilidade real —
+          // substitui o sorteio que antes era feito aqui no frontend.
+          noPreference: !profissionalId,
+          branchId: input.branchId,
           scheduledAt: dt.toISOString(),
+          // Horário final editável (§2.1) — duração de cada serviço vem do
+          // que foi ajustado no `ServicoSelector` (default é o cadastro do
+          // serviço, mas o usuário pode ter alterado).
+          durationOverrides: batch.map((sv) => sv.duracao),
           // Observação vai só no primeiro card do agendamento (mesmo padrão
           // do backend, que grava só no primeiro item do grupo).
           notes: isFirstBatch ? input.observacao || undefined : undefined,
@@ -371,11 +386,14 @@ export function useSchedule(
         isFirstBatch = false;
         if (created) {
           // Enriquece localmente (employeeId/employee/client) pra o card
-          // aparecer imediatamente na coluna correta do kanban.
-          const emp = employees.find((e) => e.id === profissionalId);
+          // aparecer imediatamente na coluna correta do kanban. Usa
+          // `created.employeeId` (não `profissionalId`, que pode estar vazio
+          // em "sem preferência") — o backend já retorna o profissional
+          // sorteado quando aplicável (§3.2).
+          const emp = employees.find((e) => e.id === created.employeeId);
           const cli = clients.find((c) => c.id === input.clientId);
           replaceLocal(created.id, {
-            employeeId: profissionalId || null,
+            employeeId: created.employeeId,
             status: input.status ?? created.status,
             employee: emp
               ? { id: emp.id, name: emp.name, appName: emp.appName }
@@ -523,6 +541,9 @@ export function useSchedule(
     transferAgendamento,
     clientActivePlans,
     clientActivePlanColor,
+    subscriberStatusByClient,
     refetchAgendamentos: refetch,
+    pendingWarning,
+    resolvePendingWarning,
   };
 }
