@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ClientNavbar } from "@/components/client/ClientNavbar";
 import { ClientAccountTopbar } from "@/components/client/ClientAccountTopbar";
+import { ReviewPromptModal } from "@/components/client/ReviewPromptModal";
 
 interface ClientAppLayoutProps {
   children: ReactNode;
@@ -25,6 +26,7 @@ export default async function ClientAppLayout({
         <ClientAccountTopbar slug={slug} />
         <div className="flex-1 w-full">{children}</div>
       </SidebarInset>
+      <ReviewPromptModal />
     </SidebarProvider>
   );
 }

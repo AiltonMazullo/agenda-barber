@@ -53,12 +53,16 @@ export function DialogComandaAgendamento({
     const profissional = form.employees.find((e) => e.id === agendamento.profissionalId);
     if (profissional) form.setBranchId(profissional.branchId);
     // Um "combo" tem um Appointment (memberId) por serviço, na mesma ordem —
-    // vincula cada agendamento do grupo e já adiciona o item do serviço
-    // correspondente.
+    // mas na comanda colapsamos todos os serviços do combo sob o mesmo
+    // `ComandaAgendamento` (usando só o primeiro memberId), em vez de gerar
+    // um agendamento por serviço (ver spec-ajustes-escopo-4.md §4, opção b:
+    // a causa raiz — `Appointment.serviceId` 1:1 — fica intacta, só a
+    // comanda deixa de espalhar o combo em N cards visuais).
     const memberIds =
       agendamento.memberIds.length > 0 ? agendamento.memberIds : [agendamento.id];
-    const entries = agendamento.servicos.map((s, i) => ({
-      appointmentId: memberIds[i] ?? agendamento.id,
+    const primaryAppointmentId = memberIds[0] ?? agendamento.id;
+    const entries = agendamento.servicos.map((s) => ({
+      appointmentId: primaryAppointmentId,
       servicoId: s.id,
     }));
     void form.seedAppointments(entries);

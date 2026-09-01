@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { UF_OPTIONS } from "@/utils/constants";
-import type { CreateClientPayload } from "@/types/client.types";
+import type { CreateClientPayload, UpdateClientPayload } from "@/types/client.types";
 
 /**
  * Schema do formulário de cadastro de cliente (usado tanto pelo modal do dono
@@ -64,4 +64,65 @@ export function toCreateClientPayload(
     notes: trimmed(values.notes),
     remindInSchedule: values.remindInSchedule ?? false,
   };
+}
+
+/**
+ * Schema do formulário de edição de cliente (painel do dono). Mesma paridade
+ * de campos do cadastro, exceto senha (opcional aqui) e `notes` (endpoint
+ * próprio, `updateClientNotesSchema`, editado direto na tela de detalhes).
+ */
+export const editClientFormSchema = z.object({
+  name: z.string().min(2, "Informe o nome completo").max(80, "Nome muito longo"),
+  email: z.string().min(1, "E-mail obrigatório").email("E-mail inválido"),
+  password: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || v.length >= 6,
+      "A senha deve ter pelo menos 6 caracteres",
+    ),
+  phone: z.string().optional(),
+  birthDate: z.date().optional(),
+  howMet: z.string().optional(),
+  cpf: z.string().optional(),
+  cep: z.string().optional(),
+  street: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  uf: z.union([z.enum(UF_OPTIONS), z.literal("")]).optional(),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  remindInSchedule: z.boolean().optional(),
+});
+
+export type EditClientFormValues = z.infer<typeof editClientFormSchema>;
+
+/** Converte os valores do formulário de edição no payload de `PATCH /clients/:id`. */
+export function toUpdateClientPayload(
+  values: EditClientFormValues,
+): UpdateClientPayload {
+  const trimmed = (v?: string) => {
+    const t = v?.trim();
+    return t ? t : undefined;
+  };
+  const payload: UpdateClientPayload = {
+    name: values.name.trim(),
+    email: values.email.trim().toLowerCase(),
+    phone: trimmed(values.phone),
+    birthDate: values.birthDate ? values.birthDate.toISOString() : undefined,
+    howMet: trimmed(values.howMet),
+    cpf: trimmed(values.cpf),
+    cep: trimmed(values.cep),
+    street: trimmed(values.street),
+    neighborhood: trimmed(values.neighborhood),
+    city: trimmed(values.city),
+    uf: values.uf ? values.uf : undefined,
+    number: trimmed(values.number),
+    complement: trimmed(values.complement),
+    remindInSchedule: values.remindInSchedule,
+  };
+  if (values.password?.trim()) {
+    payload.password = values.password;
+  }
+  return payload;
 }

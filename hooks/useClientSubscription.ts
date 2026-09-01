@@ -9,6 +9,7 @@ import {
   type SubscribePixAuthorizationResult,
   type SubscriptionPaymentMethod,
 } from "@/types/subscription.types";
+import type { CancelReasonCode, PreCancelledClient } from "@/types/pre-cancelled-client.types";
 
 /** Traduz mensagens de erro conhecidas da API para um texto amigável em pt-BR. */
 function translateCancelError(message: string): string {
@@ -89,20 +90,23 @@ export function useClientSubscription(barbershopId: string | undefined) {
     [barbershopId],
   );
 
-  const cancel = useCallback(async () => {
-    if (!barbershopId) return false;
-    try {
-      await clientSubscriptionsService.cancel(barbershopId);
-      toast.success("Assinatura cancelada.");
-      await fetchMine();
-      return true;
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? translateCancelError(err.message) : "Falha ao cancelar assinatura.",
-      );
-      return false;
-    }
-  }, [barbershopId, fetchMine]);
+  const cancel = useCallback(
+    async (reason: CancelReasonCode): Promise<PreCancelledClient | false> => {
+      if (!barbershopId) return false;
+      try {
+        const result = await clientSubscriptionsService.cancel(barbershopId, reason);
+        toast.success("Cancelamento agendado. Seu plano continua ativo até a data informada.");
+        await fetchMine();
+        return result;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? translateCancelError(err.message) : "Falha ao cancelar assinatura.",
+        );
+        return false;
+      }
+    },
+    [barbershopId, fetchMine],
+  );
 
   return { mySubscription, isLoading, subscribe, cancel, refresh: fetchMine };
 }

@@ -21,6 +21,7 @@ export function productCommissionRuleFromBackend(
   return rules.map((r) => ({
     id: r.id,
     category: r.categoryId ?? "",
+    product: r.productId ?? "",
     minSaleValue: r.minSaleValueInCents / 100,
     percent: r.percent,
   }));
@@ -31,7 +32,8 @@ export function productCommissionRuleToPayload(
 ): UpdateProductCommissionRulePayload {
   return {
     rules: rules.map((r) => ({
-      categoryId: r.category || null,
+      categoryId: r.product ? null : r.category || null,
+      productId: r.product || null,
       minSaleValueInCents: Math.round(r.minSaleValue * 100),
       percent: r.percent,
     })),

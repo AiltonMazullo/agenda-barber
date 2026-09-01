@@ -85,7 +85,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const { barbershop } = useAuth();
-  const { clients, isLoading, update, updateNotes } = useClients(barbershop?.id);
+  const { clients, isLoading, update, updateNotes, uploadPhoto } = useClients(barbershop?.id);
   const {
     appointments: clientAppts,
     isLoading: apptsLoading,
@@ -438,6 +438,12 @@ export default function ClienteDetalhePage({ params }: PageProps) {
                     );
                     const prof =
                       a.employee?.appName ?? a.employee?.name ?? null;
+                    const produtosVendidos = comandas
+                      .flatMap((c) => c.itens)
+                      .filter(
+                        (item) =>
+                          item.tipo === "PRODUTO" && item.appointmentId === a.id,
+                      );
                     return (
                       <div
                         key={a.id}
@@ -453,6 +459,18 @@ export default function ClienteDetalhePage({ params }: PageProps) {
                             {formatTime(end)}
                             {prof ? ` • ${prof}` : ""}
                           </p>
+                          {produtosVendidos.length > 0 && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              Produtos:{" "}
+                              {produtosVendidos
+                                .map((item) =>
+                                  item.quantidade > 1
+                                    ? `${item.nome} (${item.quantidade}x)`
+                                    : item.nome,
+                                )
+                                .join(", ")}
+                            </p>
+                          )}
                         </div>
                         <span
                           className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${STATUS_TONE[a.status]}`}
@@ -493,7 +511,16 @@ export default function ClienteDetalhePage({ params }: PageProps) {
                   return (
                     <div
                       key={c.id}
-                      className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/orders/${c.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(`/orders/${c.id}`);
+                        }
+                      }}
+                      className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3 cursor-pointer hover:bg-surface-elevated transition-colors"
                     >
                       <Receipt className="size-4 text-brand shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -624,6 +651,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
         onOpenChange={setEditOpen}
         client={client}
         onSave={handleSaveEdit}
+        onUploadPhoto={uploadPhoto}
       />
 
       <ConfirmDialog

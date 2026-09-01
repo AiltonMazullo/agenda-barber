@@ -57,6 +57,17 @@ export interface UpdateClientPayload {
   email?: string;
   phone?: string;
   password?: string;
+  /** ISO 8601 (ex.: "1995-06-15T00:00:00.000Z"). */
+  birthDate?: string;
+  howMet?: string;
+  cpf?: string;
+  cep?: string;
+  street?: string;
+  neighborhood?: string;
+  city?: string;
+  uf?: string;
+  number?: string;
+  complement?: string;
   remindInSchedule?: boolean;
 }
 

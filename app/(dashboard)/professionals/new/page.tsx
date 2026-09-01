@@ -12,6 +12,7 @@ import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { usePermissionsCatalog } from "@/hooks/usePermissionsCatalog";
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
+import { useProducts } from "@/hooks/useProducts";
 import { professionalConfigStore } from "@/lib/professional-config-store";
 import {
   defaultProfessionalConfig,
@@ -49,6 +50,7 @@ export default function ProfessionalNovoPage() {
     usePermissionsCatalog(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { categories } = useCategories(barbershop?.id, "PRODUTO");
+  const { products } = useProducts(barbershop?.id);
 
   // Foto escolhida antes do profissional existir: preview local agora,
   // upload real logo após o create (quando há ID pra rota de avatar).
@@ -175,6 +177,7 @@ export default function ProfessionalNovoPage() {
       initialBasic={EMPTY_BASIC}
       services={services}
       categories={categories}
+      products={products}
       accessGroups={groups}
       permissionsCatalog={permissionsCatalog}
       permissionsCatalogLoading={permissionsCatalogLoading}

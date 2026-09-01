@@ -20,11 +20,13 @@ import { Intervalos } from "./Intervalos";
 import { Folgas } from "./Folgas";
 import { RegrasComissao } from "./RegrasComissao";
 import type { Category } from "@/types/category.types";
+import type { Product } from "@/types/product.types";
 
 export function ProfessionalForm({
   initialBasic,
   services,
   categories,
+  products,
   accessGroups,
   permissionsCatalog,
   permissionsCatalogLoading,
@@ -42,6 +44,7 @@ export function ProfessionalForm({
   initialBasic: ProfessionalBasic;
   services: Service[];
   categories: Category[];
+  products: Product[];
   accessGroups: AccessGroup[];
   /** Catálogo de permissões — usado pelo checklist do profissional com agenda. */
   permissionsCatalog: PermissionCatalogModule[];
@@ -216,6 +219,7 @@ export function ProfessionalForm({
               productCommission={config.productCommission}
               differentiated={config.differentiated}
               categories={categories}
+              products={products}
               onChange={updateConfig}
             />
           </>

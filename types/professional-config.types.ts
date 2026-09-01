@@ -39,10 +39,16 @@ export interface TimeOff {
   end: string;
 }
 
-/** (a) Comissões sobre produtos: uma regra independente por linha (categoria + valor mínimo + comissão). */
+/**
+ * (a) Comissões sobre produtos: uma regra independente por linha (categoria
+ * OU produto específico + valor mínimo + comissão). `product` tem prioridade
+ * sobre `category` na resolução do backend — ver spec-ajustes-escopo-4.md §6.
+ */
 export interface ProductCommissionRuleItem {
   id: string;
   category: string; // "" = todas as categorias
+  /** "" = regra por categoria (ou coringa); preenchido = regra por produto específico. */
+  product: string;
   minSaleValue: number;
   percent: number;
 }

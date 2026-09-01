@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared";
 import { maskBRLInput, parseBRL, formatBRL } from "@/utils/format";
 import type { Category } from "@/types/category.types";
+import type { Product } from "@/types/product.types";
 import type {
   DifferentiatedCommission,
   ProductCommissionRule,
@@ -23,17 +24,23 @@ export function RegrasComissao({
   productCommission,
   differentiated,
   categories,
+  products,
   onChange,
 }: {
   productCommission: ProductCommissionRule;
   differentiated: DifferentiatedCommission;
   categories: Category[];
+  products: Product[];
   onChange: (patch: {
     productCommission?: ProductCommissionRule;
     differentiated?: DifferentiatedCommission;
   }) => void;
 }) {
+  // "categoria" = regra por categoria (ou coringa, todas); "produto" = regra
+  // por um produto específico — mutuamente exclusivos numa mesma linha.
+  const [draftMode, setDraftMode] = useState<"categoria" | "produto">("categoria");
   const [draftCategory, setDraftCategory] = useState("");
+  const [draftProduct, setDraftProduct] = useState("");
   const [draftMinSaleValue, setDraftMinSaleValue] = useState(0);
   const [draftPercent, setDraftPercent] = useState(0);
 
@@ -42,18 +49,21 @@ export function RegrasComissao({
   }
 
   function addRule() {
+    if (draftMode === "produto" && !draftProduct) return;
     onChange({
       productCommission: [
         ...productCommission,
         {
           id: crypto.randomUUID(),
-          category: draftCategory,
+          category: draftMode === "categoria" ? draftCategory : "",
+          product: draftMode === "produto" ? draftProduct : "",
           minSaleValue: draftMinSaleValue,
           percent: draftPercent,
         },
       ],
     });
     setDraftCategory("");
+    setDraftProduct("");
     setDraftMinSaleValue(0);
     setDraftPercent(0);
   }
@@ -71,6 +81,13 @@ export function RegrasComissao({
     return categories.find((c) => c.id === categoryId)?.name ?? "Categoria removida";
   }
 
+  function ruleLabel(r: { category: string; product: string }): string {
+    if (r.product) {
+      return products.find((p) => p.id === r.product)?.name ?? "Produto removido";
+    }
+    return categoryLabel(r.category);
+  }
+
   return (
     <SectionShell title="Regras de comissão">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -80,23 +97,63 @@ export function RegrasComissao({
             A) Comissões sobre produtos
           </p>
           <p className="text-[11px] text-muted-foreground -mt-2">
-            Defina faixas de comissão por categoria e valor mínimo de venda.
+            Defina faixas de comissão por categoria ou por produto específico,
+            além do valor mínimo de venda.
           </p>
 
+          <div className="flex gap-1 rounded-md border border-border p-0.5 w-fit">
+            <button
+              type="button"
+              onClick={() => setDraftMode("categoria")}
+              className={`px-3 h-7 rounded text-xs font-semibold transition-colors ${
+                draftMode === "categoria"
+                  ? "bg-brand text-brand-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Por categoria
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftMode("produto")}
+              className={`px-3 h-7 rounded text-xs font-semibold transition-colors ${
+                draftMode === "produto"
+                  ? "bg-brand text-brand-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Por produto
+            </button>
+          </div>
+
           <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <FieldLabel>Categoria</FieldLabel>
-              <SelectField
-                id="rc-categoria"
-                value={draftCategory}
-                options={[
-                  { value: "", label: "Todas as categorias" },
-                  ...categories.map((c) => ({ value: c.id, label: c.name })),
-                ]}
-                onChange={setDraftCategory}
-                className="min-w-0"
-              />
-            </div>
+            {draftMode === "categoria" ? (
+              <div className="space-y-1.5 flex-1 min-w-[160px]">
+                <FieldLabel>Categoria</FieldLabel>
+                <SelectField
+                  id="rc-categoria"
+                  value={draftCategory}
+                  options={[
+                    { value: "", label: "Todas as categorias" },
+                    ...categories.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  onChange={setDraftCategory}
+                  className="min-w-0"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5 flex-1 min-w-[160px]">
+                <FieldLabel>Produto</FieldLabel>
+                <SelectField
+                  id="rc-produto"
+                  value={draftProduct}
+                  options={products.map((p) => ({ value: p.id, label: p.name }))}
+                  onChange={setDraftProduct}
+                  placeholder="Selecione o produto"
+                  className="min-w-0"
+                />
+              </div>
+            )}
             <div className="space-y-1.5 w-32">
               <FieldLabel>Valor mínimo de venda</FieldLabel>
               <Input
@@ -120,7 +177,8 @@ export function RegrasComissao({
             <button
               type="button"
               onClick={addRule}
-              className="size-9 rounded-md bg-brand text-brand-foreground grid place-items-center hover:bg-brand-hover transition-colors shrink-0"
+              disabled={draftMode === "produto" && !draftProduct}
+              className="size-9 rounded-md bg-brand text-brand-foreground grid place-items-center hover:bg-brand-hover transition-colors shrink-0 disabled:opacity-50"
               aria-label="Adicionar regra"
             >
               <Plus className="size-4" />
@@ -129,7 +187,7 @@ export function RegrasComissao({
 
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-surface-base text-[10px] font-bold uppercase tracking-widest text-text-faint">
-              <span>Categoria</span>
+              <span>Categoria / Produto</span>
               <span>Valor mínimo de venda</span>
               <span className="w-14 text-right">Comissão</span>
               <span className="w-8" />
@@ -145,7 +203,7 @@ export function RegrasComissao({
                   className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center px-3 py-2 border-t border-border-subtle"
                 >
                   <span className="text-sm text-foreground truncate">
-                    {categoryLabel(r.category)}
+                    {ruleLabel(r)}
                   </span>
                   <span className="text-sm text-foreground">
                     {formatBRL(r.minSaleValue)}

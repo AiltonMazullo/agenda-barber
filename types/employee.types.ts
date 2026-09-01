@@ -34,12 +34,19 @@ export interface EmployeeProductCommissionRule {
   id: string;
   employeeId: string;
   categoryId: string | null; // null = todas as categorias
+  /** Produto específico — regra mais granular que `categoryId`. */
+  productId: string | null;
   minSaleValueInCents: number;
   percent: number;
 }
 
 export interface UpdateProductCommissionRulePayload {
-  rules: { categoryId: string | null; minSaleValueInCents: number; percent: number }[];
+  rules: {
+    categoryId: string | null;
+    productId: string | null;
+    minSaleValueInCents: number;
+    percent: number;
+  }[];
 }
 
 export interface EmployeeDifferentiatedCommission {

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Loading } from "@/components/shared/Loading";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { SelectField } from "@/components/shared";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ import { useClientAuth } from "@/hooks/useClientAuth";
 import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { formatBRL, formatDate } from "@/utils/format";
 import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
+import { computeScheduledCancelDate } from "@/utils/subscription-cancel";
+import { CANCEL_REASON_OPTIONS, type CancelReasonCode } from "@/types/pre-cancelled-client.types";
 import type { Plan } from "@/types/plan.types";
 import type { Client } from "@/types/client.types";
 
@@ -277,6 +280,8 @@ export default function PlanoClientePage() {
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [switchTarget, setSwitchTarget] = useState<Plan | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Plan | null>(null);
+  const [cancelReason, setCancelReason] = useState<CancelReasonCode | "">("");
+  const [cancelling, setCancelling] = useState(false);
 
   // Fluxo de confirmação do plano antes de redirecionar pro checkout de cartão.
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
@@ -422,15 +427,78 @@ export default function PlanoClientePage() {
         }}
       />
 
-      <ConfirmDialog
+      <Dialog
         open={cancelTarget !== null}
-        onOpenChange={(v) => !v && setCancelTarget(null)}
-        title="Cancelar assinatura"
-        description={`Tem certeza que deseja cancelar a assinatura do plano "${cancelTarget?.name}"?`}
-        confirmLabel="Cancelar assinatura"
-        tone="danger"
-        onConfirm={() => void cancel()}
-      />
+        onOpenChange={(v) => {
+          if (!v) {
+            setCancelTarget(null);
+            setCancelReason("");
+          }
+        }}
+      >
+        <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar assinatura</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja cancelar a assinatura do plano &quot;
+              {cancelTarget?.name}&quot;?
+              {mySubscription && (
+                <>
+                  {" "}
+                  Você continua com acesso aos benefícios do plano até{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatDate(
+                      computeScheduledCancelDate(mySubscription.subscription.billingDay),
+                    )}
+                  </span>
+                  — o cancelamento não é imediato.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-1">
+            <SelectField
+              id="cancelReason"
+              label="Motivo do cancelamento"
+              value={cancelReason}
+              onChange={(v) => setCancelReason(v as CancelReasonCode)}
+              placeholder="Selecione o motivo"
+              options={CANCEL_REASON_OPTIONS}
+            />
+          </div>
+
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => {
+                setCancelTarget(null);
+                setCancelReason("");
+              }}
+              className="h-9 px-4 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
+            >
+              Voltar
+            </button>
+            <button
+              type="button"
+              disabled={!cancelReason || cancelling}
+              onClick={async () => {
+                if (!cancelReason) return;
+                setCancelling(true);
+                const result = await cancel(cancelReason);
+                setCancelling(false);
+                if (result) {
+                  setCancelTarget(null);
+                  setCancelReason("");
+                }
+              }}
+              className="h-9 px-4 rounded-md text-sm font-bold bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-60"
+            >
+              {cancelling ? "Cancelando…" : "Confirmar cancelamento"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={checkoutPlan !== null}

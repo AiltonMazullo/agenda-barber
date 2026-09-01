@@ -4,6 +4,7 @@ import type {
   SubscribePayload,
   SubscribeResult,
 } from "@/types/subscription.types";
+import type { CancelReasonCode, PreCancelledClient } from "@/types/pre-cancelled-client.types";
 
 const base = (barbershopId: string) => `/barbershops/${barbershopId}/subscriptions`;
 
@@ -23,7 +24,16 @@ export const clientSubscriptionsService = {
     return data;
   },
 
-  async cancel(barbershopId: string): Promise<void> {
-    await clientApi.patch<void>(`${base(barbershopId)}/me/cancel`);
+  /**
+   * Não cancela na hora — agenda o fim da assinatura pro fim do ciclo já
+   * pago (`PreCancelledClient`, ver spec-ajustes-escopo-4.md §7). O plano
+   * continua utilizável até `cancelDate` na resposta.
+   */
+  async cancel(barbershopId: string, reason: CancelReasonCode): Promise<PreCancelledClient> {
+    const { data } = await clientApi.patch<PreCancelledClient>(
+      `${base(barbershopId)}/me/cancel`,
+      { reason },
+    );
+    return data;
   },
 };

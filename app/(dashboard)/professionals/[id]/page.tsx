@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useServices } from "@/hooks/useServices";
 import { useCategories } from "@/hooks/useCategories";
+import { useProducts } from "@/hooks/useProducts";
 import { useAccessGroups } from "@/hooks/useAccessGroups";
 import { usePermissionsCatalog } from "@/hooks/usePermissionsCatalog";
 import { useProfessionalConfig } from "@/hooks/useProfessionalConfig";
@@ -46,6 +47,7 @@ export default function ProfessionalEditPage() {
     useEmployees(barbershop?.id);
   const { services } = useServices(barbershop?.id);
   const { categories } = useCategories(barbershop?.id, "PRODUTO");
+  const { products } = useProducts(barbershop?.id);
   const { groups, create: createAccessGroup, update: updateAccessGroup } =
     useAccessGroups(barbershop?.id);
   const { catalog: permissionsCatalog, isLoading: permissionsCatalogLoading } =
@@ -288,6 +290,7 @@ export default function ProfessionalEditPage() {
       initialBasic={initialBasic}
       services={services}
       categories={categories}
+      products={products}
       accessGroups={groups}
       permissionsCatalog={permissionsCatalog}
       permissionsCatalogLoading={permissionsCatalogLoading}
