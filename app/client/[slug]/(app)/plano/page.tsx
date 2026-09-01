@@ -11,10 +11,10 @@ import {
   Star,
   Flame,
   CreditCard,
+  MessageCircle,
 } from "lucide-react";
 import { Loading } from "@/components/shared/Loading";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { SelectField } from "@/components/shared";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +30,7 @@ import { useClientAuth } from "@/hooks/useClientAuth";
 import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { formatBRL, formatDate } from "@/utils/format";
 import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
-import { computeScheduledCancelDate } from "@/utils/subscription-cancel";
-import { CANCEL_REASON_OPTIONS, type CancelReasonCode } from "@/types/pre-cancelled-client.types";
+import { buildWhatsappLink } from "@/utils/whatsapp-template";
 import type { Plan } from "@/types/plan.types";
 import type { Client } from "@/types/client.types";
 
@@ -63,7 +62,6 @@ interface PlanCardProps {
   hasOtherActivePlan: boolean;
   subscribing: boolean;
   onSubscribe: () => void;
-  onCancel: () => void;
 }
 
 function PlanCard({
@@ -72,7 +70,6 @@ function PlanCard({
   hasOtherActivePlan,
   subscribing,
   onSubscribe,
-  onCancel,
 }: PlanCardProps) {
   const accentColor = plan.labelColor ?? "#f5b82e";
 
@@ -224,23 +221,14 @@ function PlanCard({
         {/* CTA */}
         <div className="mt-auto pt-1 space-y-2">
           {isCurrentPlan ? (
-            <>
-              <button
-                type="button"
-                disabled
-                className="w-full h-10 rounded-lg text-sm font-bold text-white opacity-60 cursor-not-allowed"
-                style={{ backgroundColor: accentColor }}
-              >
-                Plano atual
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full h-9 rounded-lg text-xs font-semibold text-danger-foreground border border-danger/30 hover:bg-danger/10 transition-colors"
-              >
-                Cancelar assinatura
-              </button>
-            </>
+            <button
+              type="button"
+              disabled
+              className="w-full h-10 rounded-lg text-sm font-bold text-white opacity-60 cursor-not-allowed"
+              style={{ backgroundColor: accentColor }}
+            >
+              Plano atual
+            </button>
           ) : (
             <button
               type="button"
@@ -273,15 +261,12 @@ export default function PlanoClientePage() {
   const searchParams = useSearchParams();
   const { barbershop } = usePublicBarbershop();
   const { client } = useClientAuth();
-  const { mySubscription, subscribe, cancel, refresh } = useClientSubscription(barbershop?.id);
+  const { mySubscription, subscribe, refresh } = useClientSubscription(barbershop?.id);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [switchTarget, setSwitchTarget] = useState<Plan | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Plan | null>(null);
-  const [cancelReason, setCancelReason] = useState<CancelReasonCode | "">("");
-  const [cancelling, setCancelling] = useState(false);
 
   // Fluxo de confirmação do plano antes de redirecionar pro checkout de cartão.
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
@@ -409,10 +394,37 @@ export default function PlanoClientePage() {
                 onSubscribe={() =>
                   hasOtherActivePlan ? setSwitchTarget(plan) : openPaymentDialog(plan)
                 }
-                onCancel={() => setCancelTarget(plan)}
               />
             );
           })}
+        </div>
+      )}
+
+      {/* Cancelamento não é self-service: força contato via WhatsApp para
+          entender o motivo e tentar reverter antes de perder o cliente. */}
+      {activePlanId && (
+        <div className="rounded-lg border border-border-subtle bg-surface-raised p-4 flex items-start gap-3">
+          <MessageCircle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 space-y-1">
+            <p className="text-sm text-foreground font-semibold">Quer cancelar sua assinatura?</p>
+            <p className="text-xs text-muted-foreground">
+              Para cancelar, fale com a gente pelo WhatsApp — assim conseguimos entender o motivo
+              e ver se há algo que possamos fazer por você.
+            </p>
+          </div>
+          {barbershop?.phone && (
+            <a
+              href={buildWhatsappLink(
+                barbershop.phone,
+                "Olá! Gostaria de cancelar minha assinatura.",
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 h-9 px-3 rounded-lg text-xs font-semibold border border-border-subtle hover:bg-surface-base transition-colors flex items-center"
+            >
+              Falar no WhatsApp
+            </a>
+          )}
         </div>
       )}
 
@@ -426,79 +438,6 @@ export default function PlanoClientePage() {
           if (switchTarget) openPaymentDialog(switchTarget);
         }}
       />
-
-      <Dialog
-        open={cancelTarget !== null}
-        onOpenChange={(v) => {
-          if (!v) {
-            setCancelTarget(null);
-            setCancelReason("");
-          }
-        }}
-      >
-        <DialogContent className="bg-surface-raised border border-border text-foreground sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Cancelar assinatura</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja cancelar a assinatura do plano &quot;
-              {cancelTarget?.name}&quot;?
-              {mySubscription && (
-                <>
-                  {" "}
-                  Você continua com acesso aos benefícios do plano até{" "}
-                  <span className="font-semibold text-foreground">
-                    {formatDate(
-                      computeScheduledCancelDate(mySubscription.subscription.billingDay),
-                    )}
-                  </span>
-                  — o cancelamento não é imediato.
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-1">
-            <SelectField
-              id="cancelReason"
-              label="Motivo do cancelamento"
-              value={cancelReason}
-              onChange={(v) => setCancelReason(v as CancelReasonCode)}
-              placeholder="Selecione o motivo"
-              options={CANCEL_REASON_OPTIONS}
-            />
-          </div>
-
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => {
-                setCancelTarget(null);
-                setCancelReason("");
-              }}
-              className="h-9 px-4 rounded-md border border-border bg-transparent text-sm text-foreground hover:bg-surface-elevated transition-colors"
-            >
-              Voltar
-            </button>
-            <button
-              type="button"
-              disabled={!cancelReason || cancelling}
-              onClick={async () => {
-                if (!cancelReason) return;
-                setCancelling(true);
-                const result = await cancel(cancelReason);
-                setCancelling(false);
-                if (result) {
-                  setCancelTarget(null);
-                  setCancelReason("");
-                }
-              }}
-              className="h-9 px-4 rounded-md text-sm font-bold bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-60"
-            >
-              {cancelling ? "Cancelando…" : "Confirmar cancelamento"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={checkoutPlan !== null}
