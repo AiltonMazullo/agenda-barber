@@ -84,6 +84,13 @@ export interface ServicoSelecionado {
   servicoId: string;
   /** Profissional opcional para este serviço. */
   profissionalId?: string;
+  /**
+   * Checkbox "Sem preferência de profissional" marcado explicitamente pelo
+   * usuário — estado próprio, independente de `profissionalId` estar vazio
+   * (que também pode só significar "ainda não escolheu ninguém"). Default
+   * `false`/desmarcado; marcar limpa `profissionalId`.
+   */
+  semPreferencia?: boolean;
   /** Duração em minutos (default = tempo padrão do serviço). */
   duracao: number;
   /** Valor em reais. */

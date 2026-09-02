@@ -219,6 +219,7 @@ export function DialogNovoAgendamento({
       {
         servicoId: "",
         profissionalId: prefilledProfId,
+        semPreferencia: false,
         duracao: 30,
         valor: 0,
       },
@@ -412,6 +413,12 @@ export function DialogNovoAgendamento({
     }
     if (rows.length === 0 || rows.some((r) => !r.servicoId)) {
       toast.error("Selecione ao menos um serviço.");
+      return false;
+    }
+    if (rows.some((r) => !r.profissionalId && !r.semPreferencia)) {
+      toast.error(
+        "Escolha um profissional ou marque \"Sem preferência\" para cada serviço.",
+      );
       return false;
     }
     if (!data) {

@@ -294,6 +294,7 @@ export function DialogDetalhe({
               profissionalId: agendamento.semPreferencia
                 ? undefined
                 : agendamento.profissionalId,
+              semPreferencia: agendamento.semPreferencia,
               duracao:
                 vm?.tempoPadrao ??
                 Math.round(agendamento.duracao / agendamento.servicos.length),
@@ -404,6 +405,12 @@ export function DialogDetalhe({
     }
     if (rows.length === 0 || rows.some((r) => !r.servicoId)) {
       toast.error("Selecione ao menos um serviço.");
+      return;
+    }
+    if (rows.some((r) => !r.profissionalId && !r.semPreferencia)) {
+      toast.error(
+        "Escolha um profissional ou marque \"Sem preferência\" para cada serviço.",
+      );
       return;
     }
     if (!data) {

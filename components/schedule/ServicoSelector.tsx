@@ -77,15 +77,16 @@ export function ServicoSelector({
 
   function addRow() {
     const s = servicos[0];
-    // Novo serviço herda o profissional já escolhido na última linha — evita
-    // forçar "Sem preferência" quando o atendimento inteiro é com a mesma
-    // pessoa (caso mais comum).
-    const profissionalId = value[value.length - 1]?.profissionalId;
+    // Novo serviço herda o profissional (ou o "sem preferência" marcado) já
+    // escolhido na última linha — evita ter que escolher de novo quando o
+    // atendimento inteiro é com a mesma pessoa (caso mais comum).
+    const last = value[value.length - 1];
     onChange([
       ...value,
       {
         servicoId: s?.id ?? "",
-        profissionalId,
+        profissionalId: last?.profissionalId,
+        semPreferencia: last?.semPreferencia ?? false,
         duracao: s?.tempoPadrao ?? 30,
         valor: s?.preco ?? 0,
       },
@@ -141,7 +142,11 @@ export function ServicoSelector({
                     value={row.profissionalId ?? ""}
                     options={profOptions}
                     onChange={(v) =>
-                      updateRow(i, { profissionalId: v || undefined })
+                      updateRow(i, {
+                        profissionalId: v || undefined,
+                        // Escolher alguém no select sai do modo "sem preferência".
+                        semPreferencia: false,
+                      })
                     }
                     placeholder="Selecione"
                   />
@@ -151,9 +156,10 @@ export function ServicoSelector({
                   >
                     <Checkbox
                       id={`sem-pref-${i}`}
-                      checked={!row.profissionalId}
+                      checked={row.semPreferencia ?? false}
                       onCheckedChange={(checked) =>
                         updateRow(i, {
+                          semPreferencia: checked,
                           profissionalId: checked ? undefined : row.profissionalId,
                         })
                       }
