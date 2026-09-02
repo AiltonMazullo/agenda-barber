@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { BloqueioCard } from "./BloqueioCard";
 import { IndisponibilidadeCard } from "./IndisponibilidadeCard";
 import { DraggableAgendamento } from "./DraggableAgendamento";
-import { hexToRgba } from "./helpers";
 import { START_HOUR } from "./types";
 import type {
   AgendamentoVM,
@@ -244,31 +243,6 @@ export function ProfissionalColuna({
             }}
           />
         )}
-
-        {/* Cliente assinante: a cor do plano tinge a faixa da grade que o
-            agendamento ocupa (não mais o card em si, que ficava sólido
-            demais) — identificação rápida na agenda (spec-revisao-cliente-4.md
-            §3.1). Fica atrás dos cards. Opacidade elevada (era 0.16, quase
-            imperceptível no tema escuro) + borda sólida à esquerda pra dar
-            um segundo ponto de contraste. */}
-        {agendamentos.map((ag) => {
-          if (!ag.planCor) return null;
-          const topPx =
-            ((ag.inicioMin - startHour * 60) / slotSize) * slotHeightPx;
-          const heightPx = (ag.duracao / slotSize) * slotHeightPx;
-          return (
-            <div
-              key={`plan-bg-${ag.id}`}
-              className="absolute left-0 right-0 pointer-events-none"
-              style={{
-                top: topPx,
-                height: heightPx,
-                backgroundColor: hexToRgba(ag.planCor, 0.38),
-                borderLeft: `3px solid ${ag.planCor}`,
-              }}
-            />
-          );
-        })}
 
         {profIndisponibilidades.map((ind) => (
           <IndisponibilidadeCard

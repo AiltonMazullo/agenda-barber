@@ -4,7 +4,7 @@ import React from "react";
 import { Clock, Wifi, Monitor, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@/utils/format";
-import { minToTime } from "./helpers";
+import { hexToRgba, minToTime } from "./helpers";
 import { STATUS_COR } from "./status";
 import { AgendamentoIcones } from "./AgendamentoIcones";
 import type { AgendamentoVM, ServicoVM, SlotSize } from "./types";
@@ -36,11 +36,13 @@ export function AgendamentoCard({
   const heightPx = (duracao / slotSize) * slotHeightPx;
   const statusCor = STATUS_COR[agendamento.status];
   // spec-ajustes-escopo-1.md §2.3: até o cliente chegar (status ainda
-  // PENDING/CONFIRMED), a borda do card usa a cor do plano do cliente (se
-  // tiver); assim que o status avançar (Chegou/Em andamento/Concluído/
-  // Falta/Cancelado) volta a usar a cor do status.
+  // PENDING/CONFIRMED), o card usa a cor do plano do cliente (se tiver);
+  // assim que o status avançar (Chegou/Em andamento/Concluído/Falta/
+  // Cancelado) passa a usar a cor do status. Antes isso só pintava a borda
+  // (com a cor do plano vazando pro fundo do grid, atrás do card) — agora é
+  // o fundo do card em si que reflete essa cor, sem borda de status.
   const aindaNaoChegou = agendamento.status === "PENDING" || agendamento.status === "CONFIRMED";
-  const corBorda = aindaNaoChegou && agendamento.planCor ? agendamento.planCor : statusCor;
+  const corCard = aindaNaoChegou && agendamento.planCor ? agendamento.planCor : statusCor;
 
   return (
     <div
@@ -51,9 +53,6 @@ export function AgendamentoCard({
           : agendamento.cliente
       }
       className={cn(
-        // Padding lateral maior (era left-0.5/right-0.5, quase colado nas
-        // bordas) — deixa a faixa colorida do plano (atrás, na grade)
-        // visível nas laterais do card, melhorando a identificação.
         "absolute left-1.5 right-1.5 rounded-md overflow-hidden select-none transition-all",
         isDragging ? "opacity-40" : isResizing ? "opacity-50" : "opacity-100",
         onClick && !isDragging
@@ -62,22 +61,14 @@ export function AgendamentoCard({
       )}
       style={{
         height: `${heightPx - 2}px`,
-        // "Sem preferência de profissional" (employeeId null, ver DialogDetalhe
-        // item 4): fundo listrado diagonal em vez de sólido, pra diferenciar o
-        // card visualmente de um agendamento com profissional definido. A cor
-        // do plano do cliente não fica no fundo do card (ficava sólida demais)
-        // — fica só na borda, até o cliente chegar (§2.3, `corBorda` acima).
-        // Fundo do card levemente translúcido (em vez de opaco) — deixa a
-        // faixa colorida do plano (atrás, na grade) transparecer sutilmente
-        // por trás do card, sem pintar o card inteiro de sólido.
+        // O card em si reflete `corCard` (plano até o cliente chegar, status
+        // depois) — camada de tint sobre uma base escura opaca (em vez de
+        // borda + faixa no fundo do grid, como era antes). "Sem preferência
+        // de profissional" (employeeId null) continua com o fundo listrado
+        // diagonal, agora tingido também com `corCard` em vez de cinza neutro.
         background: agendamento.semPreferencia
-          ? "repeating-linear-gradient(135deg, rgba(28,33,40,0.85) 0px, rgba(28,33,40,0.85) 6px, rgba(255,255,255,0.06) 6px, rgba(255,255,255,0.06) 12px)"
-          : "rgba(28,33,40,0.82)",
-        // Bordas laterais e inferior conforme a situação do agendamento —
-        // cor do plano antes do cliente chegar, cor do status depois (§2.3).
-        borderLeft: `3px solid ${corBorda}`,
-        borderRight: `1.5px solid ${corBorda}`,
-        borderBottom: `2px solid ${corBorda}`,
+          ? `repeating-linear-gradient(135deg, ${hexToRgba(corCard, 0.55)} 0px, ${hexToRgba(corCard, 0.55)} 6px, transparent 6px, transparent 12px), rgba(28,33,40,0.92)`
+          : `linear-gradient(${hexToRgba(corCard, 0.5)}, ${hexToRgba(corCard, 0.5)}), rgba(28,33,40,0.92)`,
         boxShadow: isDragging ? "none" : "0 1px 8px rgba(0,0,0,0.5)",
       }}
     >
