@@ -65,7 +65,7 @@ export default function HomePage() {
               : undefined,
           lat: coords?.lat,
           lng: coords?.lng,
-          radiusKm: coords ? 20 : undefined,
+          radiusKm: coords ? 10 : undefined,
         })
         .then((data) => {
           if (active) setBarbershops(data);

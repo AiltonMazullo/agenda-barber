@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Phone, ChevronRight } from "lucide-react";
+import { MapPin, Phone, ChevronRight, Navigation } from "lucide-react";
 import { apiAssetUrl } from "@/lib/api";
+import { formatDistanceKm } from "@/utils/format";
 import type { Barbershop } from "@/types/barbershop.types";
 
 interface BarbershopCardProps {
@@ -44,6 +45,12 @@ export function BarbershopCard({ barbershop }: BarbershopCardProps) {
             /{barbershop.slug}
           </p>
         </div>
+        {barbershop.distanceKm != null && (
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-brand shrink-0 bg-brand/10 rounded-full px-2 py-1">
+            <Navigation className="size-3" />
+            {formatDistanceKm(barbershop.distanceKm)}
+          </span>
+        )}
         <ChevronRight className="size-4 text-text-faint group-hover:text-brand transition-colors shrink-0" />
       </div>
 

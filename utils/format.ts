@@ -175,6 +175,18 @@ export function parseBRL(value: string): number {
   return Number.isFinite(num) ? num : 0;
 }
 
+/**
+ * Formata distância em km para exibição no card da barbearia: abaixo de 1km
+ * mostra em metros arredondados ("650 m"), acima disso em km com 1 casa
+ * decimal ("3,2 km").
+ */
+export function formatDistanceKm(distanceKm: number): string {
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)} m`;
+  }
+  return `${distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`;
+}
+
 /** Trunca string com reticências quando excede `max` caracteres. */
 export function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
