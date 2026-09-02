@@ -45,7 +45,11 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => setCoords(null),
-      { timeout: 8000 },
+      // `enableHighAccuracy` pede o sensor mais preciso disponível (GPS em
+      // celular; em desktop sem GPS o navegador ainda cai pra Wi-Fi/IP, que
+      // pode errar por vários km — limitação do navegador/SO, não tem como
+      // contornar no código). Timeout maior porque o modo preciso demora mais.
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   }, []);
 
