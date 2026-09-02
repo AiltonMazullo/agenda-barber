@@ -2,6 +2,7 @@
 
 import { Plus, Trash2, Timer, DollarSign, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SelectField } from "@/components/shared";
 import { maskBRLInput, parseBRL } from "@/utils/format";
 import type {
@@ -55,10 +56,11 @@ export function ServicoSelector({
   editableDuration?: boolean;
 }) {
   const servicoOptions = servicos.map((s) => ({ value: s.id, label: s.nome }));
-  const profOptions = [
-    { value: "", label: "Sem preferência" },
-    ...profissionais.map((p) => ({ value: p.id, label: p.nome })),
-  ];
+  // "Sem preferência" saiu do select — o select passa a listar só
+  // profissionais de verdade, e a escolha "sem preferência" vira o checkbox
+  // abaixo dele (mesmo dado: `profissionalId` vazio já significa isso pro
+  // resto do fluxo, ver `useSchedule.createAgendamento`).
+  const profOptions = profissionais.map((p) => ({ value: p.id, label: p.nome }));
 
   function updateRow(i: number, patch: Partial<ServicoSelecionado>) {
     onChange(value.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -132,15 +134,33 @@ export function ServicoSelector({
                   onChange={(v) => changeService(i, v)}
                   placeholder="Selecione"
                 />
-                <SelectField
-                  id={`prof-${i}`}
-                  label="Profissional"
-                  value={row.profissionalId ?? ""}
-                  options={profOptions}
-                  onChange={(v) =>
-                    updateRow(i, { profissionalId: v || undefined })
-                  }
-                />
+                <div className="space-y-1.5">
+                  <SelectField
+                    id={`prof-${i}`}
+                    label="Profissional"
+                    value={row.profissionalId ?? ""}
+                    options={profOptions}
+                    onChange={(v) =>
+                      updateRow(i, { profissionalId: v || undefined })
+                    }
+                    placeholder="Selecione"
+                  />
+                  <label
+                    htmlFor={`sem-pref-${i}`}
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer"
+                  >
+                    <Checkbox
+                      id={`sem-pref-${i}`}
+                      checked={!row.profissionalId}
+                      onCheckedChange={(checked) =>
+                        updateRow(i, {
+                          profissionalId: checked ? undefined : row.profissionalId,
+                        })
+                      }
+                    />
+                    Sem preferência de profissional
+                  </label>
+                </div>
               </div>
 
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-end">
