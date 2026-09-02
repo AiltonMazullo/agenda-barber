@@ -320,6 +320,7 @@ export function useComandaForm(
           barbershopId,
           appointment.clientId,
           input.refId,
+          appointment.scheduledAt,
         );
         return pricing.covered ? pricing.priceInCents : precoBase;
       } catch {
@@ -349,6 +350,7 @@ export function useComandaForm(
           barbershopId,
           appointment.clientId,
           input.refId,
+          appointment.scheduledAt,
         );
         return pricing.covered ? pricing.priceInCents : precoBase;
       } catch {

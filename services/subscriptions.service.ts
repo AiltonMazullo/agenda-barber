@@ -82,14 +82,21 @@ export const subscriptionsService = {
     return data;
   },
 
-  /** Preço efetivo (grátis ou com desconto) de um serviço para um cliente assinante. */
+  /**
+   * Preço efetivo (grátis ou com desconto) de um serviço para um cliente
+   * assinante. `referenceDate` (data do agendamento) determina se o dia cai
+   * dentro de `Plan.availableWeekdays` — fora dele, o backend ignora o
+   * "serviço incluso" específico e aplica o desconto por categoria, se houver.
+   */
   async getServicePricing(
     barbershopId: string,
     clientId: string,
     serviceId: string,
+    referenceDate?: string,
   ): Promise<ServicePricing> {
     const { data } = await api.get<ServicePricing>(
       `${base(barbershopId)}/clients/${clientId}/service-pricing/${serviceId}`,
+      { params: { referenceDate } },
     );
     return data;
   },
@@ -99,9 +106,11 @@ export const subscriptionsService = {
     barbershopId: string,
     clientId: string,
     productId: string,
+    referenceDate?: string,
   ): Promise<ProductPricing> {
     const { data } = await api.get<ProductPricing>(
       `${base(barbershopId)}/clients/${clientId}/product-pricing/${productId}`,
+      { params: { referenceDate } },
     );
     return data;
   },
