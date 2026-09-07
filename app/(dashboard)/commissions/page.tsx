@@ -73,8 +73,14 @@ function DialogEditarLinha({
               value={bonus}
               onChange={(e) => setBonus(maskBRLInput(e.target.value))}
               placeholder="R$ 0,00"
-              className="bg-surface-base border-border text-foreground h-10"
+              disabled={row.bonusFromEntry}
+              className="bg-surface-base border-border text-foreground h-10 disabled:opacity-60"
             />
+            {row.bonusFromEntry && (
+              <p className="text-[10px] text-muted-foreground">
+                Já lançado em Adicionar despesa — edite por lá.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -84,8 +90,14 @@ function DialogEditarLinha({
               value={vale}
               onChange={(e) => setVale(maskBRLInput(e.target.value))}
               placeholder="R$ 0,00"
-              className="bg-surface-base border-border text-foreground h-10"
+              disabled={row.valeFromEntry}
+              className="bg-surface-base border-border text-foreground h-10 disabled:opacity-60"
             />
+            {row.valeFromEntry && (
+              <p className="text-[10px] text-muted-foreground">
+                Já lançado em Adicionar despesa — edite por lá.
+              </p>
+            )}
           </div>
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
@@ -250,9 +262,11 @@ export default function ComissoesPage() {
       setSelected(
         Object.fromEntries(result.results.map((r) => [r.employeeId, true])),
       );
-      // Pré-preenche Bônus/Vale com os valores padrão do profissional (já
-      // aplicados pelo backend quando o payload não traz um valor explícito),
-      // mantendo os campos abertos para alteração (§3.2).
+      // Pré-preenche Bônus/Vale — o backend já resolve a prioridade: um
+      // lançamento avulso pendente (`entryKind`, "Adicionar despesa") vence
+      // sobre o padrão do profissional (§3.2). Quando vem de um lançamento
+      // avulso (`bonusFromEntry`/`valeFromEntry`), o campo abaixo fica
+      // travado — mudar aqui não teria efeito na geração.
       setBonusInputs((prev) => {
         const next = { ...prev };
         for (const r of result.results) {
@@ -452,7 +466,13 @@ export default function ComissoesPage() {
                         }))
                       }
                       placeholder="Bônus R$ 0,00"
-                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground"
+                      disabled={r.bonusFromEntry}
+                      title={
+                        r.bonusFromEntry
+                          ? "Valor já lançado em Adicionar despesa — edite por lá."
+                          : undefined
+                      }
+                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground disabled:opacity-60"
                     />
                     <Input
                       value={valeInputs[r.employeeId] ?? ""}
@@ -463,8 +483,19 @@ export default function ComissoesPage() {
                         }))
                       }
                       placeholder="Vale R$ 0,00"
-                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground"
+                      disabled={r.valeFromEntry}
+                      title={
+                        r.valeFromEntry
+                          ? "Valor já lançado em Adicionar despesa — edite por lá."
+                          : undefined
+                      }
+                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground disabled:opacity-60"
                     />
+                    {(r.bonusFromEntry || r.valeFromEntry) && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Vinculado a despesa lançada
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-bold">{formatBRL(totalBrutoInCents(r) / 100)}</div>

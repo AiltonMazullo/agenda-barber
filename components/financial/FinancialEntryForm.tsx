@@ -67,11 +67,12 @@ export function FinancialEntryForm({
   const [branchId, setBranchId] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
   const [employeeId, setEmployeeId] = useState("");
-  // spec-ajustes-escopo-2 §6.2: toggle Bônus(+)/Vale(-) — só usado pra
-  // pré-preencher a descrição com o mesmo prefixo que `generateCommissions`
-  // já usa pras linhas que ele mesmo gera ("Bônus — Nome"/"Vale — Nome"),
-  // deixando o lançamento avulso reconhecível pelo mesmo padrão sem duplicar
-  // a lógica de geração de comissão em si.
+  // spec-ajustes-escopo-2 §6.2: toggle Bônus(+)/Vale(-) — pré-preenche a
+  // descrição com o mesmo prefixo que `generateCommissions` usa pras linhas
+  // que ele mesmo gera ("Bônus — Nome"/"Vale — Nome") E é enviado como
+  // `entryKind` no lançamento, que passa a ser a fonte única desse valor pro
+  // profissional na tela "Gerar Comissões" (evita gerar uma segunda linha
+  // duplicada lá quando o valor já foi lançado aqui).
   const [entryKind, setEntryKind] = useState<"" | "BONUS" | "VALE">("");
   const [saving, setSaving] = useState(false);
 
@@ -140,6 +141,7 @@ export function FinancialEntryForm({
       branchId: branchId || undefined,
       dueDate: dueDate.toISOString(),
       employeeId: requiresEmployee ? employeeId || undefined : undefined,
+      entryKind: requiresEmployee && entryKind ? entryKind : undefined,
     });
     setSaving(false);
     if (created) router.push(redirectTo);

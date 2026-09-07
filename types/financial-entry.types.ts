@@ -70,6 +70,8 @@ export interface CreateFinancialEntryPayload {
   dueDate: string;
   /** spec-ajustes-escopo-2 §6.2/§6.3: profissional vinculado, quando a categoria exige (`requiresEmployee`). */
   employeeId?: string;
+  /** Marca o lançamento como Bônus/Vale de `employeeId` — vira a fonte única desse valor em "Gerar Comissões". */
+  entryKind?: "BONUS" | "VALE";
 }
 
 export interface UpdateFinancialEntryPayload {
@@ -138,6 +140,11 @@ export interface CommissionResultRow {
   servicesClubVencidoInCents: number;
   bonusInCents: number;
   valeInCents: number;
+  /** `true` quando o valor veio de um lançamento avulso já existente (criado em
+   * "Adicionar despesa") — a tela deve travar a edição, já que mudar o valor
+   * aqui não tem efeito: a geração reaproveita o lançamento, não cria um novo. */
+  bonusFromEntry: boolean;
+  valeFromEntry: boolean;
   totalInCents: number;
   totalLiquidoInCents: number;
 }

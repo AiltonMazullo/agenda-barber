@@ -125,6 +125,14 @@ export interface MySubscription {
   };
 }
 
+/** Resposta de `POST /subscriptions/me/regularize` — ver `client-subscriptions.service.ts`. */
+export type RegularizeChargeResult =
+  | {
+      paymentMethod: "PIX_AVULSO";
+      pixQrCode: { payload: string | null; encodedImage: string | null; expirationDate: string | null };
+    }
+  | { paymentMethod: "PIX_AUTOMATICO" };
+
 export interface SubscribePayload {
   planId: string;
   paymentMethod?: SubscriptionPaymentMethod;

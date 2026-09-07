@@ -6,6 +6,7 @@ import { clientSubscriptionsService } from "@/services/client-subscriptions.serv
 import {
   isPixAuthorizationResult,
   type MySubscription,
+  type RegularizeChargeResult,
   type SubscribePixAuthorizationResult,
   type SubscriptionPaymentMethod,
 } from "@/types/subscription.types";
@@ -108,5 +109,27 @@ export function useClientSubscription(barbershopId: string | undefined) {
     [barbershopId, fetchMine],
   );
 
-  return { mySubscription, isLoading, subscribe, cancel, refresh: fetchMine };
+  /**
+   * "Pagar agora" no banner de inadimplência (ver `PlanoClientePage`) —
+   * Pix Automático não tem nada pra mostrar além do resultado da tentativa;
+   * Pix avulso/cartão de crédito devolvem/lançam conforme o backend.
+   */
+  const regularize = useCallback(async (): Promise<RegularizeChargeResult | false> => {
+    if (!barbershopId) return false;
+    try {
+      const result = await clientSubscriptionsService.regularize(barbershopId);
+      if (result.paymentMethod === "PIX_AUTOMATICO") {
+        toast.success("Nova tentativa de cobrança solicitada.");
+        await fetchMine();
+      }
+      return result;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível regularizar o pagamento.",
+      );
+      return false;
+    }
+  }, [barbershopId, fetchMine]);
+
+  return { mySubscription, isLoading, subscribe, cancel, regularize, refresh: fetchMine };
 }

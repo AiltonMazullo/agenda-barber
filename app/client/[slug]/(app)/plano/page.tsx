@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CompleteCheckoutProfileForm } from "@/components/client/CompleteCheckoutProfileForm";
+import { PixQrCodePanel } from "@/components/subscription/PixQrCodePanel";
 import { clientPlansService } from "@/services/client-plans.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
@@ -33,6 +34,7 @@ import { formatDiscountLabel, formatWeekdays } from "@/utils/plan-pricing";
 import { buildWhatsappLink } from "@/utils/whatsapp-template";
 import type { Plan } from "@/types/plan.types";
 import type { Client } from "@/types/client.types";
+import type { PixQrCode } from "@/types/platform-subscription.types";
 
 /**
  * Dados exigidos pela ASAAS para gerar a cobrança (cadastro do pagador,
@@ -261,12 +263,29 @@ export default function PlanoClientePage() {
   const searchParams = useSearchParams();
   const { barbershop } = usePublicBarbershop();
   const { client } = useClientAuth();
-  const { mySubscription, subscribe, refresh } = useClientSubscription(barbershop?.id);
+  const { mySubscription, subscribe, regularize, refresh } = useClientSubscription(
+    barbershop?.id,
+  );
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [switchTarget, setSwitchTarget] = useState<Plan | null>(null);
+  const [regularizing, setRegularizing] = useState(false);
+  const [pixToPay, setPixToPay] = useState<PixQrCode | null>(null);
+
+  async function handleRegularize() {
+    setRegularizing(true);
+    const result = await regularize();
+    setRegularizing(false);
+    if (result && result.paymentMethod === "PIX_AVULSO" && result.pixQrCode.payload) {
+      setPixToPay({
+        payload: result.pixQrCode.payload,
+        encodedImage: result.pixQrCode.encodedImage,
+        expirationDate: result.pixQrCode.expirationDate,
+      });
+    }
+  }
 
   // Fluxo de confirmação do plano antes de redirecionar pro checkout de cartão.
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
@@ -345,21 +364,43 @@ export default function PlanoClientePage() {
       {mySubscription?.delinquency.isOverdue && (
         <div className="rounded-lg border border-danger/30 bg-danger/5 p-4 flex items-start gap-3">
           <AlertCircle className="size-5 text-danger-foreground shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-foreground">
-            Sua assinatura está com pagamento em atraso.
-            {mySubscription.delinquency.autoCancelAt && (
-              <>
-                {" "}
-                Se não for regularizado, ela será cancelada automaticamente em{" "}
-                <span className="font-semibold text-danger-foreground">
-                  {formatDate(mySubscription.delinquency.autoCancelAt)}
-                </span>
-                .
-              </>
-            )}
-          </p>
+          <div className="space-y-2 flex-1">
+            <p className="text-sm text-muted-foreground">
+              Sua assinatura está com pagamento em atraso.
+              {mySubscription.delinquency.autoCancelAt && (
+                <>
+                  {" "}
+                  Se não for regularizado, ela será cancelada automaticamente em{" "}
+                  <span className="font-semibold text-danger-foreground">
+                    {formatDate(mySubscription.delinquency.autoCancelAt)}
+                  </span>
+                  .
+                </>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={handleRegularize}
+              disabled={regularizing}
+              className="h-8 px-3 rounded-md text-xs font-bold bg-danger-foreground text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {regularizing ? "Gerando pagamento…" : "Pagar agora"}
+            </button>
+          </div>
         </div>
       )}
+
+      <Dialog open={!!pixToPay} onOpenChange={(v) => !v && setPixToPay(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Regularizar pagamento</DialogTitle>
+            <DialogDescription>
+              Pague via Pix para regularizar sua assinatura.
+            </DialogDescription>
+          </DialogHeader>
+          {pixToPay && <PixQrCodePanel qrCode={pixToPay} />}
+        </DialogContent>
+      </Dialog>
 
       {loading && <Loading />}
 

@@ -7,9 +7,9 @@ export interface ClientRepurchase {
   serviceId: string | null;
   productId: string | null;
   /** Nome do serviço, quando `serviceId` presente (ver "Itens para recompra" no modal de detalhe). */
-  service?: { id: string; name: string } | null;
+  service?: { id: string; name: string; repurchasePeriodDays: number | null } | null;
   /** Nome do produto, quando `productId` presente. */
-  product?: { id: string; name: string } | null;
+  product?: { id: string; name: string; repurchasePeriodDays: number | null } | null;
   /** ISO 8601 — data da compra original. */
   purchasedAt: string;
   /** ISO 8601 — data sugerida/estimada de recompra. */

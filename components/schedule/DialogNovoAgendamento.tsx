@@ -13,6 +13,7 @@ import {
   CreditCard,
   History,
   CircleAlert,
+  PackageSearch,
 } from "lucide-react";
 import {
   Dialog,
@@ -44,6 +45,7 @@ import {
 import { maskCpf, formatPhone } from "@/utils/format";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientRecentAppointments } from "@/hooks/useClientRecentAppointments";
+import { useClientDueRepurchases } from "@/hooks/useClientDueRepurchases";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import type {
   AgendamentoVM,
@@ -256,6 +258,12 @@ export function DialogNovoAgendamento({
   // padrão do cliente antes de confirmar o novo agendamento.
   const { appointments: ultimosAgendamentos, isLoading: loadingUltimos } =
     useClientRecentAppointments(barbershop?.id, clientId || undefined, !!clientId, 3);
+
+  // Itens para recompra (serviços e produtos) do cliente selecionado —
+  // mesmo indicador já usado no modal de detalhe (`DialogDetalhe`), aqui pra
+  // a recepção já sugerir incluir o item vencido/vencendo neste agendamento.
+  const { repurchases: itensRecompra, isLoading: loadingRecompra } =
+    useClientDueRepurchases(barbershop?.id, clientId || undefined, !!clientId);
 
   // ── Preço/duração dinâmicos ──
   // O preço e a duração do serviço nunca são digitados manualmente: vêm do
@@ -729,6 +737,53 @@ export function DialogNovoAgendamento({
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Itens para recompra (serviços/produtos) vencidos ou
+                vencendo — exibido só quando há algum (spec: "caso tenha"). ── */}
+            {clientId && !loadingRecompra && itensRecompra.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <PackageSearch className="size-3.5 text-muted-foreground" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Itens para recompra
+                  </span>
+                </div>
+                <div className="rounded-md border border-border-subtle divide-y divide-border-subtle overflow-x-auto">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="text-text-faint">
+                        <th className="text-left font-medium px-2 py-1">Data</th>
+                        <th className="text-left font-medium px-2 py-1">Item</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {itensRecompra.slice(0, 3).map((r) => (
+                        <tr key={r.id}>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-foreground">
+                            {diaMes(r.repurchaseAt.slice(0, 10))}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-1.5",
+                              new Date(r.repurchaseAt) < new Date()
+                                ? "text-red-400"
+                                : "text-amber-400",
+                            )}
+                          >
+                            {r.service?.name ?? r.product?.name ?? "Item"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {itensRecompra.length > 3 && (
+                    <p className="text-[10px] text-text-faint text-center py-1 border-t border-border-subtle">
+                      +{itensRecompra.length - 3} outro(s) item(ns) vencendo
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

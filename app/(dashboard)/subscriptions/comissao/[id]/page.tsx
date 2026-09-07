@@ -45,6 +45,21 @@ export default function ComissaoClubeRelatorioPage() {
     if (result) router.push("/subscriptions/comissao");
   }
 
+  function formatPercent(value: number): string {
+    return `${value.toFixed(2).replace(".", ",")}%`;
+  }
+
+  const unitLabel = barbershop?.commissionUnitType === "MINUTO" ? "minutos" : "fichas";
+
+  const totalServicosRealizados = report
+    ? Object.values(report.totalServicesByCategory).reduce((sum, qty) => sum + qty, 0)
+    : 0;
+  const totalFichas = report ? report.shares.reduce((sum, s) => sum + s.fichas, 0) : 0;
+  const comissaoLiquidaEmpresaInCents = report
+    ? report.run.subscriptionRevenueInCents - report.run.totalPoolInCents
+    : 0;
+  const percentLiquida = report ? 100 - report.run.commissionPercent : 0;
+
   return (
     <div className="space-y-5 p-4 md:p-6 bg-surface-base min-h-screen text-foreground">
       <PageHeader
@@ -70,19 +85,72 @@ export default function ComissaoClubeRelatorioPage() {
               {report.run.distributedAt ? "Distribuído" : "Rascunho"}
             </StatusBadge>
             <p className="text-xs text-muted-foreground">
-              {formatDate(report.run.periodStart)} — {formatDate(report.run.periodEnd)}
+              {report.run.branch.name} · {formatDate(report.run.periodStart)} —{" "}
+              {formatDate(report.run.periodEnd)}
             </p>
           </div>
 
           <div className="rounded-xl border border-border bg-surface-raised p-5">
-            <p className="text-sm font-bold text-foreground mb-3">Por filial</p>
-            <div className="space-y-1">
+            <p className="text-sm font-bold text-foreground mb-3">Informações gerais</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Serviços realizados</span>
+                <span className="font-semibold text-foreground">{totalServicosRealizados}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total de {unitLabel}</span>
+                <span className="font-semibold text-foreground">{totalFichas}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Valor das assinaturas</span>
+                <span className="font-semibold text-foreground">
+                  {formatBRL(report.run.subscriptionRevenueInCents / 100)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">% do pote</span>
+                <span className="font-semibold text-foreground">
+                  {formatPercent(report.run.commissionPercent)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Valor do pote (comissão bruta)</span>
+                <span className="font-semibold text-foreground">
+                  {formatBRL(report.run.totalPoolInCents / 100)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Pago aos profissionais</span>
+                <span className="font-semibold text-foreground">
+                  {formatBRL(report.run.totalPoolInCents / 100)} (
+                  {formatPercent(report.run.commissionPercent)})
+                </span>
+              </div>
+              <div className="flex items-center justify-between sm:col-span-2">
+                <span className="text-muted-foreground">Comissão líquida da empresa</span>
+                <span className="font-semibold text-foreground">
+                  {formatBRL(comissaoLiquidaEmpresaInCents / 100)} (
+                  {formatPercent(percentLiquida)})
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface-raised p-5">
+            <p className="text-sm font-bold text-foreground mb-3">
+              Serviços do plano no período
+            </p>
+            <div className="divide-y divide-border-subtle">
               {Object.entries(report.totalServicesByCategory).map(([category, qty]) => (
-                <div key={category} className="flex items-center justify-between text-sm">
+                <div key={category} className="flex items-center justify-between text-sm py-1.5">
                   <span className="text-muted-foreground">{category}</span>
                   <span className="font-semibold text-foreground">{qty}</span>
                 </div>
               ))}
+              <div className="flex items-center justify-between text-sm py-1.5 font-bold text-foreground">
+                <span>Total</span>
+                <span>{totalServicosRealizados}</span>
+              </div>
             </div>
           </div>
 
@@ -94,23 +162,45 @@ export default function ComissaoClubeRelatorioPage() {
               </p>
             </div>
             <div className="divide-y divide-border-subtle">
-              {report.shares.map((share) => (
-                <div
-                  key={share.employeeId}
-                  className="flex items-center justify-between py-2 text-sm"
-                >
-                  <span className="text-foreground">{employeeName(share.employeeId)}</span>
-                  <span className="text-muted-foreground">
-                    {share.fichas}{" "}
-                    {barbershop?.commissionUnitType === "MINUTO"
-                      ? "minutos"
-                      : "fichas"}
-                  </span>
-                  <span className="font-bold text-foreground">
-                    {formatBRL(share.shareInCents / 100)}
-                  </span>
-                </div>
-              ))}
+              {report.shares.map((share) => {
+                const byCategory = report.run.servicesByEmployee[share.employeeId] ?? {};
+                const percentOfPool =
+                  report.run.totalPoolInCents > 0
+                    ? (share.shareInCents / report.run.totalPoolInCents) * 100
+                    : 0;
+                return (
+                  <div key={share.employeeId} className="py-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-foreground">
+                        {employeeName(share.employeeId)}
+                      </span>
+                      <span className="font-bold text-foreground">
+                        {formatBRL(share.shareInCents / 100)}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({formatPercent(percentOfPool)})
+                        </span>
+                      </span>
+                    </div>
+                    <div className="pl-3 space-y-0.5">
+                      {Object.entries(byCategory).map(([category, qty]) => (
+                        <div
+                          key={category}
+                          className="flex items-center justify-between text-xs text-muted-foreground"
+                        >
+                          <span>- {category}</span>
+                          <span>{qty}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between text-xs font-semibold text-foreground pt-0.5">
+                        <span>Total</span>
+                        <span>
+                          {share.fichas} {unitLabel}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

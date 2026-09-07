@@ -1,6 +1,7 @@
 import { clientApi } from "@/lib/client-api";
 import type {
   MySubscription,
+  RegularizeChargeResult,
   SubscribePayload,
   SubscribeResult,
 } from "@/types/subscription.types";
@@ -33,6 +34,19 @@ export const clientSubscriptionsService = {
     const { data } = await clientApi.patch<PreCancelledClient>(
       `${base(barbershopId)}/me/cancel`,
       { reason },
+    );
+    return data;
+  },
+
+  /**
+   * "Pagar agora" no banner de inadimplência — regulariza a cobrança em
+   * atraso mais antiga da assinatura ativa. Pix avulso retorna um QR Code
+   * pra exibir; Pix Automático apenas pede uma nova tentativa ao gateway.
+   */
+  async regularize(barbershopId: string): Promise<RegularizeChargeResult> {
+    const { data } = await clientApi.post<RegularizeChargeResult>(
+      `${base(barbershopId)}/me/regularize`,
+      {},
     );
     return data;
   },
