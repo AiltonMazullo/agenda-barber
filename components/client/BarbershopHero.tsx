@@ -8,21 +8,32 @@ import { barbershopAppearanceStore } from "@/lib/barbershop-appearance-store";
 import { apiAssetUrl } from "@/lib/api";
 import type { Barbershop } from "@/types/barbershop.types";
 
-interface BarbershopHeroProps {
-  barbershop: Barbershop;
-}
-
 interface HeroBanner {
   imageUrl: string;
   linkUrl: string | null;
 }
 
+interface BarbershopHeroProps {
+  barbershop: Barbershop;
+  /**
+   * Banners de Marketing > "Banners Painel Cliente" (painel do cliente
+   * logado) — quando presentes, substituem `barbershop.carouselImages` como
+   * plano de fundo do carrossel, mas a logo/nome/slug continuam aparecendo
+   * normalmente por cima (antes o carrossel de marketing tomava a seção
+   * inteira, escondendo a identidade da barbearia).
+   */
+  marketingBanners?: HeroBanner[];
+}
+
 const AUTOPLAY_MS = 5000;
 
-export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
-  const banners: HeroBanner[] = (barbershop.carouselImages ?? [])
-    .filter((u) => u && u.trim())
-    .map((u) => ({ imageUrl: apiAssetUrl(u) ?? u, linkUrl: null }));
+export function BarbershopHero({ barbershop, marketingBanners }: BarbershopHeroProps) {
+  const banners: HeroBanner[] =
+    marketingBanners && marketingBanners.length > 0
+      ? marketingBanners
+      : (barbershop.carouselImages ?? [])
+          .filter((u) => u && u.trim())
+          .map((u) => ({ imageUrl: apiAssetUrl(u) ?? u, linkUrl: null }));
 
   const [index, setIndex] = useState(0);
   const [logoCentered, setLogoCentered] = useState(false);
@@ -45,6 +56,10 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
   const title = barbershop.title?.trim() || barbershop.name;
   const subtitle = barbershop.subtitle?.trim();
   const hasBanners = banners.length > 0;
+  // `marketingBanners` chega depois (fetch assíncrono), podendo trocar o
+  // tamanho da lista de banners em uso (carouselImages → marketingBanners)
+  // — sem isso, `index` poderia apontar pra fora do novo array.
+  const activeIndex = hasBanners ? Math.min(index, banners.length - 1) : 0;
 
   return (
     <section className="space-y-4">
@@ -53,10 +68,10 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
         <div className="relative h-44 sm:h-60 md:h-72 w-full bg-surface-elevated">
           {hasBanners ? (
             <AnimatePresence mode="wait">
-              {banners[index].linkUrl ? (
+              {banners[activeIndex].linkUrl ? (
                 <motion.a
-                  key={index}
-                  href={banners[index].linkUrl!}
+                  key={activeIndex}
+                  href={banners[activeIndex].linkUrl!}
                   target="_blank"
                   rel="noopener noreferrer"
                   initial={{ opacity: 0, scale: 1.04 }}
@@ -66,16 +81,16 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
                   className="absolute inset-0 size-full block"
                 >
                   <img
-                    src={banners[index].imageUrl}
-                    alt={`${barbershop.name} ${index + 1}`}
+                    src={banners[activeIndex].imageUrl}
+                    alt={`${barbershop.name} ${activeIndex + 1}`}
                     className="size-full object-cover"
                   />
                 </motion.a>
               ) : (
                 <motion.img
-                  key={index}
-                  src={banners[index].imageUrl}
-                  alt={`${barbershop.name} ${index + 1}`}
+                  key={activeIndex}
+                  src={banners[activeIndex].imageUrl}
+                  alt={`${barbershop.name} ${activeIndex + 1}`}
                   initial={{ opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
@@ -131,7 +146,7 @@ export function BarbershopHero({ barbershop }: BarbershopHeroProps) {
                   onClick={() => setIndex(i)}
                   aria-label={`Imagem ${i + 1}`}
                   className={`size-2 rounded-full transition-colors ${
-                    i === index ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                    i === activeIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
                   }`}
                 />
               ))}

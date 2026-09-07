@@ -17,13 +17,13 @@ import { servicesService } from "@/services/services.service";
 import { clientAppointmentsService } from "@/services/client-appointments.service";
 import { clientCatalogService } from "@/services/client-catalog.service";
 import { BarbershopHero } from "@/components/client/BarbershopHero";
-import { MarketingBannerCarousel } from "@/components/client/MarketingBannerCarousel";
 import { FeaturedFlag } from "@/components/client/FeaturedFlag";
 import { AppointmentItem } from "@/components/client/AppointmentItem";
 import { Loading } from "@/components/shared/Loading";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import { usePublicMarketingBanners } from "@/hooks/usePublicMarketingBanners";
 import { groupAppointments } from "@/utils/groupAppointments";
 import type { Service } from "@/types/service.types";
 import type { ClientAppointment } from "@/types/appointment.types";
@@ -38,6 +38,12 @@ export default function BarbershopPublicPage({ params }: PageProps) {
   const { slug } = use(params);
   const { barbershop, isLoading, error, notFound } = usePublicBarbershop();
   const { isAuthenticated } = useClientAuth();
+  // "Banners Painel Cliente": só buscados/usados quando autenticado — no
+  // fundo do hero (logo/nome continuam por cima), no lugar do carrossel
+  // padrão da barbearia, sem esconder a identidade dela (ver `BarbershopHero`).
+  const marketingBanners = usePublicMarketingBanners(
+    isAuthenticated ? barbershop?.id : undefined,
+  );
 
   const [services, setServices] = useState<Service[]>([]);
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
@@ -161,14 +167,10 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
       {barbershop && !isLoading && (
         <>
-          {isAuthenticated ? (
-            <MarketingBannerCarousel
-              barbershopId={barbershop.id}
-              fallback={<BarbershopHero barbershop={barbershop} />}
-            />
-          ) : (
-            <BarbershopHero barbershop={barbershop} />
-          )}
+          <BarbershopHero
+            barbershop={barbershop}
+            marketingBanners={isAuthenticated ? marketingBanners : undefined}
+          />
 
           <section className="rounded-xl border border-brand/40 bg-linear-to-br from-brand/10 to-brand/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
