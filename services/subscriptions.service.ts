@@ -85,8 +85,9 @@ export const subscriptionsService = {
   /**
    * Preço efetivo (grátis ou com desconto) de um serviço para um cliente
    * assinante. `referenceDate` (data do agendamento) determina se o dia cai
-   * dentro de `Plan.availableWeekdays` — fora dele, o backend ignora o
-   * "serviço incluso" específico e aplica o desconto por categoria, se houver.
+   * dentro de `Plan.availableWeekdays` — dentro, vale a gratuidade por cota;
+   * fora, o backend aplica direto o desconto configurado no próprio serviço
+   * (nunca preço cheio nem categoria, enquanto o serviço estiver no plano).
    */
   async getServicePricing(
     barbershopId: string,

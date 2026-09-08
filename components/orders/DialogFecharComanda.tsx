@@ -545,6 +545,7 @@ export function DialogFecharComanda({
             barbershopId,
             appointment.clientId,
             novoRefId,
+            appointment.scheduledAt,
           );
           if (pricing.covered) valorUnitarioInCents = pricing.priceInCents;
         } catch {

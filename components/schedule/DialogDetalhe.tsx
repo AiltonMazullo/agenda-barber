@@ -40,7 +40,7 @@ import { SelectField, DatePickerField } from "@/components/shared";
 import { QuickClientForm } from "./QuickClientForm";
 import { ServicoSelector } from "./ServicoSelector";
 import { HoraSelect } from "./HoraSelect";
-import { minToTime, timeToMin } from "./helpers";
+import { dateToReferenceDateIso, minToTime, timeToMin } from "./helpers";
 import { useAuth } from "@/hooks/useAuth";
 import { useWhatsappSettings } from "@/hooks/useWhatsappSettings";
 import { useClientRecentAppointments } from "@/hooks/useClientRecentAppointments";
@@ -253,10 +253,11 @@ export function DialogDetalhe({
     }
     let active = true;
     const servicoIds = Array.from(new Set(agendamento.servicos.map((s) => s.id)));
+    const referenceDate = dateToReferenceDateIso(localIsoToDate(agendamento.dataIso));
     Promise.all(
       servicoIds.map((id) =>
         subscriptionsService
-          .getServicePricing(barbershop.id, clientId, id)
+          .getServicePricing(barbershop.id, clientId, id, referenceDate)
           .then((p) => [id, p] as const)
           .catch(() => [id, { covered: false as const }] as const),
       ),

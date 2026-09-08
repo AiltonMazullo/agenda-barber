@@ -36,6 +36,7 @@ import {
 } from "./DialogHorarioSobreposto";
 import { HoraSelect, defaultHoraParaData } from "./HoraSelect";
 import {
+  dateToReferenceDateIso,
   findConflicts,
   isBloqueio,
   minToTime,
@@ -289,10 +290,11 @@ export function DialogNovoAgendamento({
     }
     let active = true;
     const servicoIds = servicoIdsAtuais.split(",");
+    const referenceDate = data ? dateToReferenceDateIso(data) : undefined;
     Promise.all(
       servicoIds.map((id) =>
         subscriptionsService
-          .getServicePricing(barbershop.id, clientId, id)
+          .getServicePricing(barbershop.id, clientId, id, referenceDate)
           .then((p) => [id, p] as const)
           .catch(() => [id, { covered: false as const }] as const),
       ),
@@ -303,7 +305,7 @@ export function DialogNovoAgendamento({
     return () => {
       active = false;
     };
-  }, [clientId, barbershop?.id, servicoIdsAtuais]);
+  }, [clientId, barbershop?.id, servicoIdsAtuais, data]);
 
   // Reaplica o valor vigente (base ou de plano) sempre que a precificação ou
   // o cadastro dos serviços mudar — mantém `rows` como fonte única de

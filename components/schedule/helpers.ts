@@ -20,6 +20,17 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/**
+ * `Date` (fuso local, qualquer hora) → ISO "disfarçado de UTC" só com a
+ * data — mesma convenção de `scheduledAt` (ver `utils/format.ts#toWallClockDate`)
+ * — usado como `referenceDate` em `getServicePricing`/`getProductPricing`
+ * pro backend calcular o dia da semana certo (`Plan.availableWeekdays`) sem
+ * deslocar por fuso horário.
+ */
+export function dateToReferenceDateIso(date: Date): string {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString();
+}
+
 /** "510" → "08:30" */
 export function minToTime(min: number): string {
   const h = Math.floor(min / 60);
