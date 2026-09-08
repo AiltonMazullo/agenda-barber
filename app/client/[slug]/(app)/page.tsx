@@ -23,6 +23,7 @@ import { Loading } from "@/components/shared/Loading";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { usePublicMarketingBanners } from "@/hooks/usePublicMarketingBanners";
 import { groupAppointments } from "@/utils/groupAppointments";
 import type { Service } from "@/types/service.types";
@@ -49,6 +50,11 @@ export default function BarbershopPublicPage({ params }: PageProps) {
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const { map: apptEmployeeMap } = useAppointmentEmployeeMap();
+  // Preço exibido por agendamento segue a gratuidade/desconto do plano (ver
+  // `AppointmentItem`) — sem isso, mostrava sempre o preço cheio do catálogo.
+  const { mySubscription } = useClientSubscription(barbershop?.id);
+  const subscription = mySubscription?.subscription ?? null;
+  const usage = mySubscription?.usage ?? [];
 
   useEffect(() => {
     if (!barbershop) return;
@@ -217,6 +223,8 @@ export default function BarbershopPublicPage({ params }: PageProps) {
                     key={group.primary.id}
                     group={group}
                     variant="upcoming"
+                    subscription={subscription}
+                    usage={usage}
                   />
                 ))}
               </div>

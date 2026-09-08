@@ -1,8 +1,11 @@
 "use client";
 
 import { Calendar, Clock, X, CalendarClock, RotateCcw, Shuffle } from "lucide-react";
+import { priceServiceUnderSubscription } from "@/utils/plan-pricing";
+import { toWallClockDate } from "@/utils/format";
 import type { ClientAppointment } from "@/types/appointment.types";
 import type { AppointmentGroup } from "@/utils/groupAppointments";
+import type { MySubscription, ServiceUsage } from "@/types/subscription.types";
 
 interface AppointmentItemProps {
   group: AppointmentGroup;
@@ -14,6 +17,16 @@ interface AppointmentItemProps {
   professionalName?: string | null;
   /** Foto do profissional (fallback local); ausente → iniciais. */
   photoUrl?: string | null;
+  /**
+   * Assinatura ativa do cliente (e uso do mês) — quando presente, o preço
+   * exibido aplica a mesma regra de gratuidade/desconto do plano usada no
+   * fluxo de agendamento (`priceServiceUnderSubscription`), em vez do preço
+   * cheio do catálogo. Sem assinatura, mantém o preço de catálogo (como já
+   * era antes). É sempre uma estimativa — o valor real só é definido ao
+   * fechar a comanda (não há preço persistido no agendamento).
+   */
+  subscription?: MySubscription["subscription"] | null;
+  usage?: ServiceUsage[];
   onCancel?: (id: string) => void;
   onReschedule?: (appt: ClientAppointment) => void;
   onRebook?: (appt: ClientAppointment) => void;
@@ -59,6 +72,8 @@ export function AppointmentItem({
   variant,
   professionalName,
   photoUrl,
+  subscription,
+  usage = [],
   onCancel,
   onReschedule,
   onRebook,
@@ -73,7 +88,15 @@ export function AppointmentItem({
   const timeStr = `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
 
   const serviceNames = services.map((s) => s.name).join(" + ");
-  const totalPriceInCents = services.reduce((sum, s) => sum + s.priceInCents, 0);
+  const totalPriceInCents = subscription
+    ? services.reduce(
+        (sum, s) =>
+          sum +
+          priceServiceUnderSubscription(s, subscription, usage, toWallClockDate(primary.scheduledAt))
+            .effectiveCents,
+        0,
+      )
+    : services.reduce((sum, s) => sum + s.priceInCents, 0);
 
   const resolvedName =
     professionalName ||

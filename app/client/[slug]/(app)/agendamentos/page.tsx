@@ -17,6 +17,7 @@ import { clientCatalogService } from "@/services/client-catalog.service";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useLocalProfessionalPhotos } from "@/hooks/useLocalProfessionalPhotos";
 import { useAppointmentEmployeeMap } from "@/hooks/useAppointmentEmployeeMap";
+import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { usePagination } from "@/hooks/usePagination";
 import { groupAppointments } from "@/utils/groupAppointments";
 import { toWallClockDate } from "@/utils/format";
@@ -38,6 +39,13 @@ export default function AgendamentosPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
 
   const { map: apptEmployeeMap } = useAppointmentEmployeeMap();
+  // Preço exibido por agendamento segue a mesma regra de gratuidade/desconto
+  // do plano usada no fluxo de agendamento (ver `AppointmentItem`) — sem
+  // isso, a lista sempre mostrava o preço cheio do catálogo, ignorando
+  // assinatura/dias permitidos do plano.
+  const { mySubscription } = useClientSubscription(barbershop?.id);
+  const subscription = mySubscription?.subscription ?? null;
+  const usage = mySubscription?.usage ?? [];
 
   useEffect(() => {
     let active = true;
@@ -235,6 +243,8 @@ export default function AgendamentosPage({ params }: PageProps) {
                           empId ? empNameById.get(empId) ?? null : null
                         }
                         photoUrl={empId ? localPhotos[empId] ?? null : null}
+                        subscription={subscription}
+                        usage={usage}
                         onCancel={setCancelId}
                         onReschedule={handleReschedule}
                       />
@@ -279,6 +289,8 @@ export default function AgendamentosPage({ params }: PageProps) {
                           empId ? empNameById.get(empId) ?? null : null
                         }
                         photoUrl={empId ? localPhotos[empId] ?? null : null}
+                        subscription={subscription}
+                        usage={usage}
                         onRebook={goToAgendar}
                       />
                     );
