@@ -14,25 +14,37 @@ export interface ServicePricing {
 type ActiveSubscription = MySubscription["subscription"] | null | undefined;
 
 /**
+ * Fora dos dias marcados em `Plan.availableWeekdays`, o benefício de
+ * gratuidade via cota (`usage[].free`) não se aplica — mas o serviço
+ * continua "do plano": cai direto pro desconto configurado no próprio
+ * `PlanService`, nunca preço cheio (mesma regra do backend em
+ * `subscriptions.service.ts#getServicePricing`, ponto real de cobrança ao
+ * fechar a comanda). Lista vazia = plano vale todos os dias. Sem
+ * `referenceDate` (ainda não escolhida no fluxo de agendamento) também não
+ * restringe — mesmo comportamento do backend sem esse parâmetro.
+ */
+function isOutsideAllowedWeekdays(availableWeekdays: number[], referenceDate?: Date): boolean {
+  if (availableWeekdays.length === 0 || !referenceDate) return false;
+  return !availableWeekdays.includes(referenceDate.getDay());
+}
+
+/**
  * Calcula o preço de um serviço sob as regras da assinatura ativa do cliente.
- * - Sem assinatura ativa → preço cheio.
- * - Serviço coberto pelo plano com cota mensal (`monthlyLimit`) ainda
- *   disponível (`usage[].free`) → grátis (R$ 0,00).
- * - Cota esgotada ou plano sem cota → desconto (`PlanService.discountPercent`,
- *   100% = incluso/grátis mesmo sem cota).
- * - Fora do plano → preço cheio (o plano real não define desconto genérico
- *   para serviços que não estão nele).
+ * - Sem assinatura ativa, ou serviço fora do plano → preço cheio.
+ * - Dentro dos dias permitidos do plano (`referenceDate`) e com cota mensal
+ *   ainda disponível (`usage[].free`) → grátis (R$ 0,00).
+ * - Fora dos dias permitidos, OU cota esgotada, OU plano sem cota → desconto
+ *   (`PlanService.discountPercent`, 100% = incluso/grátis mesmo assim).
  */
 export function priceServiceUnderSubscription(
   service: Service,
   subscription: ActiveSubscription,
   usage: ServiceUsage[] = [],
+  referenceDate?: Date,
 ): ServicePricing {
   const originalCents = service.priceInCents;
 
-  const planService = subscription?.plan.planServices.find(
-    (ps) => ps.serviceId === service.id,
-  );
+  const planService = subscription?.plan.planServices.find((ps) => ps.serviceId === service.id);
 
   if (!planService) {
     // Fora do plano (ou sem assinatura ativa) — ainda assim respeita uma
@@ -42,9 +54,15 @@ export function priceServiceUnderSubscription(
     return { originalCents, effectiveCents, status: "full", discountPct: 0 };
   }
 
-  const serviceUsage = usage.find((u) => u.serviceId === service.id);
-  if (serviceUsage?.free) {
-    return { originalCents, effectiveCents: 0, status: "included", discountPct: 100 };
+  const outsideAllowedWeekdays = isOutsideAllowedWeekdays(
+    subscription?.plan.availableWeekdays ?? [],
+    referenceDate,
+  );
+  if (!outsideAllowedWeekdays) {
+    const serviceUsage = usage.find((u) => u.serviceId === service.id);
+    if (serviceUsage?.free) {
+      return { originalCents, effectiveCents: 0, status: "included", discountPct: 100 };
+    }
   }
 
   const pct = planService.discountPercent;

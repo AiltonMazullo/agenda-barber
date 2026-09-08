@@ -732,6 +732,7 @@ export default function AgendarPage({ params }: PageProps) {
                             s,
                             isSubscriber ? subscription : null,
                             usage,
+                            date,
                           ).effectiveCents,
                         0,
                       ),
