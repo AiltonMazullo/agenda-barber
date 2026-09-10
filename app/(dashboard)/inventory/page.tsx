@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { useBranches } from "@/hooks/useBranches";
 import { usePagination } from "@/hooks/usePagination";
 import { useProducts, type ProductWithStock } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
-import { useProductCosts } from "@/hooks/useProductCosts";
 import { useStockMovements } from "@/hooks/useStockMovements";
 import type { CreateProductPayload } from "@/types/product.types";
 import type {
@@ -44,7 +43,17 @@ export default function EstoquePage() {
     "PRODUTO",
   );
   const { branches } = useBranches(barbershop?.id);
-  const { costOf, setCost, removeCost } = useProductCosts(barbershop?.id);
+  // Custo unitário agora vive no backend (`Product.unitCostInCents`) — antes
+  // era só uma camada local (localStorage), que sumia ao trocar de
+  // navegador/dispositivo ou limpar o cache (relatado como "custo do
+  // estoque zera sozinho"). `costOf` deriva do produto já carregado, mantém
+  // a mesma assinatura pros componentes filhos (TabEstoque/TabProdutos/
+  // DialogMovimentacao) sem precisar tocar neles.
+  const costOf = useCallback(
+    (productId: string) =>
+      products.find((p) => p.id === productId)?.unitCostInCents ?? 0,
+    [products],
+  );
   const {
     movements,
     isLoading: movementsLoading,
@@ -126,17 +135,14 @@ export default function EstoquePage() {
   // ─── Handlers ───────────────────────────────────────────────────────────────
   async function handleProductSave(
     payload: CreateProductPayload,
-    costInCents: number,
     stockRows: { branchId: string; minStock: number; currentStock: number }[],
   ) {
     if (editingProduct) {
       await update(editingProduct.id, payload);
-      setCost(editingProduct.id, costInCents);
       await handleStockSave(editingProduct.id, stockRows);
     } else {
       const created = await create(payload);
       if (created) {
-        setCost(created.id, costInCents);
         await handleStockSave(created.id, stockRows);
       }
     }
@@ -158,8 +164,7 @@ export default function EstoquePage() {
 
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
-    const ok = await remove(deleteTarget.id);
-    if (ok) removeCost(deleteTarget.id);
+    await remove(deleteTarget.id);
     setDeleteTarget(null);
   }
 
@@ -177,9 +182,10 @@ export default function EstoquePage() {
       await loadStock(input.productId);
     }
 
-    // Entrada com custo atualiza o custo unitário do produto (cache local).
+    // Entrada com custo atualiza o custo unitário do produto (persistido no
+    // backend — `Product.unitCostInCents`).
     if (input.type === "ENTRADA" && input.unitCostInCents) {
-      setCost(input.productId, input.unitCostInCents);
+      await update(input.productId, { unitCostInCents: input.unitCostInCents });
     }
   }
 
@@ -197,7 +203,7 @@ export default function EstoquePage() {
     }
     for (const item of input.items) {
       if (item.type === "ENTRADA" && item.unitCostInCents) {
-        setCost(item.productId, item.unitCostInCents);
+        await update(item.productId, { unitCostInCents: item.unitCostInCents });
       }
     }
   }
@@ -332,7 +338,6 @@ export default function EstoquePage() {
         open={productDialog}
         onOpenChange={setProductDialog}
         product={editingProduct}
-        initialCostInCents={editingProduct ? costOf(editingProduct.id) : 0}
         categories={categories}
         branches={branches}
         onSave={handleProductSave}

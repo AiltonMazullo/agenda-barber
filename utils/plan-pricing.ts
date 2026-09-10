@@ -47,6 +47,26 @@ export function priceServiceUnderSubscription(
   const planService = subscription?.plan.planServices.find((ps) => ps.serviceId === service.id);
 
   if (!planService) {
+    // Sem desconto por serviço específico — checa se o serviço pertence a
+    // uma categoria com desconto no plano (mesma regra de
+    // `subscriptions.service.ts#getServicePricing`, ponto real de cobrança
+    // ao fechar a comanda). Desconto por categoria não tem cota mensal
+    // (sempre aplicado, sem conceito de grátis/monthlyLimit) nem é
+    // restrito por `availableWeekdays` — essa restrição só vale para o
+    // benefício de "serviço incluso" (`PlanService`) abaixo.
+    const categoryDiscount = service.categoryId
+      ? subscription?.plan.planCategories.find((pc) => pc.categoryId === service.categoryId)
+      : undefined;
+    if (categoryDiscount) {
+      const effectiveCents = Math.round(originalCents * (1 - categoryDiscount.discountPercent / 100));
+      return {
+        originalCents,
+        effectiveCents,
+        status: categoryDiscount.discountPercent >= 100 ? "included" : "discount",
+        discountPct: categoryDiscount.discountPercent,
+      };
+    }
+
     // Fora do plano (ou sem assinatura ativa) — ainda assim respeita uma
     // promoção ativa do serviço (ver ajustes/Gestão.md §Promoções), já que
     // ela não depende de assinatura.

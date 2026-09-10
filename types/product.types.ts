@@ -14,6 +14,8 @@ export interface Product {
   id: string;
   name: string;
   priceInCents: number;
+  /** Custo unitário (centavos) — usado no card "Custo do Estoque". `null` = sem custo cadastrado. */
+  unitCostInCents: number | null;
   sku: string | null;
   ncm: string | null;
   gtin: string | null;
@@ -30,6 +32,7 @@ export interface Product {
 export interface CreateProductPayload {
   name: string;
   priceInCents: number;
+  unitCostInCents?: number;
   sku?: string;
   ncm?: string;
   gtin?: string;
@@ -42,6 +45,7 @@ export interface CreateProductPayload {
 export interface UpdateProductPayload {
   name?: string;
   priceInCents?: number;
+  unitCostInCents?: number | null;
   sku?: string;
   ncm?: string;
   gtin?: string;

@@ -141,7 +141,6 @@ export function DialogProduto({
   open,
   onOpenChange,
   product,
-  initialCostInCents,
   categories,
   branches,
   onSave,
@@ -150,13 +149,10 @@ export function DialogProduto({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   product: ProductWithStock | null;
-  /** Custo unitário atual do produto (centavos), vindo da camada local. */
-  initialCostInCents: number;
   categories: Category[];
   branches: Branch[];
   onSave: (
     payload: CreateProductPayload,
-    costInCents: number,
     stockRows: { branchId: string; minStock: number; currentStock: number }[],
   ) => Promise<void>;
   /** Cria uma categoria de produto nova sem sair do formulário (botão "+"). */
@@ -173,8 +169,8 @@ export function DialogProduto({
       setForm({
         name: product.name,
         priceBRL: maskBRLInput(String(product.priceInCents)),
-        costBRL: initialCostInCents
-          ? maskBRLInput(String(initialCostInCents))
+        costBRL: product.unitCostInCents
+          ? maskBRLInput(String(product.unitCostInCents))
           : "",
         sku: product.sku ?? "",
         ncm: product.ncm ?? "",
@@ -189,7 +185,7 @@ export function DialogProduto({
     } else {
       setForm(EMPTY_PRODUCT_FORM);
     }
-  }, [open, product, initialCostInCents]);
+  }, [open, product]);
 
   useEffect(() => {
     if (!open) return;
@@ -270,6 +266,7 @@ export function DialogProduto({
         {
           name: form.name.trim(),
           priceInCents,
+          unitCostInCents: costInCents,
           sku: form.sku.trim() || undefined,
           ncm: form.ncm.trim() || undefined,
           gtin: form.gtin.trim() || undefined,
@@ -278,7 +275,6 @@ export function DialogProduto({
           repurchasePeriodDays: repurchaseDays,
           status: form.status,
         },
-        costInCents,
         stockRows.map((r) => ({
           branchId: r.branchId,
           minStock: Number(r.minStock) || 0,
