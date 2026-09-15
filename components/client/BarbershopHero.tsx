@@ -103,20 +103,22 @@ export function BarbershopHero({ barbershop, marketingBanners }: BarbershopHeroP
             <div className="absolute inset-0 bg-linear-to-br from-brand/20 via-surface-elevated to-surface-base" />
           )}
 
-          {/* Overlay para legibilidade */}
-          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+          {/* Overlay para legibilidade — pointer-events-none pra não bloquear
+              o clique no banner (a tag <a> do link fica logo abaixo) */}
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
 
           {/* Logo centralizada no topo (isolada, sem fundo) */}
           {logoCentered && barbershop.logoUrl?.trim() && (
             <img
               src={apiAssetUrl(barbershop.logoUrl) ?? ""}
               alt={`Logo ${barbershop.name}`}
-              className="absolute top-4 left-1/2 -translate-x-1/2 h-12 sm:h-16 w-auto object-contain drop-shadow-lg"
+              className="pointer-events-none absolute top-4 left-1/2 -translate-x-1/2 h-12 sm:h-16 w-auto object-contain drop-shadow-lg"
             />
           )}
 
-          {/* Conteúdo sobreposto */}
-          <div className="absolute inset-x-0 bottom-0 p-5 flex items-end gap-4">
+          {/* Conteúdo sobreposto — pointer-events-none pelo mesmo motivo do
+              overlay acima (sem elementos clicáveis aqui dentro) */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 flex items-end gap-4">
             {!logoCentered && barbershop.logoUrl?.trim() && (
               <img
                 src={apiAssetUrl(barbershop.logoUrl) ?? ""}
