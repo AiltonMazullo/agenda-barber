@@ -73,12 +73,11 @@ function DialogEditarLinha({
               value={bonus}
               onChange={(e) => setBonus(maskBRLInput(e.target.value))}
               placeholder="R$ 0,00"
-              disabled={row.bonusFromEntry}
-              className="bg-surface-base border-border text-foreground h-10 disabled:opacity-60"
+              className="bg-surface-base border-border text-foreground h-10"
             />
             {row.bonusFromEntry && (
               <p className="text-[10px] text-muted-foreground">
-                Já lançado em Adicionar despesa — edite por lá.
+                Pré-preenchido a partir de Adicionar despesa. Você pode editar aqui.
               </p>
             )}
           </div>
@@ -90,12 +89,11 @@ function DialogEditarLinha({
               value={vale}
               onChange={(e) => setVale(maskBRLInput(e.target.value))}
               placeholder="R$ 0,00"
-              disabled={row.valeFromEntry}
-              className="bg-surface-base border-border text-foreground h-10 disabled:opacity-60"
+              className="bg-surface-base border-border text-foreground h-10"
             />
             {row.valeFromEntry && (
               <p className="text-[10px] text-muted-foreground">
-                Já lançado em Adicionar despesa — edite por lá.
+                Pré-preenchido a partir de Adicionar despesa. Você pode editar aqui.
               </p>
             )}
           </div>
@@ -466,13 +464,12 @@ export default function ComissoesPage() {
                         }))
                       }
                       placeholder="Bônus R$ 0,00"
-                      disabled={r.bonusFromEntry}
                       title={
                         r.bonusFromEntry
-                          ? "Valor já lançado em Adicionar despesa — edite por lá."
+                          ? "Valor pré-preenchido a partir de Adicionar despesa. Você pode editá-lo aqui."
                           : undefined
                       }
-                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground disabled:opacity-60"
+                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground"
                     />
                     <Input
                       value={valeInputs[r.employeeId] ?? ""}
@@ -483,17 +480,16 @@ export default function ComissoesPage() {
                         }))
                       }
                       placeholder="Vale R$ 0,00"
-                      disabled={r.valeFromEntry}
                       title={
                         r.valeFromEntry
-                          ? "Valor já lançado em Adicionar despesa — edite por lá."
+                          ? "Valor pré-preenchido a partir de Adicionar despesa. Você pode editá-lo aqui."
                           : undefined
                       }
-                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground disabled:opacity-60"
+                      className="w-28 h-8 text-xs bg-surface-base border-border text-foreground"
                     />
                     {(r.bonusFromEntry || r.valeFromEntry) && (
                       <p className="text-[10px] text-muted-foreground">
-                        Vinculado a despesa lançada
+                        Pré-preenchido a partir de despesa lançada
                       </p>
                     )}
                   </td>
