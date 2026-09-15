@@ -12,9 +12,8 @@ export interface PublicMarketingBanner {
 /**
  * Banners cadastrados em Marketing > "Banners Painel Cliente" (rota pública,
  * sem auth) — usados como plano de fundo do carrossel de `BarbershopHero` na
- * home pública da barbearia, logado ou não, no lugar de
- * `barbershop.carouselImages`, sem esconder a logo/nome da barbearia (ver
- * `BarbershopHero`).
+ * home do painel do cliente logado, no lugar de `barbershop.carouselImages`,
+ * sem esconder a logo/nome da barbearia (ver `BarbershopHero`).
  */
 export function usePublicMarketingBanners(barbershopId: string | undefined) {
   const [banners, setBanners] = useState<PublicMarketingBanner[]>([]);

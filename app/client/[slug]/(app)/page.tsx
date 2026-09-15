@@ -39,11 +39,15 @@ export default function BarbershopPublicPage({ params }: PageProps) {
   const { slug } = use(params);
   const { barbershop, isLoading, error, notFound } = usePublicBarbershop();
   const { isAuthenticated } = useClientAuth();
-  // "Banners Painel Cliente": endpoint público (sem auth, ver
-  // marketing-banners.routes.ts), buscado independente de login — no fundo
-  // do hero (logo/nome continuam por cima), no lugar do carrossel padrão da
-  // barbearia, sem esconder a identidade dela (ver `BarbershopHero`).
-  const marketingBanners = usePublicMarketingBanners(barbershop?.id);
+  // "Banners Painel Cliente": só buscados/usados quando autenticado — no
+  // fundo do hero (logo/nome continuam por cima), no lugar do carrossel
+  // padrão da barbearia, sem esconder a identidade dela (ver `BarbershopHero`).
+  // Deslogado, o hero volta a usar `barbershop.carouselImages` (cadastrado
+  // em Configurações), que é o carrossel público correto pra quem ainda não
+  // entrou na conta.
+  const marketingBanners = usePublicMarketingBanners(
+    isAuthenticated ? barbershop?.id : undefined,
+  );
 
   const [services, setServices] = useState<Service[]>([]);
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
@@ -172,7 +176,10 @@ export default function BarbershopPublicPage({ params }: PageProps) {
 
       {barbershop && !isLoading && (
         <>
-          <BarbershopHero barbershop={barbershop} marketingBanners={marketingBanners} />
+          <BarbershopHero
+            barbershop={barbershop}
+            marketingBanners={isAuthenticated ? marketingBanners : undefined}
+          />
 
           <section className="rounded-xl border border-brand/40 bg-linear-to-br from-brand/10 to-brand/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
