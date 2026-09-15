@@ -3,6 +3,7 @@ export { EmptyState } from "./EmptyState";
 export { StatusBadge } from "./StatusBadge";
 export { SummaryCard } from "./SummaryCard";
 export { SelectField } from "./SelectField";
+export { MultiSelectField } from "./MultiSelectField";
 export { DatePickerField } from "./DatePickerField";
 export { ComingSoon } from "./ComingSoon";
 export { DataTablePagination } from "./DataTablePagination";

@@ -145,10 +145,18 @@ export function DialogNovoAgendamento({
   // serviços selecionados (já editáveis por linha no ServicoSelector) — mas
   // também editável diretamente aqui. Editar o horário final ajusta a
   // duração do ÚLTIMO serviço da lista para fechar o total pedido.
-  const duracaoTotalMin = useMemo(
-    () => rows.reduce((sum, r) => sum + r.duracao, 0),
-    [rows],
-  );
+  // Serviço de encaixe (§3.2) não soma tempo próprio ao total quando
+  // combinado com outro serviço no mesmo agendamento — só conta sua duração
+  // normalmente quando é o único serviço selecionado (mesma regra já usada
+  // pelo card da agenda em `useSchedule.ts`).
+  const duracaoTotalMin = useMemo(() => {
+    if (rows.length <= 1) return rows.reduce((sum, r) => sum + r.duracao, 0);
+    return rows.reduce((sum, r) => {
+      const servico = servicos.find((s) => s.id === r.servicoId);
+      if (servico?.fitIn) return sum;
+      return sum + r.duracao;
+    }, 0);
+  }, [rows, servicos]);
   const horaFinal = useMemo(
     () => minToTime(timeToMin(hora) + duracaoTotalMin),
     [hora, duracaoTotalMin],
@@ -156,9 +164,11 @@ export function DialogNovoAgendamento({
   function handleHoraFinalChange(novaHoraFinal: string) {
     if (rows.length === 0) return;
     const novoTotal = timeToMin(novaHoraFinal) - timeToMin(hora);
-    const outrasDuracoes = rows
-      .slice(0, -1)
-      .reduce((sum, r) => sum + r.duracao, 0);
+    const outrasDuracoes = rows.slice(0, -1).reduce((sum, r) => {
+      const servico = servicos.find((s) => s.id === r.servicoId);
+      if (servico?.fitIn) return sum;
+      return sum + r.duracao;
+    }, 0);
     const novaDuracaoUltimo = novoTotal - outrasDuracoes;
     if (novaDuracaoUltimo < 5) {
       toast.error(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { isValidElement, useMemo, useState, type ReactNode } from "react";
 import {
   ChevronRight,
   DollarSign,
@@ -11,6 +11,7 @@ import {
   CreditCard,
   Receipt,
   ArrowLeft,
+  Download,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,15 +22,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageHeader, EmptyState, StatusBadge, Loading } from "@/components/shared";
+import { PageHeader, EmptyState, StatusBadge, Loading, DataTablePagination } from "@/components/shared";
 import { ReportFiltersBar, type ReportFilterField } from "@/components/reports/ReportFiltersBar";
 import { useAuth } from "@/hooks/useAuth";
 import { useReportFilters } from "@/hooks/useReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { useReportPage } from "@/hooks/useReportPage";
+import { usePagination } from "@/hooks/usePagination";
 import { useProducts } from "@/hooks/useProducts";
 import { reportsService } from "@/services/reports.service";
 import { stockMovementsService } from "@/services/stock-movements.service";
+import { exportToCsv } from "@/utils/csv-export";
 import { formatBRL, formatDate } from "@/utils/format";
 import type { Tone } from "@/types/common.types";
 import type { AgendamentoReportRow } from "@/types/report.types";
@@ -52,46 +55,116 @@ function LoadingState() {
   return <Loading />;
 }
 
+/** "Achata" uma célula da tabela (que pode ser JSX, ex. `<span>{brl(...)}</span>`) para texto puro, para exportação em CSV — spec-ajustes-escopo-5.md §11. */
+function cellToText(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(cellToText).join(" ");
+  if (isValidElement(node)) {
+    return cellToText((node.props as { children?: ReactNode }).children ?? null);
+  }
+  return "";
+}
+
+function slugifyColumns(columns: string[]): string {
+  return columns
+    .join("-")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+}
+
 function ReportTable<T>({
   columns,
   rows,
   keyFn,
   renderRow,
   emptyMessage,
+  csvFilename,
 }: {
   columns: string[];
   rows: T[];
   keyFn: (row: T, index: number) => string;
   renderRow: (row: T) => React.ReactNode[];
   emptyMessage: string;
+  /** Nome do arquivo CSV exportado (sem extensão) — se omitido, é derivado das colunas. */
+  csvFilename?: string;
 }) {
+  // Paginação e exportação CSV centralizadas aqui — spec-ajustes-escopo-5.md
+  // §11 (nenhum relatório tinha isso antes). Aplica-se a todos os `Rel*`
+  // automaticamente, sem precisar tocar em cada um.
+  const pag = usePagination(rows, 25);
+
   if (rows.length === 0) return <EmptyState message={emptyMessage} />;
+
+  function handleExportCsv() {
+    const filename = csvFilename ?? `relatorio-${slugifyColumns(columns)}`;
+    // Exporta TODAS as linhas do período filtrado, não só a página atual.
+    const csvRows = rows.map((row) => {
+      const cells = renderRow(row);
+      const obj: Record<string, string> = {};
+      columns.forEach((col, i) => {
+        obj[col] = cellToText(cells[i]);
+      });
+      return obj;
+    });
+    exportToCsv(
+      filename,
+      csvRows,
+      columns.map((c) => ({ key: c, label: c })),
+    );
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow className="border-border hover:bg-transparent">
-          {columns.map((c) => (
-            <TableHead
-              key={c}
-              className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
-            >
-              {c}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row, index) => (
-          <TableRow key={keyFn(row, index)} className="border-border hover:bg-surface-elevated/50">
-            {renderRow(row).map((cell, i) => (
-              <TableCell key={i} className="px-4 py-3 text-sm">
-                {cell}
-              </TableCell>
+    <div className="rounded-lg border border-border-subtle overflow-hidden">
+      <div className="flex justify-end px-4 py-2 bg-surface-base border-b border-border-subtle">
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-surface-raised text-xs font-semibold text-muted-foreground hover:text-brand hover:border-brand/40 transition-colors"
+        >
+          <Download className="size-3.5" />
+          Exportar CSV
+        </button>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow className="border-border hover:bg-transparent">
+            {columns.map((c) => (
+              <TableHead
+                key={c}
+                className="text-muted-foreground text-xs uppercase tracking-wider font-semibold px-4 py-3 h-auto"
+              >
+                {c}
+              </TableHead>
             ))}
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {pag.paged.map((row, index) => (
+            <TableRow key={keyFn(row, index)} className="border-border hover:bg-surface-elevated/50">
+              {renderRow(row).map((cell, i) => (
+                <TableCell key={i} className="px-4 py-3 text-sm">
+                  {cell}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <DataTablePagination
+        page={pag.page}
+        pageSize={pag.pageSize}
+        totalPages={pag.totalPages}
+        total={pag.total}
+        from={pag.from}
+        to={pag.to}
+        onPageChange={pag.goTo}
+        onPageSizeChange={pag.changePageSize}
+      />
+    </div>
   );
 }
 
@@ -149,7 +222,14 @@ function RelVendasPorItem() {
     <div className="space-y-4">
       <Filters
         barbershopId={barbershopId}
-        fields={["period", "branch", "employee", "category", "service", "product"]}
+        fields={[
+          "period",
+          "branch",
+          "employeeMulti",
+          "categoryMulti",
+          "serviceMulti",
+          "productMulti",
+        ]}
         rf={rf}
       />
       {isLoading ? (
@@ -349,7 +429,11 @@ function RelFrequenciaCliente() {
   const { barbershopId, rf, data, isLoading } = useReportPage(reportsService.frequenciaCliente);
   return (
     <div className="space-y-4">
-      <Filters barbershopId={barbershopId} fields={["period"]} rf={rf} />
+      <Filters
+        barbershopId={barbershopId}
+        fields={["period", "branch", "subscriberStatus", "plan"]}
+        rf={rf}
+      />
       {isLoading ? (
         <LoadingState />
       ) : (
@@ -374,7 +458,11 @@ function RelFrequenciaKpis() {
   const { barbershopId, rf, data, isLoading } = useReportPage(reportsService.frequenciaClienteKpis);
   return (
     <div className="space-y-4">
-      <Filters barbershopId={barbershopId} fields={["period"]} rf={rf} />
+      <Filters
+        barbershopId={barbershopId}
+        fields={["period", "branch", "subscriberStatus", "plan"]}
+        rf={rf}
+      />
       {isLoading ? (
         <LoadingState />
       ) : !data ? (

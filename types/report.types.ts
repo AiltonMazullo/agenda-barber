@@ -7,6 +7,13 @@ export interface ReportFilters {
   serviceId?: string;
   productId?: string;
   planId?: string;
+  /** spec-ajustes-escopo-5.md §8: filtro Assinante/Não assinante (relatório de frequência). */
+  subscriberStatus?: "ASSINANTE" | "NAO_ASSINANTE";
+  // spec-ajustes-escopo-5.md §9.2: versões de múltipla seleção, hoje só usadas pelo relatório de Vendas.
+  employeeIds?: string[];
+  categoryIds?: string[];
+  serviceIds?: string[];
+  productIds?: string[];
   diasSemVisita?: number;
   groupBy?: "origin" | "vendedor";
 }

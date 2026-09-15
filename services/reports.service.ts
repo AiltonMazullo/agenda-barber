@@ -37,7 +37,16 @@ const base = (barbershopId: string) => `/barbershops/${barbershopId}/reports`;
 function params(filters: ReportFilters): Record<string, string | number> {
   const out: Record<string, string | number> = {};
   for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value !== "") out[key] = value;
+    if (value === undefined || value === "") continue;
+    // spec-ajustes-escopo-5.md §9.2: filtros de múltipla seleção chegam como
+    // array — serializa como CSV (`a,b,c`) em vez de deixar o axios decidir
+    // o formato (evita depender de `employeeIds[]=`/repetição de chave, que
+    // o backend precisaria replicar exatamente).
+    if (Array.isArray(value)) {
+      if (value.length > 0) out[key] = value.join(",");
+      continue;
+    }
+    out[key] = value;
   }
   return out;
 }

@@ -128,3 +128,13 @@ export interface PublicPartnerCompanyCoupons {
   company: { id: string; name: string };
   coupons: PublicCouponUsage[];
 }
+
+/** Item do catálogo pro cliente final — spec-ajustes-escopo-5.md §7 (`GET .../partner-companies/directory`). */
+export interface PartnerCompanyDirectoryEntry {
+  id: string;
+  name: string;
+  category: string | null;
+  logoUrl: string | null;
+  website: string | null;
+  instagramUrl: string | null;
+}

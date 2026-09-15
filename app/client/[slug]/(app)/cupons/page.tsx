@@ -2,14 +2,16 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Ticket, CheckCircle2, Store, Lock } from "lucide-react";
+import { Ticket, CheckCircle2, Store, Lock, Globe, AtSign } from "lucide-react";
 import { Loading, EmptyState } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { apiAssetUrl } from "@/lib/api";
 import { usePublicBarbershop } from "@/contexts/PublicBarbershopContext";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useClientSubscription } from "@/hooks/useClientSubscription";
 import { useMyCoupons } from "@/hooks/useMyCoupons";
+import { usePartnerCompanyDirectory } from "@/hooks/usePartnerCompanyDirectory";
 import { formatDate } from "@/utils/format";
 
 /**
@@ -28,6 +30,10 @@ export default function CupomClientePage() {
   const { coupons, isLoading, isRedeeming, redeem } = useMyCoupons(
     hasActivePlan ? barbershop?.id : undefined,
   );
+  // spec-ajustes-escopo-5.md §7: catálogo de parceiras, pra quem tem plano
+  // ativo saber quem são antes de ter um código em mãos.
+  const { companies: partnerCompanies, isLoading: isLoadingDirectory } =
+    usePartnerCompanyDirectory(hasActivePlan ? barbershop?.id : undefined);
   const [code, setCode] = useState("");
 
   async function handleRedeem(e: FormEvent) {
@@ -79,6 +85,66 @@ export default function CupomClientePage() {
           recebido.
         </p>
       </div>
+
+      {!isLoadingDirectory && partnerCompanies.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Empresas parceiras
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {partnerCompanies.map((c) => (
+              <Card key={c.id} className="bg-surface-raised border-border">
+                <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+                  {c.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={apiAssetUrl(c.logoUrl) ?? ""}
+                      alt={c.name}
+                      className="size-10 rounded-lg object-cover border border-border-subtle"
+                    />
+                  ) : (
+                    <div className="size-10 rounded-lg bg-brand/10 grid place-items-center">
+                      <Store className="size-4 text-brand" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
+                    {c.category && (
+                      <p className="text-[11px] text-muted-foreground truncate">{c.category}</p>
+                    )}
+                  </div>
+                  {(c.website || c.instagramUrl) && (
+                    <div className="flex items-center gap-2">
+                      {c.website && (
+                        <a
+                          href={c.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-brand transition-colors"
+                          aria-label={`Site de ${c.name}`}
+                        >
+                          <Globe className="size-3.5" />
+                        </a>
+                      )}
+                      {c.instagramUrl && (
+                        <a
+                          href={c.instagramUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-brand transition-colors"
+                          aria-label={`Instagram de ${c.name}`}
+                        >
+                          <AtSign className="size-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={(e) => void handleRedeem(e)} className="flex gap-2">
         <Input

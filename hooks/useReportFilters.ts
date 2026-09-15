@@ -11,6 +11,19 @@ export interface ReportFiltersState {
   categoryId: string;
   serviceId: string;
   productId: string;
+  /** spec-ajustes-escopo-5.md §8: filtro Assinante/Não assinante/Todos (relatório de frequência). */
+  subscriberStatus: "" | "ASSINANTE" | "NAO_ASSINANTE";
+  /** spec-ajustes-escopo-5.md §8: filtro por plano específico (relatório de frequência). */
+  planId: string;
+  // spec-ajustes-escopo-5.md §9.2: versões de múltipla seleção — hoje só
+  // usadas pelo relatório de Vendas (`RelVendasPorItem`), via os campos
+  // "employeeMulti"/"categoryMulti"/"serviceMulti"/"productMulti" do
+  // `ReportFiltersBar`. As versões singulares acima continuam servindo os
+  // demais relatórios sem mudança.
+  employeeIds: string[];
+  categoryIds: string[];
+  serviceIds: string[];
+  productIds: string[];
 }
 
 const EMPTY_STATE: ReportFiltersState = {
@@ -21,6 +34,12 @@ const EMPTY_STATE: ReportFiltersState = {
   categoryId: "",
   serviceId: "",
   productId: "",
+  subscriberStatus: "",
+  planId: "",
+  employeeIds: [],
+  categoryIds: [],
+  serviceIds: [],
+  productIds: [],
 };
 
 /** Estado local dos filtros de relatório + serialização para query params da API. */
@@ -36,6 +55,12 @@ export function useReportFilters() {
       categoryId: state.categoryId || undefined,
       serviceId: state.serviceId || undefined,
       productId: state.productId || undefined,
+      subscriberStatus: state.subscriberStatus || undefined,
+      planId: state.planId || undefined,
+      employeeIds: state.employeeIds.length > 0 ? state.employeeIds : undefined,
+      categoryIds: state.categoryIds.length > 0 ? state.categoryIds : undefined,
+      serviceIds: state.serviceIds.length > 0 ? state.serviceIds : undefined,
+      productIds: state.productIds.length > 0 ? state.productIds : undefined,
     }),
     [state],
   );
