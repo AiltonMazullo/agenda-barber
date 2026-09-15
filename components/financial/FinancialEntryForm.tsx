@@ -112,12 +112,16 @@ export function FinancialEntryForm({
   // Recorrência precisa de um número de ocorrências pra ser gerada de uma vez
   // só (igual ao parcelamento) — sem isso o backend não tem como materializar
   // a série inteira na criação (ver FinancialEntriesService.create).
+  // Bônus/Vale agora é obrigatório junto com o profissional — sem isso, o
+  // lançamento salva com `entryKind` vazio e nunca aparece em "Gerar
+  // Comissões" (a página só enxerga COMMISSION_AVULSO com BONUS/VALE
+  // marcado), o que parecia a categoria "não refletir" na tela de Comissões.
   const valid =
     description &&
     value &&
     dueDate &&
     (!repeatEntry || recurrenceCount) &&
-    (!requiresEmployee || employeeId);
+    (!requiresEmployee || (employeeId && entryKind));
 
   async function handleSubmit() {
     if (!valid || !dueDate) return;
@@ -347,9 +351,14 @@ export function FinancialEntryForm({
 
         {requiresEmployee && (
           <div className="space-y-1.5 pt-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Tipo (opcional)
+            <p className="text-[10px] font-bold uppercase tracking-widest text-brand">
+              Tipo *
             </p>
+            {!entryKind && (
+              <p className="text-[11px] text-muted-foreground">
+                Escolha Bônus ou Vale — sem isso o lançamento não aparece em Gerar Comissões.
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
